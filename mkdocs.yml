@@ -1,0 +1,6 @@
+# mkdocs.yml
+site_name: Projekti 1 - ByteBuddies - Ostoskärrydata
+site_dir: public
+docs_dir: docs
+theme:
+  name: material
