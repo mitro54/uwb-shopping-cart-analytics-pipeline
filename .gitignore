@@ -1,0 +1,50 @@
+# Python-yleiset
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtuaaliympäristöt
+.venv/
+venv/
+.env
+.env.*
+
+# IDE / editori
+.vscode/
+.idea/
+*.code-workspace
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MkDocs build
+site/
+
+# dbt / DuckDB / tietokannat
+dbt/target/
+dbt/logs/
+*.duckdb
+*.db
+*.sqlite
+
+# Data – EI raakadataa versionhallintaan
+data/raw/
+data/processed/
+data/**/raw/
+data/**/processed/
+
+# Jos haluat sallia sample-datan, älä ignoreoi sitä:
+!data/sample_data.csv
+
+# Lokit ja tilapäiset tiedostot
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
