@@ -17,10 +17,18 @@ cd bytebuddies
 uv sync
 ```
 
+#### 1.1 uv asennus
 (Optional) Mikäli tarvii asentaa uv:
-```
+```bash
 curl -Ls https://astral.sh/uv/install.sh | sh
 ```
+
+#### 1.2 Jupyter lab kehitys ympäristön käynnistys
+
+```bash
+uv run jupyter lab
+```
+
 
 ### 2. (Jos edes tarvitaan) Täytä ympäristömuuttujat
 cp .env.example .env
