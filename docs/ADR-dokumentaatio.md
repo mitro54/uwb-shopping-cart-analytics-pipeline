@@ -23,22 +23,22 @@ Projektiin sopiva koodikieli, joka taipuu sujuvasti kaikkiin toimiin. Laajin kir
 **uv:**
 Korvaa pip + venv yhdellä työkalulla, luo täysin toistettavan ympäristön uv.lock-tiedoston avulla. Toimii identtisesti Windowsilla, macOS:llä ja Linuxilla. Vältytään Dockerin käytöltä ainakin projektin alkupuolella vaikka tiimiläiset toimivat eri OS ympäristöissä.
 
-**duckdb:**
+**DuckDB:**
 Saraketallennus ja vektorisoitu suoritus tekevät sadoista miljoonista riveistä hallittavia paikallisella koneella ilman erillistä palvelinta; lukee CSV-tiedostot suoraan `read_csv_auto` -funktiolla ilman erillistä latausta, ja sen CSV-lukija on nopeutunut lähes 3× viime versioiden aikana.
 
-**duckdb:**
-
 **dbt-core:**
+dbt (Data Build Tool) hallinnoi SQL-mallit, niiden väliset riippuvuudet, automaattiset testit ja dokumentaation yhtenä kokonaisuutena. Mallit kirjoitetaan `.sql`-tiedostoihin ja dbt huolehtii oikeasta ajojärjestyksestä. Kaikki on versionhallinnassa ja tiimi voi tehdä muutoksia turvallisesti.
 
 **dbt-duckdb:**
+DuckDB-adapteri dbt:lle. Ilman adapteria dbt ei tiedä miten ottaa yhteyttä tietokantaan tai miten ajaa mallit sitä vasten. dbt-duckdb mahdollistaa koko putken ajamisen paikallisesti ilman pilveä tai erillistä palvelinta.
 
 **pandas & polars:**
 Pandas datan käsittelyn treenaamiseen. Sopiva työkalu aloittelijoille.
 
-Polars on huomattavasti nopeampi kuin pandas isoilla aineistoilla, koska käyttää sarakepohjaista muistinkäsittelyä, sopii hyvin satoja miljoonia rivejä sisältävien CSV:iden alustukseen ennen dbt-putken ajoa
+Polars on nopea DataFrame-kirjasto datankäsittelyyn. Pandas on tutumpi, mutta polars on merkittävästi nopeampi isoilla aineistoilla, koska se käyttää sarakepohjaista muistinkäsittelyä ja Rust-pohjaista toteutusta. Sopii hyvin tähän projektiin, joissa CSV-dataa tarvitsee tarkastella tai esikäsitellä ennen dbt-putken ajamista.
 
-**matplotlib / plotly:**
-Matplotlib visualisointiin, sopii staattisiin PNG-exportteihin; Plotly interaktiivisiin kuvaajiin notebookeissa
+**matplotlib / seaborn / plotly:**
+Matplotlib visualisointiin, sopii staattisiin PNG-exportteihin, Seaborn hienompiin kuvaajiin ja Plotly interaktiivisiin kuvaajiin notebookeissa
 
 **MkDocs + Material:**
 Markdown-pohjainen, ei vaadi erillistä rakennusjärjestelmää, julkaistaan automaattisesti GitLab CI/CD -pipelinella
