@@ -29,6 +29,12 @@ curl -Ls https://astral.sh/uv/install.sh | sh
 uv run jupyter lab
 ```
 
+#### 1.3 Mkdocs käynnistys
+
+```bash
+uv run mkdocs serve
+```
+
 
 ### 2. (Jos edes tarvitaan) Täytä ympäristömuuttujat
 cp .env.example .env
