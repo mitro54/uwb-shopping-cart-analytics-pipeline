@@ -48,6 +48,8 @@ bytebuddies/
 ├── uv.lock                             # Lukitsee pakettien versiot, jotta koko tiimillä on sama ympäristö  
 ├── mkdocs.yml                          # Dokumentaatio! MkDocs-sivuston konfiguraatiotiedosto (navigaatio, teema, asetukset)  
 │  
+├── gitlab-ci.yml                       # Testiputki 
+│  
 ├── docs/                               # MkDocs-dokumentaatio ja Scrum-artefaktit  
 │   ├── index.md                        # Dokumentaation etusivu (MkDocsin oletussivu)  
 │   ├── projektisuunnitelma.md          # Projektisuunnitelma ja Scrum-käsikirja  
