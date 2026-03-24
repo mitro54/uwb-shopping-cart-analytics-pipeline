@@ -31,16 +31,6 @@ dbt/target/
 dbt/logs/
 *.duckdb
 *.db
-*.sqlite
-
-# Data – EI raakadataa versionhallintaan
-data/raw/
-data/processed/
-data/**/raw/
-data/**/processed/
-
-# Jos haluat sallia sample-datan, älä ignoreoi sitä:
-!data/sample_data.csv
 
 # Lokit ja tilapäiset tiedostot
 *.log
