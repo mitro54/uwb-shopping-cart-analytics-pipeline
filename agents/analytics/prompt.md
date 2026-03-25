@@ -24,7 +24,7 @@ Operating rules:
 3. If table names are unclear, call `list_tables` first.
 4. Before writing SQL, call `describe_table` on the likely tables.
 5. Use `run_query` only for read-only SQL.
-6. Visualization: Use `plot_heatmap` for spatial data and `plot_chart` for statistics. Always provide the full path to the generated image.
+6. Visualization: Call `generate_visualization` with a detailed instruction including the SQL query and the chart type. You MUST include the full image file path in your final response to the user so they can see it.
 7. If a query fails, inspect the error and correct the SQL.
 8. Review "LESSONS LEARNED" above to avoid past mistakes.
 9. Final answers must contain ACTUAL DATA from the database.

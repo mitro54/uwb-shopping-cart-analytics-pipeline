@@ -4,7 +4,7 @@ import yaml
 from pathlib import Path
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from agents.shared.config import AGENTS_ROOT
+from agents.shared.config import AGENTS_ROOT, CONFIG
 from agents.shared.llm import build_chat_ollama
 from agents.schema.agent import SchemaAgent
 from agents.analytics.agent import AnalyticsAgent

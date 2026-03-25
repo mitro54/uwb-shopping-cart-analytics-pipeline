@@ -11,9 +11,9 @@ from agents.shared.memory.checkpointing import build_checkpointer
 from agents.shared.memory.feedback_store import FeedbackStore
 from agents.shared.schema_registry import SchemaRegistry
 from agents.shared.tools.duckdb_tools import ALL_TOOLS as DB_TOOLS
-from agents.shared.tools.plot_tools import ALL_PLOT_TOOLS as PLOT_TOOLS
+from agents.shared.tools.delegation_tools import generate_visualization
 
-ALL_AGENT_TOOLS = DB_TOOLS + PLOT_TOOLS
+ALL_AGENT_TOOLS = DB_TOOLS + [generate_visualization]
 
 AGENT_ROOT = AGENTS_ROOT / "analytics"
 IDENTITY_PATH = AGENT_ROOT / "identity.yml"
