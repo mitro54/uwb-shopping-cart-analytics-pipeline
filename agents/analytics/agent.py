@@ -46,6 +46,7 @@ class AnalyticsAgent:
         )
 
     def build(self, question: str):
+        """Rakentaa LangGraph-pohjaisen agentin, jolla on pääsy analyysityökaluihin ja muistiin."""
         llm = build_chat_ollama(model_name=CONFIG.analytics_model, temperature=0)
         checkpointer = build_checkpointer(CHECKPOINT_PATH)
         return create_react_agent(
@@ -56,6 +57,7 @@ class AnalyticsAgent:
         )
 
     def ask(self, question: str, thread_id: str = "default") -> tuple[str, int]:
+        """Suorittaa analyysitehtävän: kysyy LLM:ltä, ajaa tarvittavat työkalut ja tallentaa tuloksen muistiin."""
         graph = self.build(question)
         result = graph.invoke(
             {"messages": [{"role": "user", "content": question}]},

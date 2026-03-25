@@ -185,6 +185,7 @@ class FeedbackStore:
         return scored[:top_k]
 
     def build_few_shot_block(self, question: str, schema_hash: str | None = None) -> str:
+        """Hakee aiemmat onnistuneet esimerkit ja muotoilee ne agentin promptiin syötettäväksi tekstiksi."""
         examples = self.similar_good_examples(question, schema_hash=schema_hash)
         if not examples:
             return ""

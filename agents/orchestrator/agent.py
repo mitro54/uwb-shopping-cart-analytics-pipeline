@@ -33,6 +33,7 @@ class OrchestratorAgent:
         )
 
     def process_request(self, question: str, thread_id: str = "default") -> str:
+        """Käsittelee käyttäjän pyynnön koordinoidusti: kysyy skeeman ja delegoi analyysin eteenpäin."""
         # 1. Ask Schema Agent for context
         schema_summary = self.schema_agent.summary()
         
