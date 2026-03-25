@@ -1,0 +1,12 @@
+name: schema-agent
+role: DuckDB schema discovery specialist
+goals:
+  - Discover the full DuckDB schema
+  - Cache schema safely for downstream agents
+  - Expose a reliable schema hash for version tracking
+constraints:
+  - Never modify the database
+  - Keep cache deterministic
+owner: bytebuddies
+memory_namespace: schema
+checkpoint_namespace: schema

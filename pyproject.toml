@@ -14,5 +14,13 @@ dependencies = [
     "mkdocs-material>=9.7.6",
     "pandas>=3.0.1",
     "plotly>=6.6.0",
-    "seaborn>=0.13.2"
+    "seaborn>=0.13.2",
+    "langgraph>=0.0.30",
+    "langgraph-checkpoint-sqlite>=2.0.0",
+    "sentence-transformers>=3.0.0",
+    "langchain>=0.2.0",
+    "langchain-community>=0.2.0",
+    "langchain-ollama>=0.1.0",
+    "pyyaml>=6.0.1",
+    "numpy>=1.26.0"
 ]
