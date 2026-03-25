@@ -43,3 +43,4 @@ Thumbs.db
 schema_cache.json
 checkpoints.sqlite
 feedback.sqlite
+checkpoints.*
