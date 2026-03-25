@@ -34,16 +34,8 @@ class OrchestratorAgent:
 
     def process_request(self, question: str, thread_id: str = "default") -> str:
         """Käsittelee käyttäjän pyynnön koordinoidusti: kysyy skeeman ja delegoi analyysin eteenpäin."""
-        # 1. Ask Schema Agent for context
-        schema_summary = self.schema_agent.summary()
-        
-        # 2. Instruct Analytics Agent to solve the problem
-        analysis_prompt = (
-            f"You MUST use the provided tools to fetch REAL DATA from DuckDB.\n"
-            f"DO NOT invent any table names, station names or speed values.\n"
-            f"Schema:\n{schema_summary}\n\n"
-            f"Question: {question}"
-        )
-        answer, interaction_id = self.analytics_agent.ask(analysis_prompt, thread_id=thread_id)
+        # Note: AnalyticsAgent already manages schema and feedback internally.
+        # We just pass the clean question forward to keep the prompt size manageable.
+        answer, interaction_id = self.analytics_agent.ask(question, thread_id=thread_id)
         
         return answer, interaction_id

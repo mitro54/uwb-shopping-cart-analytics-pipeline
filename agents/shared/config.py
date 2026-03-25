@@ -36,7 +36,7 @@ class AppConfig:
             analytics_model=os.getenv("ANALYTICS_MODEL", default_model),
             plotter_model=os.getenv("PLOTTER_MODEL", "qwen3.5:9b"),
             schema_model=os.getenv("SCHEMA_MODEL", default_model),
-            embedding_model=os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
+            embedding_model=os.getenv("EMBEDDING_MODEL", "nomic-embed-text:latest"),
             max_iterations=int(os.getenv("AGENT_MAX_ITERATIONS", "15")),
             verbose=os.getenv("AGENT_VERBOSE", "true").lower() == "true",
         )

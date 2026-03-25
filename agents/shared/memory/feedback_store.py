@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from langchain_ollama import OllamaEmbeddings
 
 from agents.shared.config import CONFIG
 from agents.shared.logging_utils import get_logger
@@ -28,7 +28,7 @@ class FeedbackStore:
     def __init__(self, db_path: Path):
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._model: SentenceTransformer | None = None
+        self._model: OllamaEmbeddings | None = None
         self._init_db()
 
     def _conn(self) -> sqlite3.Connection:
@@ -59,13 +59,25 @@ class FeedbackStore:
                 ON interactions(thread_id);
             """)
 
-    def _embedder(self) -> SentenceTransformer:
+    def _embedder(self) -> OllamaEmbeddings:
         if self._model is None:
-            self._model = SentenceTransformer(CONFIG.embedding_model)
+            self._model = OllamaEmbeddings(
+                base_url=CONFIG.ollama_base_url,
+                model=CONFIG.embedding_model,
+            )
         return self._model
 
     def _embed(self, text: str) -> list[float]:
-        return self._embedder().encode(text, normalize_embeddings=True).tolist()
+        # Truncate to avoid 'context length exceeded' (400) from Ollama if input is massive
+        # 3000 chars is usually safe for most embedding models' token limits
+        safe_text = text[-3000:] if len(text) > 3000 else text
+        embedding = self._embedder().embed_query(safe_text)
+        # Normalize for dot product similarity (making it cosine similarity)
+        arr = np.array(embedding)
+        norm = np.linalg.norm(arr)
+        if norm > 0:
+            arr = arr / norm
+        return arr.tolist()
 
     def save_interaction(
         self,
@@ -134,6 +146,8 @@ class FeedbackStore:
         scored: list[FeedbackExample] = []
         for row in rows:
             emb = np.array(json.loads(row["embedding"]))
+            if emb.shape != query_emb.shape:
+                continue
             score = float(np.dot(query_emb, emb))
             if score >= min_similarity:
                 scored.append(
@@ -169,6 +183,8 @@ class FeedbackStore:
         scored: list[FeedbackExample] = []
         for row in rows:
             emb = np.array(json.loads(row["embedding"]))
+            if emb.shape != query_emb.shape:
+                continue
             score = float(np.dot(query_emb, emb))
             if score >= min_similarity:
                 scored.append(
