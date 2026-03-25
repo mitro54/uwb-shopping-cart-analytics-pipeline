@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import matplotlib
+matplotlib.use('Agg') # Käytetään palvelinpohjaista renderöintiä ilman GUI:ta
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -80,4 +82,45 @@ def plot_chart(sql: str, chart_type: str, x_col: str, y_col: str, title: str = "
     except Exception as e:
         return f"Error generating chart: {e}"
 
-ALL_PLOT_TOOLS = [plot_heatmap, plot_chart]
+import plotly.express as px
+import plotly.io as pio
+
+@tool
+def plot_interactive(sql: str, chart_type: str, x_col: str, y_col: str, title: str = "Interaktiivinen analyysi") -> str:
+    """
+    Luo interaktiivisen Plotly-kuvaajan.
+    chart_type: 'bar', 'line', 'scatter'
+    Tallentaa kuvaajan JSON-muodossa Streamlitia varten.
+    """
+    try:
+        conn = _get_conn()
+        df = conn.execute(sql).fetchdf()
+        conn.close()
+
+        if df.empty:
+            return "Kysely ei palauttanut dataa visualisointia varten."
+
+        if chart_type == "bar":
+            fig = px.bar(df, x=x_col, y=y_col, title=title, template="plotly_white")
+        elif chart_type == "line":
+            fig = px.line(df, x=x_col, y=y_col, title=title, template="plotly_white")
+        elif chart_type == "scatter":
+            fig = px.scatter(df, x=x_col, y=y_col, title=title, template="plotly_white")
+        else:
+            return f"Tukematon kaaviotyyppi: {chart_type}"
+
+        # Älykäs skaalaus: jos data on hyvin kapealla välillä, ei aloiteta nollasta
+        y_min = df[y_col].min()
+        y_max = df[y_col].max()
+        if y_min > 0 and (y_max - y_min) / y_max < 0.2:
+            fig.update_layout(yaxis=dict(range=[y_min * 0.98, y_max * 1.02]))
+
+        filename = f"interactive_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filepath = OUTPUT_DIR / filename
+        pio.write_json(fig, str(filepath))
+
+        return f"Interaktiivinen visualisointi luotu: {filepath.absolute()}"
+    except Exception as e:
+        return f"Virhe Plotly-visualisoinnissa: {e}"
+
+ALL_PLOT_TOOLS = [plot_heatmap, plot_chart, plot_interactive]
