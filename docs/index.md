@@ -1,4 +1,6 @@
-# Projektiopinnot 1: Datan hallinta - ByteBuddies
+---
+Projektiopinnot 1: Datan hallinta - ByteBuddies
+===
 
 [toc]
 
@@ -25,7 +27,7 @@ Roolit kiertävät sprinttikohtaisesti. Jokaisessa sprintissä on nimetty:
     * Ymmärtää liiketoiminnan tarpeet
     * Pitää backlogia ajan tasalla
     * Yhteys tiimiin ja sidosryhmiin
-- Scrum Master (SO)
+- Scrum Master (SM)
     * Poistaa esteitä
     * Tukee tiimiä
     * Ei johda, vaan mahdollistaa
@@ -46,18 +48,18 @@ Roolit kiertävät sprinttikohtaisesti. Jokaisessa sprintissä on nimetty:
 * Kaikkien noudatettava
 
 ## Tekniset kriteerit
-- Toimiva tietokanta
+- MariaDB
 - Jupyterlab -kontit ETL-prosessia varten
-## Toiminnalliset kriteerit
+## Toiminnalliset kriteerit (Features)
 
 1. Tulosten raportointi.
 
 2. Toimiva koodi, jota asiakas voi käyttää jatkossa.
 **Kauppias:**
 
-* Asiakkaiden käyttämien reittien tutkimiseen.
-* Asiakasmäärien tutkimiseen
-* Asiakkaiden käyttäytymisen tutkimiseen (kauppareissujen pituus, pysähdyspaikat ja -ajat, jne.)
+    * Asiakkaiden käyttämien reittien tutkimiseen.
+    * Asiakasmäärien tutkimiseen
+    * Asiakkaiden käyttäytymisen tutkimiseen (kauppareissujen pituus, pysähdyspaikat ja -ajat, jne.)
 
     **Paikannusyritys:**
 
@@ -93,12 +95,6 @@ Projektin eteen tehtyä työmäärää seurataan wakatime-pluginilla (ohjelmoint
 
 # Scrum-rakenne ja etenemismalli
 
-## Epiikka
-
-Asiakaskäyttäytymisen ymmärtäminen ostoskärrydatan avulla.
-
-
-
 ## Sprintit
 
 
@@ -116,10 +112,14 @@ Asiakaskäyttäytymisen ymmärtäminen ostoskärrydatan avulla.
 - Seuraavan sprintin suunnittelu maanantaisin klo 19.00
     - Suunnitellaan seuraavan sprintin työt
 - Sprint Review (Demo)
-    * Kaksi kertaa projektin aikana
+
     * Näytetään valmis toimiva tuote
     * Saadaan palautetta
+    *
+    Sprint Review järjestetään jokaisen sprintin lopussa.
+    Projektin aikana pidetään lisäksi kaksi laajempaa demoa sidosryhmille.
 
+## Aikataulu
 Roolit on laitettu kiertämään niin, että ensimmäisten viiden viikon aikana jokainen on ollut jokaisesa roolissa kerran. Loput voidaan joko arpoa tai sopia muuten.
 
 |Sprintti|Viikko|Alkaa |Päättyy|[Tuoteomistaja](https://gitlab.dclabra.fi/wiki/s/HJQT28UHU)|[Scrummaster](https://gitlab.dclabra.fi/wiki/s/r1Ilh8USL) |
@@ -133,13 +133,25 @@ Roolit on laitettu kiertämään niin, että ensimmäisten viiden viikon aikana 
 | 7 | 19| 4.5.2026| 8.5.2026|||
 | 8 | 20| 11.5.2026| 15.5.2026|||
 
+## Artefaktit
+
+- Product Backlog (PBL)
+- Definition of Done (DoD)
+- Sprint Backlog
+
 ## Mittarit ja seuranta
 
 * Velocity (vain valmiit työt)
 * Burndown chart (edistyminen)
 * Tehtävien jatkuva päivitys
 
-## Artefaktit
+## Työmääräarviot
+
+Story pointit kuvaavat käyttäjätarinoiden suhteellista vaativuutta (perustuen työmäärään, monimutkaisuuteen ja epävarmuuteen), eivätkä ne vastaa suoraan käytettyä aikaa.
+
+Arviointi tehdään kehitystiimin toimesta käyttäen Fibonacci-asteikkoa (1, 2, 3, 5, 8, 13). Tarinoita arvioidaan suhteessa toisiinsa, ja liian suuret tarinat pilkotaan ennen sprinttiin ottamista
+
+
 ----
 # Sprint 1
 
@@ -173,7 +185,7 @@ Päätimme, että ekan sprintin suurin työ on jokaiselle dataan tutustuminen Ju
 ## Sprint Goal
 Luoda yhteinen tekninen ja toiminnallinen pohja projektin aloittamiselle sekä muodostaa ymmärrys datan rakenteesta ja laadusta.
 
-## Sprintin Increment
+## Sprintin Increment (toteutunut/kehittyvä)
 - [x] Projektirepositorio luotu
 - [x] Scrum-käytännöt sovittu
 - [ ] Kehitysympäristö osittain valmis
@@ -194,12 +206,24 @@ Päivitetään suunnittelupalaverissa. Tiimi antaa ennusteen, mitä toiminnallis
     - [ ] Datan mahdollisuudet (Kaikki) 2 h / hlö
     - [ ] Sijainnin laatu (Joni) 10 h
     - [ ] Datateoriat/yhteydet (Mitro) 8 h
+- Käyttäjätarinat
+    - [ ]  Käyttäjätarinoiden tarkentaminen datan analyysin perusteella (Kaikki)  1 h / hlö
 
 
 ## Daily scrum
 Sprintin aikana pidetään päivittäinen Daily Scrum. Alla kirjaukset päivien edetessä.
 
 ### tiistai 24.3.2026  klo 20.00
+- Kävimme Scrumin toimintoja vielä tarkemmin läpi, Tuija oli selvittänyt paljon ja selvensi kaikille. Ei ollut ongelmia ja Mitro oli aloittanut jo datan plottausta Jupyterissä.
+Paikalla: Mitro, Tuija, Joni ja Panu
+
+### keskiviikko 25.3.2026 klo 20.00
+- Tutustuttiin Jarin agenttihärveliin. Ei ongelmia.
+- Paikalla: Mitro, Tuija, Panu 
+
+### torstai 26.3.2026 klo 20.00
+- Käytiin läpi Mitron löydöksiä
+- Paikalla: Mitro, Tuija, Panu, Toni
 
 ## Sprint Review - ma 30.3.2026 klo 17.00
 
@@ -209,73 +233,116 @@ Sprintin aikana pidetään päivittäinen Daily Scrum. Alla kirjaukset päivien 
 
 (Kirjataan sprintin päättyessä)
 
+-------
+# Product Backlog
 
---------
-# Product Backlog (PBL)
+Koska käytettävän datan perusrakenne (x- ja y-koordinaatit, aikaleima ja kärry-ID)on tiedossa etukäteen, projektin alussa määritellään ja toteutetaan alustava erustietomalli. Mallia tarkennetaan ja laajennetaan Scrum-periaatteiden mukaisesti sprinttien aikana analyysitarpeiden kasvaessa.
 
-* Lista tehtävistä
-* Priorisoitu liiketoiminta-arvon mukaan
-* Ylimmät tehtävät pieniä ja valmiita sprinttiin
-* Tuoteomistaja vastaa
+Status:
 
-
-Järjestetty lista kaikesta, mitä tuotteessa saatetaan tarvita, sekä ainoa lähde tuotteeseen toteutettaville vaatimuksille ja muutoksille. Product Backlog elää projektin aikana ja sitä priorisoidaan uudelleen sprinttikatselmusten jälkeen saadun palautteen perusteella.
+[TODO] - alempi prioriteetti
+[READY] - priorisoitu, valmis sprinttiin
+[DONE]  - valmis, DoD täyttynyt
+[REMOVED] - poistettu / korvattu
 
 
-- [x] Epiikka
-- [ ] Käyttäjätarinoiden pohtiminen (Kaikki) 1 h / hlö
-- [ ] Tietokantarakenteen suunnittelu
+Product Backlog -itemien tila merkitään backlog-listaan. Valmiit itemit säilytetään näkyvissä historiatiedoksi, mutta niitä ei enää priorisoida tai oteta sprintteihin.
 
-## [Käyttäjätarinat](https://firmbee.fi/mita-kayttajatarinat-ovat)
 
-Olen kauppias ja haluan tutkia asiakkaiden käyttämiä reittejä, koska..... 
+## Epiikka
+- Asiakaskäyttäytymisen ymmärtäminen ostoskärrydatan avulla
 
-Olen kauppias, ja haluan tutkia asiakasmääriä, koska....
-Olen kauppias, ja haluan tutkia kauppareissujen pituutta, koska...
 
-Olen kauppias, ja haluan tutkia asiakkaiden pysähtymispaikkoja ja -aikoja, koska...
+## Tekninen backlog-item: Perustietomallin määrittely – 2–3 SP [READY]
 
-Olen paikannusyrityksen edustaja, ja haluan käyttää ohjelmaa paikannustarkkuuden tutkimiseen paikallaan olevien laitteiden avulla (esim. paikan keskihajonta)
+Kuten kehitystiimi
+haluamme määritellä ja toteuttaa perustietomallin
+(x, y, aikaleima, kärry_id),
+jotta paikannusdata voidaan tallentaa ja käyttää analyyseissä.
 
-Olen paikannusyrityksen edustaja, ja haluan käyttää ohjelmaa hyvyyden/käytettävyyden tutkimiseen. (esim. kaupan ulkopuolle olevien pisteiden lkm. tai paikassa olevan “kohinan” määrä.)
+
+## User Story: Kauppareissujen pituus – 3 SP [READY] 
+
+Kuten kauppias
+haluan analysoida asiakkaiden kauppareissujen keston
+jotta voin ymmärtää asiakkaiden käyttäytymistä ja myymälän toimivuutta.
+   
+**Hyväksymiskriteerit:**
+- Kauppareissun alku ja loppu tunnistetaan datasta
+- Kesto voidaan laskea
+- Tulokset esitetään tilastollisesti
+
+## User Story: Asiakkaiden kulkureitit – 5 SP [READY] 
+
+Kuten kauppias
+haluan tutkia asiakkaiden käyttämiä kulkureittejä
+jotta voin ymmärtää, miten asiakkaat liikkuvat myymälässä.
+
+**Hyväksymiskriteerit:**
+ - Reitit voidaan visualisoida kaupan pohjakuvan päällä
+ - Visualisointi perustuu paikannusdataan
+ - Useamman asiakkaan reittejä voidaan tarkastella
+
+## Tekninen backlog-item: Datan suodatus ja rajaus – 3 SP [READY] 
+
+Kuten kehitystiimi
+haluamme suodattaa epäoleelliset ja virheelliset sijaintipisteet
+jotta analyysit perustuvat luotettavaan aineistoon.
+   
+**Hyväksymiskriteerit:**
+- Kaupan rajojen ulkopuoliset pisteet tunnistetaan
+- Poistetut pisteet voidaan raportoida
+
+## User Story: Kuumat alueet (heatmap) – 3 SP [TODO] 
+
+Kuten kauppias
+haluan nähdä myymälän kuumat alueet
+jotta voin tunnistaa alueet, joissa asiakkaat viettävät eniten aikaa.
+   
+ **Hyväksymiskriteerit:**
+ - Heatmap muodostetaan paikannusdatan perusteella
+ - Aikaväli on rajattavissa
+
+## User Story: Pysähdyspaikat ja pysähdysajat – 5 SP [TODO] 
+Kuten kauppias  
+haluan tunnistaa asiakkaiden pysähdyspaikat ja pysähdysajat  
+jotta voin analysoida tuotteiden ja alueiden kiinnostavuutta.  
+   
+**Hyväksymiskriteerit:**
+- Pysähdys määritellään liikkumattomuuden perusteella
+- Pysähdykset voidaan visualisoida
+
+## User Story: Paikannustarkkuuden analyysi – 8 SP [TODO] 
+
+Kuten paikannusyrityksen edustaja
+haluan analysoida paikallaan olevien laitteiden sijaintivaihtelua
+jotta voin arvioida paikannusjärjestelmän tarkkuutta.
+
+## User Story: Datan kohinan ja virhepisteiden analyysi – 8 SP [TODO]
+
+Kuten paikannusyrityksen edustaja
+haluan tunnistaa epäloogiset tai kaupan ulkopuolella olevat sijaintipisteet
+jotta voin arvioida datan laatua ja käytettävyyttä.
+
+## Jatkokehitysidea: Ulkoisten datalähteiden yhdistäminen [TODO]
 
 # Projektin yhteenveto
 
 # Koko ryhmän työaikayhteenveto
 
-# Scrum-checklist
-
-## 1. Ydinidea
-
-Scrumissa tärkeintä on:
-
-* Toimivan ohjelmiston toimitus usein (≤ 4 viikkoa)
-* Liiketoiminnan kannalta tärkeimmän tekeminen
-* Jatkuva parantaminen
-
-## 2. Keskeiset roolit
-
-### Product Owner (PO)
 
 
 
-### Scrum Master (SM)
-
-
-### Tiimi
-
-
-## 3. Keskeiset artefaktit
-
-### Product Backlog (PBL)
 
 
 
-### Sprint Backlog
 
-* Sprintin tehtävät
-* Näkyvä ja päivitetään päivittäin
-* Tiimin omistama
 
-### Definition of Done (DoD)
+
+
+
+
+
+
+
 
