@@ -153,7 +153,7 @@ Arviointi tehdään kehitystiimin toimesta käyttäen Fibonacci-asteikkoa (1, 2,
 
 
 ----
-# Sprint 1
+# Sprint 1 – Projektin alustus ja EDA
 
 ## Suunnittelupalaveri  - 23.3.2026 klo 18.30
 
@@ -163,12 +163,10 @@ Scrumin dokumentointi siili-blogiin ja muut dokumentoinnit Gitlab pages. Sovimme
 
 Päätimme, että ekan sprintin suurin työ on jokaiselle dataan tutustuminen Jupyter Notebookkeja käyttäen ja projektin alustus. Jokaiselle annettiin tehtäväksi tutustuminen dataan eri kantilta. Muistiinpanotlöydöksistä, joista sitten rakennetaan käyttäjätarinoita epiikan tueksi.
 
-
 ### Suunnittelupalaverin tuotokset
 - Sprint Goal määritelty
 - Alustava Sprint Backlog muodostettu
 - Työskentelykäytännöt sovittu
-
 
 ## Sprintin tehtävät
 
@@ -180,58 +178,150 @@ Päätimme, että ekan sprintin suurin työ on jokaiselle dataan tutustuminen Ju
 - Sprintin toimenpiteistä sopiminen
     - dailyt, demo, retro
 - Projektityöskentelyn aloittaminen (taskit Gitlabista)
+- Projektin git-repo ja kansiorakenne
+- Ensimmäinen README ja projektisuunnitelma
+- EDA: datasetin kokoonpano, datalaadun tarkistus, alustavat visualisoinnit 
 
 
 ## Sprint Goal
 Luoda yhteinen tekninen ja toiminnallinen pohja projektin aloittamiselle sekä muodostaa ymmärrys datan rakenteesta ja laadusta.
 
+## Alustava Sprint Backlog
+Tutustutaan dataan (notebooks, EDA)
+Projektin alustus ja versionhallinta
+Selkeä repo- ja hakemistorakenne
+
 ## Sprintin Increment (toteutunut/kehittyvä)
 - [x] Projektirepositorio luotu
 - [x] Scrum-käytännöt sovittu
-- [ ] Kehitysympäristö osittain valmis
-- [ ] Alustava ymmärrys datasta muodostettu
+- [x] Kehitysympäristö osittain valmis
+- [x] Alustava ymmärrys datasta muodostettu
 
+## Sprint DoD
+
+- Repo luotu ja dokumentoitu
+- Scrum-käytännöt sovittu
+- Alustava data-analyysi tehty, pääpiirteiset löydökset dokumentoitu
+- Tiimillä yhteinen ymmärrys datasta ja sen rajoituksista
+- Ensimmäinen demo tehty
 
 ## Sprintin backlog (Kehitystiimi)
 
 Päivitetään suunnittelupalaverissa. Tiimi antaa ennusteen, mitä toiminnallisuutta seuraava versio sisältää. Tehtävien tuntiarviot ovat suuntaa-antavia. Sprinttien ennustettavuus perustuu tiimin kokemukseen eikä yksittäisiin tuntimääriin.
 
 - Kehitysympäristö
-    - [ ] Docker kontin pystytys (Joni) 30 min
-    - [ ] Projektin rakenne (Tomi) 5 min
-    - [ ] Dataformaatti (Toni) 2 h
+    - [x] Docker kontin pystytys (Joni) 30 min [REMOVED]
+    - [x] Projektin rakenne (Tomi) 5 min
+    - [x] Dataformaatti (Toni) 2 h
 - Data
-    - [ ] Miten asiakas liikkuu kaupassa (Toni) 2 h
-    - [ ] Datan laatu (Panu) 4 h
-    - [ ] Datan mahdollisuudet (Kaikki) 2 h / hlö
-    - [ ] Sijainnin laatu (Joni) 10 h
-    - [ ] Datateoriat/yhteydet (Mitro) 8 h
+    - [x] Miten asiakas liikkuu kaupassa (Toni) 2 h
+    - [x] Datan laatu (Panu) 4 h
+    - [x] Datan mahdollisuudet (Kaikki) 2 h / hlö
+    - [x] Sijainnin laatu (Joni) 10 h
+    - [x] Datateoriat/yhteydet (Mitro) 8 h
 - Käyttäjätarinat
-    - [ ]  Käyttäjätarinoiden tarkentaminen datan analyysin perusteella (Kaikki)  1 h / hlö
-
+    - [x]  Käyttäjätarinoiden tarkentaminen datan analyysin perusteella (Kaikki)  1 h / hlö
 
 ## Daily scrum
 Sprintin aikana pidetään päivittäinen Daily Scrum. Alla kirjaukset päivien edetessä.
 
 ### tiistai 24.3.2026  klo 20.00
+
 - Kävimme Scrumin toimintoja vielä tarkemmin läpi, Tuija oli selvittänyt paljon ja selvensi kaikille. Ei ollut ongelmia ja Mitro oli aloittanut jo datan plottausta Jupyterissä.
-Paikalla: Mitro, Tuija, Joni ja Panu
+
+**Paikalla: Mitro, Tuija, Joni ja Panu**
 
 ### keskiviikko 25.3.2026 klo 20.00
+
 - Tutustuttiin Jarin agenttihärveliin. Ei ongelmia.
-- Paikalla: Mitro, Tuija, Panu 
+
+**Paikalla: Mitro, Tuija, Panu**
 
 ### torstai 26.3.2026 klo 20.00
+
 - Käytiin läpi Mitron löydöksiä
-- Paikalla: Mitro, Tuija, Panu, Toni
+
+**Paikalla: Mitro, Tuija, Panu, Toni**
 
 ## Sprint Review - ma 30.3.2026 klo 17.00
 
-(Kirjataan sprintin päättyessä)
+### Mikä toimi hyvin
+
+- Saatiin projekti käyntiin
+- Dokumenttaatio saatu alkuun
+- Datan tutkiminen on alkanut
+- Tiimi on motivoitunut
+
+### Mikä ei toiminut
+
+- Palavereihin osallistuminen vaihtelevaa
+- Scrum on vielä vähän hakusessa
+- Mikä datassa on arvokasta ja miten sitä voi hyödyntää on vielä epäselvää
+
+### Parannusehdotukset
+
+- Enemmän yhteistä aikaa datan tutkimiseen
+- Selkeämpi kuva siitä, mitä datasta halutaan selvittää
+
+### Tiimin fiilis
+
+- Hyvä fiilis, motivoitunut tiimi
+- Odotukset korkealla
+
+### Yhteenveto 
+
+- Saatiin projekti käyntiin
+- Dokumentointi saatu alkuun
+- Datan tutkiminen on alkanut
+- Tiimi on motivoitunut
+
+**Paikalla: kaikki**
 
 ## Sprint Retro -  ma 30.3.2026  klo 18.00
 
-(Kirjataan sprintin päättyessä)
+- Asiakas voi puuttua asioihin ja vaikuttaa projektiin
+- Issueita on sulkematta
+
+# Sprint 2 – Dataputken suunnittelu ja Bronze-ingestion
+
+**Tavoitteet:**
+
+Lopullisen projektisuunnitelman vahvistaminen
+Tutustuminen DuckDB:hen ja dbt:hen
+Bronze-tason datan ingestion toteutus
+
+**Tehtävät:**
+
+Dataputken arkkitehtuuri: Bronze → Silver → Gold
+Bronze-taulujen suunnittelu ja luonti
+dbt-testien ja CI/CD-putken alustaminen
+Dokumentaation päivitys (mkdocs, hedgehoc sprintit)
+
+**DoD:**
+
+Bronze-taulut valmiit ja testatut
+dbt testit läpäisty
+Dokumentaatio ajantasalla
+
+# Sprint 3 – Silver-malli
+
+**Tavoitteet:**
+
+Normalisoidut Silver-taulut ja aggregaatiot
+Dimensiotaulujen luonti
+
+**Tehtävät:**
+
+Silver-taulujen transformointi Bronze-datasta
+Dimensiotaulujen ja avainmittareiden määrittely
+Dokumentaatiopäivitykset (mkdocs, hedgehoc sprintit)
+
+**DoD:**
+
+Silver-taulut valmiit ja testatut
+Dimensiotaulut oikein ja testit OK
+Dokumentaatio ajan tasalla
+
 
 -------
 # Product Backlog
