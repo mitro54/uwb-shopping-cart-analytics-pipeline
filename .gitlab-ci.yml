@@ -1,7 +1,7 @@
 pages:
   image: squidfunk/mkdocs-material
   script:
-    - mkdocs build --site-dir public
+    - uv run mkdocs build --site-dir public
   artifacts:
     paths:
       - public
