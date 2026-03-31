@@ -32,10 +32,11 @@ class OrchestratorAgent:
             context_info=context_info,
         )
 
-    def process_request(self, question: str, thread_id: str = "default") -> str:
-        """Käsittelee käyttäjän pyynnön koordinoidusti: kysyy skeeman ja delegoi analyysin eteenpäin."""
-        # Note: AnalyticsAgent already manages schema and feedback internally.
-        # We just pass the clean question forward to keep the prompt size manageable.
+    def process_request(self, question: str, thread_id: str = "default", status_callback=None) -> tuple[str, int]:
+        """Käsittelee käyttäjän pyynnön koordinoidusti."""
+        if status_callback:
+            status_callback("Analytiikka-agentti aloittaa työn...")
+        
         answer, interaction_id = self.analytics_agent.ask(question, thread_id=thread_id)
         
         return answer, interaction_id

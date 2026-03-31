@@ -52,8 +52,14 @@ orch, schema_agent, analytics_agent = get_agents()
 st.sidebar.title("🛒 ByteBuddies")
 page = st.sidebar.radio("Navigointi", ["🏠 Etusivu", "💬 Agenttichat", "📊 Datatutkimus", "🖼️ Visualisoinnit"])
 
+if st.sidebar.button("🗑️ Nollaa keskustelu"):
+    st.session_state.messages = []
+    import uuid
+    st.session_state.thread_id = str(uuid.uuid4())
+    st.rerun()
+
 st.sidebar.markdown("---")
-st.sidebar.info(f"**Malli (Orkestraattori):** {CONFIG.orchestrator_model}\n\n**Malli (Analytiikka):** {CONFIG.analytics_model}")
+st.sidebar.info(f"**Thread ID:** {st.session_state.thread_id}\n\n**Malli (Orkestraattori):** {CONFIG.orchestrator_model}\n\n**Malli (Analytiikka):** {CONFIG.analytics_model}")
 
 # --- 1. ETUSIVU ---
 if page == "🏠 Etusivu":
@@ -114,21 +120,48 @@ elif page == "💬 Agenttichat":
                                 st.error(f"Virhe Plotly-kuvaajan latauksessa ({p_clean}): {e}")
 
     # Käyttäjän syöte
+    st.write("---")
+    st.write("💡 **Pikavalinnat:**")
+    q_col1, q_col2, q_col3 = st.columns(3)
+    
+    button_query = None
+    if q_col1.button("📊 Mitä dataa on?", use_container_width=True):
+        button_query = "Tervehdys! Tutki mitä tauluja ja dataa tietokannassa on saatavilla ja esittele ne lyhyesti. Kerro myös, mitä analyyseja voisit tehdä tällä datalla."
+    if q_col2.button("🔥 Visualisoi jotain", use_container_width=True):
+        button_query = "Valitse mielenkiintoinen näkökulma saatavilla olevaan dataan ja luo siitä sopiva visualisointi (esim. heatmap tai aikasarja)."
+    if q_col3.button("📈 Data-analyysi", use_container_width=True):
+        button_query = "Tee lyhyt yhteenveto datan sisällöstä: kuinka paljon rivejä on, miltä ajanjaksolta data on ja mitä ovat tärkeimmät havainnot."
+
     user_input = st.chat_input("Kirjoita kysymys tästä...")
     
-    if user_input:
+    final_input = user_input or button_query
+
+    if final_input:
         # Lisätään käyttäjän viesti
-        st.session_state.messages.append({"role": "user", "content": user_input})
+        st.session_state.messages.append({"role": "user", "content": final_input})
         
         # Haetaan vastaus agentilta
-        with st.spinner("Agentti miettii..."):
+        with st.status("Agentti valmistautuu...", expanded=True) as status:
             try:
-                answer, interaction_id = orch.process_request(user_input, thread_id=st.session_state.thread_id)
+                # 1. Tarkistetaan mallin lataus (Ollama voi olla hidas tässä)
+                status.write(f"Ladataan malleja ({CONFIG.orchestrator_model} & {CONFIG.analytics_model})...")
+                
+                def update_status(text):
+                    status.write(f"🔄 {text}")
+
+                # 2. Käsitellään pyyntö
+                answer, interaction_id = orch.process_request(
+                    final_input, 
+                    thread_id=st.session_state.thread_id,
+                    status_callback=update_status
+                )
+                
+                status.update(label="Vastaus valmis!", state="complete", expanded=False)
                 st.session_state.messages.append({"role": "bot", "content": answer, "id": interaction_id})
+                st.rerun()
             except Exception as e:
+                status.update(label="Virhe prosessoinnissa", state="error")
                 st.error(f"Agentti kohtasi virheen: {e}")
-        
-        st.rerun()
 
     # Palaute viimeisimpään viestiin (jos se on botilta)
     if st.session_state.messages and st.session_state.messages[-1]["role"] == "bot":

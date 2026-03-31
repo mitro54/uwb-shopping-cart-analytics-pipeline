@@ -32,12 +32,12 @@ class AppConfig:
                 os.getenv("DUCKDB_PATH", str(DATA_ROOT / "warehouse" / "warehouse.duckdb"))
             ),
             ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-            orchestrator_model=os.getenv("ORCHESTRATOR_MODEL", default_model),
-            analytics_model=os.getenv("ANALYTICS_MODEL", default_model),
+            orchestrator_model=os.getenv("ORCHESTRATOR_MODEL", "qwen2.5:3b"),
+            analytics_model=os.getenv("ANALYTICS_MODEL", "qwen3.5:35b"),
             plotter_model=os.getenv("PLOTTER_MODEL", "qwen3.5:9b"),
-            schema_model=os.getenv("SCHEMA_MODEL", default_model),
+            schema_model=os.getenv("SCHEMA_MODEL", "qwen2.5:3b"),
             embedding_model=os.getenv("EMBEDDING_MODEL", "nomic-embed-text:latest"),
-            max_iterations=int(os.getenv("AGENT_MAX_ITERATIONS", "15")),
+            max_iterations=int(os.getenv("AGENT_MAX_ITERATIONS", "25")),
             verbose=os.getenv("AGENT_VERBOSE", "true").lower() == "true",
         )
 
