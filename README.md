@@ -90,25 +90,6 @@ bytebuddies/
 │   ├── snapshots/  
 │   └── analyses/  
 │  
-├── database/                           # Tietokantaan liittyvät skriptit  
-│   └── init_db.sql                     # SQL-skripti, joka luo taulut (carts, locations, zones) Dockerin käynnistyessä  
-│  
-├── src/                                # Varsinainen lähdekoodi  
-│   │  
-│   ├── etl/                            # Datan siirto ja putsaus (Extract, Transform, Load)  
-│   │   ├── extract.py                  # Skripti CSV-tiedostojen lukemiseen  
-│   │   ├── transform.py                # Datan putsaus (esim. virheellisten koordinaattien poisto, aikaleimat)  
-│   │   └── load.py                     # Datan siirto tietokantaan  
-│   │  
-│   ├── analysis/                       # Analyysit ja liiketoimintalogiikka  
-│   │   ├── heatmap.py                  # Kuumien alueiden laskenta  
-│   │   ├── speed_calc.py               # Ostoskärryjen nopeuksien ja läpimenoaikojen laskenta  
-│   │   └── time_analysis.py            # Ruuhka-aikojen ja käytön jakautumisen analysointi  
-│   │  
-│   └── visualization/                  # Kuvaajien ja näkymien luonti  
-│       ├── plot_heatmap.py             # Generoi lämpökarttakuvan kaupan pohjakuvan päälle  
-│       └── plot_charts.py              # Generoi tilastolliset pylväs- ja viivadiagrammit  
-│  
 └── notebooks/                          # Jupyter Notebookit (Vapaamuotoisempaan datan tutkiskeluun)  
     ├── 01_01_data_exploration.ipynb       # Datan alkuvaiheen tutkiminen (Toni)  
     ├── 01_02_data_exploration.ipynb       # Datan alkuvaiheen tutkiminen (Joni)  

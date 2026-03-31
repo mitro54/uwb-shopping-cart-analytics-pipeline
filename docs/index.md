@@ -1,4 +1,6 @@
-# Projektiopinnot 1: Datan hallinta - ByteBuddies
+---
+Projektiopinnot 1: Datan hallinta - ByteBuddies
+===
 
 [toc]
 
@@ -25,7 +27,7 @@ Roolit kiertävät sprinttikohtaisesti. Jokaisessa sprintissä on nimetty:
     * Ymmärtää liiketoiminnan tarpeet
     * Pitää backlogia ajan tasalla
     * Yhteys tiimiin ja sidosryhmiin
-- Scrum Master (SO)
+- Scrum Master (SM)
     * Poistaa esteitä
     * Tukee tiimiä
     * Ei johda, vaan mahdollistaa
@@ -46,18 +48,18 @@ Roolit kiertävät sprinttikohtaisesti. Jokaisessa sprintissä on nimetty:
 * Kaikkien noudatettava
 
 ## Tekniset kriteerit
-- Toimiva tietokanta
+- MariaDB
 - Jupyterlab -kontit ETL-prosessia varten
-## Toiminnalliset kriteerit
+## Toiminnalliset kriteerit (Features)
 
 1. Tulosten raportointi.
 
 2. Toimiva koodi, jota asiakas voi käyttää jatkossa.
 **Kauppias:**
 
-* Asiakkaiden käyttämien reittien tutkimiseen.
-* Asiakasmäärien tutkimiseen
-* Asiakkaiden käyttäytymisen tutkimiseen (kauppareissujen pituus, pysähdyspaikat ja -ajat, jne.)
+    * Asiakkaiden käyttämien reittien tutkimiseen.
+    * Asiakasmäärien tutkimiseen
+    * Asiakkaiden käyttäytymisen tutkimiseen (kauppareissujen pituus, pysähdyspaikat ja -ajat, jne.)
 
     **Paikannusyritys:**
 
@@ -93,12 +95,6 @@ Projektin eteen tehtyä työmäärää seurataan wakatime-pluginilla (ohjelmoint
 
 # Scrum-rakenne ja etenemismalli
 
-## Epiikka
-
-Asiakaskäyttäytymisen ymmärtäminen ostoskärrydatan avulla.
-
-
-
 ## Sprintit
 
 
@@ -116,10 +112,14 @@ Asiakaskäyttäytymisen ymmärtäminen ostoskärrydatan avulla.
 - Seuraavan sprintin suunnittelu maanantaisin klo 19.00
     - Suunnitellaan seuraavan sprintin työt
 - Sprint Review (Demo)
-    * Kaksi kertaa projektin aikana
+
     * Näytetään valmis toimiva tuote
     * Saadaan palautetta
+    *
+    Sprint Review järjestetään jokaisen sprintin lopussa.
+    Projektin aikana pidetään lisäksi kaksi laajempaa demoa sidosryhmille.
 
+## Aikataulu
 Roolit on laitettu kiertämään niin, että ensimmäisten viiden viikon aikana jokainen on ollut jokaisesa roolissa kerran. Loput voidaan joko arpoa tai sopia muuten.
 
 |Sprintti|Viikko|Alkaa |Päättyy|[Tuoteomistaja](https://gitlab.dclabra.fi/wiki/s/HJQT28UHU)|[Scrummaster](https://gitlab.dclabra.fi/wiki/s/r1Ilh8USL) |
@@ -133,15 +133,27 @@ Roolit on laitettu kiertämään niin, että ensimmäisten viiden viikon aikana 
 | 7 | 19| 4.5.2026| 8.5.2026|||
 | 8 | 20| 11.5.2026| 15.5.2026|||
 
+## Artefaktit
+
+- Product Backlog (PBL)
+- Definition of Done (DoD)
+- Sprint Backlog
+
 ## Mittarit ja seuranta
 
 * Velocity (vain valmiit työt)
 * Burndown chart (edistyminen)
 * Tehtävien jatkuva päivitys
 
-## Artefaktit
+## Työmääräarviot
+
+Story pointit kuvaavat käyttäjätarinoiden suhteellista vaativuutta (perustuen työmäärään, monimutkaisuuteen ja epävarmuuteen), eivätkä ne vastaa suoraan käytettyä aikaa.
+
+Arviointi tehdään kehitystiimin toimesta käyttäen Fibonacci-asteikkoa (1, 2, 3, 5, 8, 13). Tarinoita arvioidaan suhteessa toisiinsa, ja liian suuret tarinat pilkotaan ennen sprinttiin ottamista
+
+
 ----
-# Sprint 1
+# Sprint 1 – Projektin alustus ja EDA
 
 ## Suunnittelupalaveri  - 23.3.2026 klo 18.30
 
@@ -151,12 +163,10 @@ Scrumin dokumentointi siili-blogiin ja muut dokumentoinnit Gitlab pages. Sovimme
 
 Päätimme, että ekan sprintin suurin työ on jokaiselle dataan tutustuminen Jupyter Notebookkeja käyttäen ja projektin alustus. Jokaiselle annettiin tehtäväksi tutustuminen dataan eri kantilta. Muistiinpanotlöydöksistä, joista sitten rakennetaan käyttäjätarinoita epiikan tueksi.
 
-
 ### Suunnittelupalaverin tuotokset
 - Sprint Goal määritelty
 - Alustava Sprint Backlog muodostettu
 - Työskentelykäytännöt sovittu
-
 
 ## Sprintin tehtävät
 
@@ -168,114 +178,293 @@ Päätimme, että ekan sprintin suurin työ on jokaiselle dataan tutustuminen Ju
 - Sprintin toimenpiteistä sopiminen
     - dailyt, demo, retro
 - Projektityöskentelyn aloittaminen (taskit Gitlabista)
+- Projektin git-repo ja kansiorakenne
+- Ensimmäinen README ja projektisuunnitelma
+- EDA: datasetin kokoonpano, datalaadun tarkistus, alustavat visualisoinnit 
 
 
 ## Sprint Goal
 Luoda yhteinen tekninen ja toiminnallinen pohja projektin aloittamiselle sekä muodostaa ymmärrys datan rakenteesta ja laadusta.
 
-## Sprintin Increment
+## Alustava Sprint Backlog
+Tutustutaan dataan (notebooks, EDA)
+Projektin alustus ja versionhallinta
+Selkeä repo- ja hakemistorakenne
+
+## Sprintin Increment (toteutunut/kehittyvä)
 - [x] Projektirepositorio luotu
 - [x] Scrum-käytännöt sovittu
-- [ ] Kehitysympäristö osittain valmis
-- [ ] Alustava ymmärrys datasta muodostettu
+- [x] Kehitysympäristö osittain valmis
+- [x] Alustava ymmärrys datasta muodostettu
 
+## Sprint DoD
+
+- Repo luotu ja dokumentoitu
+- Scrum-käytännöt sovittu
+- Alustava data-analyysi tehty, pääpiirteiset löydökset dokumentoitu
+- Tiimillä yhteinen ymmärrys datasta ja sen rajoituksista
+- Ensimmäinen demo tehty
 
 ## Sprintin backlog (Kehitystiimi)
 
 Päivitetään suunnittelupalaverissa. Tiimi antaa ennusteen, mitä toiminnallisuutta seuraava versio sisältää. Tehtävien tuntiarviot ovat suuntaa-antavia. Sprinttien ennustettavuus perustuu tiimin kokemukseen eikä yksittäisiin tuntimääriin.
 
 - Kehitysympäristö
-    - [ ] Docker kontin pystytys (Joni) 30 min
-    - [ ] Projektin rakenne (Tomi) 5 min
-    - [ ] Dataformaatti (Toni) 2 h
+    - [x] Docker kontin pystytys (Joni) 30 min [REMOVED]
+    - [x] Projektin rakenne (Tomi) 5 min
+    - [x] Dataformaatti (Toni) 2 h
 - Data
-    - [ ] Miten asiakas liikkuu kaupassa (Toni) 2 h
-    - [ ] Datan laatu (Panu) 4 h
-    - [ ] Datan mahdollisuudet (Kaikki) 2 h / hlö
-    - [ ] Sijainnin laatu (Joni) 10 h
-    - [ ] Datateoriat/yhteydet (Mitro) 8 h
-
+    - [x] Miten asiakas liikkuu kaupassa (Toni) 2 h
+    - [x] Datan laatu (Panu) 4 h
+    - [x] Datan mahdollisuudet (Kaikki) 2 h / hlö
+    - [x] Sijainnin laatu (Joni) 10 h
+    - [x] Datateoriat/yhteydet (Mitro) 8 h
+- Käyttäjätarinat
+    - [x]  Käyttäjätarinoiden tarkentaminen datan analyysin perusteella (Kaikki)  1 h / hlö
 
 ## Daily scrum
 Sprintin aikana pidetään päivittäinen Daily Scrum. Alla kirjaukset päivien edetessä.
 
 ### tiistai 24.3.2026  klo 20.00
 
+- Kävimme Scrumin toimintoja vielä tarkemmin läpi, Tuija oli selvittänyt paljon ja selvensi kaikille. Ei ollut ongelmia ja Mitro oli aloittanut jo datan plottausta Jupyterissä.
+
+**Paikalla: Mitro, Tuija, Joni ja Panu**
+
+### keskiviikko 25.3.2026 klo 20.00
+
+- Tutustuttiin Jarin agenttihärveliin. Ei ongelmia.
+
+**Paikalla: Mitro, Tuija, Panu**
+
+### torstai 26.3.2026 klo 20.00
+
+- Käytiin läpi Mitron löydöksiä
+
+**Paikalla: Mitro, Tuija, Panu, Toni**
+
 ## Sprint Review - ma 30.3.2026 klo 17.00
 
-(Kirjataan sprintin päättyessä)
+### Mikä toimi hyvin
+
+- Saatiin projekti käyntiin
+- Dokumenttaatio saatu alkuun
+- Datan tutkiminen on alkanut
+- Tiimi on motivoitunut
+
+### Mikä ei toiminut
+
+- Palavereihin osallistuminen vaihtelevaa
+- Scrum on vielä vähän hakusessa
+- Mikä datassa on arvokasta ja miten sitä voi hyödyntää on vielä epäselvää
+
+### Parannusehdotukset
+
+- Enemmän yhteistä aikaa datan tutkimiseen
+- Selkeämpi kuva siitä, mitä datasta halutaan selvittää
+
+### Tiimin fiilis
+
+- Hyvä fiilis, motivoitunut tiimi
+- Odotukset korkealla
+
+### Yhteenveto 
+
+- Saatiin projekti käyntiin
+- Dokumentointi saatu alkuun
+- Datan tutkiminen on alkanut
+- Tiimi on motivoitunut
+
+**Paikalla: kaikki**
 
 ## Sprint Retro -  ma 30.3.2026  klo 18.00
 
-(Kirjataan sprintin päättyessä)
+- Asiakas voi puuttua asioihin ja vaikuttaa projektiin
+- Issueita on sulkematta
+
+# Sprint 2 – Dataputken suunnittelu ja Bronze-ingestion
+
+## Suunnittelupalaveri – 30.3.2026 klo 18.30
+
+Vahvistimme projektisuunnitelman ja valitsimme arkkitehtuuriksi Bronze-Silver-Gold medalllion mallin. Tässä sprintissä siirrymme datan tutkimisesta sen tekniseen hallintaan. Päätimme käyttää DuckDB-tietokantaa ja dbt-työkalua datan muuntamiseen. Aloitamme työskentelyn alkupäästä ja valmistellen projektia.
+
+## Suunnittelupalaverin tuotokset
+Sprint Goal määritelty
+
+Alustava Sprint Backlog muodostettu
+
+Arkkitehtuuripäätökset lukittu (DuckDB + dbt + Medallion)
+
+## Sprintin tehtävät
+Lopullisen projektisuunnitelman vahvistaminen
+
+dbt-projektin alustus
+
+Dataputken arkkitehtuurin Bronze - Silver - Gold kuvauksen luonti
+
+Datan esikäsittely: Keinoja löytää validia dataa
+
+Bronze-tason tietomalli: Taulujen rakenteen suunnittelu ja luonti
+
+Dokumentaation päivitys
+
+## Sprint Goal
+Vahvistaa lopullinen projektisuunnitelma sekä toteuttaa toimiva Bronze-tason ingestion, jossa raakadata ladataan DuckDB-ympäristöön dbt-työkalua hyödyntäen.
+
+## Sprint Backlog
+[ ] dbt-projektin alustus (Mitro)
+
+[ ] Bronze-taulujen luonti: SQL-mallit raakadatan lataamiseen (Tuija)
+
+[ ] Dokumentaatio: Dokumentaation päivitys työn edetessä (Joni)
+
+[ ] Dataputken arkkitehtuurikuvaus (Panu)
+
+## Sprintin Increment (toteutuva)
+
+Toimiva dbt-projekti kytkettynä DuckDB-tietokantaan
+
+Raakadata (Bronze) käytettävissä jatkojalostusta varten
+
+## Sprint DoD
+[ ] dbt-alustettu ja toimiva
+
+[ ] Bronze-taulut valmiit, ladatut
+
+[ ] Dokumentaatio päivitetty ajan tasalle
+
+[ ] Dataputken arkkitehtuuri on kuvattu ja tiimin hyväksymä
+
+# Sprint 3 – Silver-malli
+
+**Tavoitteet:**
+
+Normalisoidut Silver-taulut ja aggregaatiot
+Dimensiotaulujen luonti
+
+**Tehtävät:**
+
+Silver-taulujen transformointi Bronze-datasta
+Dimensiotaulujen ja avainmittareiden määrittely
+Dokumentaatiopäivitykset (mkdocs, hedgehoc sprintit)
+
+**DoD:**
+
+Silver-taulut valmiit ja testatut
+Dimensiotaulut oikein ja testit OK
+Dokumentaatio ajan tasalla
 
 
---------
-# Product Backlog (PBL)
+-------
+# Product Backlog
 
-* Lista tehtävistä
-* Priorisoitu liiketoiminta-arvon mukaan
-* Ylimmät tehtävät pieniä ja valmiita sprinttiin
-* Tuoteomistaja vastaa
+Koska käytettävän datan perusrakenne (x- ja y-koordinaatit, aikaleima ja kärry-ID)on tiedossa etukäteen, projektin alussa määritellään ja toteutetaan alustava erustietomalli. Mallia tarkennetaan ja laajennetaan Scrum-periaatteiden mukaisesti sprinttien aikana analyysitarpeiden kasvaessa.
+
+Status:
+
+[TODO] - alempi prioriteetti
+[READY] - priorisoitu, valmis sprinttiin
+[DONE]  - valmis, DoD täyttynyt
+[REMOVED] - poistettu / korvattu
 
 
-Järjestetty lista kaikesta, mitä tuotteessa saatetaan tarvita, sekä ainoa lähde tuotteeseen toteutettaville vaatimuksille ja muutoksille. Product Backlog elää projektin aikana ja sitä priorisoidaan uudelleen sprinttikatselmusten jälkeen saadun palautteen perusteella.
+Product Backlog -itemien tila merkitään backlog-listaan. Valmiit itemit säilytetään näkyvissä historiatiedoksi, mutta niitä ei enää priorisoida tai oteta sprintteihin.
 
 
-- [x] Epiikka
-- [ ] Käyttäjätarinoiden pohtiminen (Kaikki) 1 h / hlö
-- [ ] Tietokantarakenteen suunnittelu
+## Epiikka
+- Asiakaskäyttäytymisen ymmärtäminen ostoskärrydatan avulla
 
-## [Käyttäjätarinat](https://firmbee.fi/mita-kayttajatarinat-ovat)
 
-Olen kauppias ja haluan tutkia asiakkaiden käyttämiä reittejä, koska..... 
+## Tekninen backlog-item: Perustietomallin määrittely – 2–3 SP [READY]
 
-Olen kauppias, ja haluan tutkia asiakasmääriä, koska....
-Olen kauppias, ja haluan tutkia kauppareissujen pituutta, koska...
+Kuten kehitystiimi
+haluamme määritellä ja toteuttaa perustietomallin
+(x, y, aikaleima, kärry_id),
+jotta paikannusdata voidaan tallentaa ja käyttää analyyseissä.
 
-Olen kauppias, ja haluan tutkia asiakkaiden pysähtymispaikkoja ja -aikoja, koska...
 
-Olen paikannusyrityksen edustaja, ja haluan käyttää ohjelmaa paikannustarkkuuden tutkimiseen paikallaan olevien laitteiden avulla (esim. paikan keskihajonta)
+## User Story: Kauppareissujen pituus – 3 SP [READY] 
 
-Olen paikannusyrityksen edustaja, ja haluan käyttää ohjelmaa hyvyyden/käytettävyyden tutkimiseen. (esim. kaupan ulkopuolle olevien pisteiden lkm. tai paikassa olevan “kohinan” määrä.)
+Kuten kauppias
+haluan analysoida asiakkaiden kauppareissujen keston
+jotta voin ymmärtää asiakkaiden käyttäytymistä ja myymälän toimivuutta.
+   
+**Hyväksymiskriteerit:**
+- Kauppareissun alku ja loppu tunnistetaan datasta
+- Kesto voidaan laskea
+- Tulokset esitetään tilastollisesti
+
+## User Story: Asiakkaiden kulkureitit – 5 SP [READY] 
+
+Kuten kauppias
+haluan tutkia asiakkaiden käyttämiä kulkureittejä
+jotta voin ymmärtää, miten asiakkaat liikkuvat myymälässä.
+
+**Hyväksymiskriteerit:**
+ - Reitit voidaan visualisoida kaupan pohjakuvan päällä
+ - Visualisointi perustuu paikannusdataan
+ - Useamman asiakkaan reittejä voidaan tarkastella
+
+## Tekninen backlog-item: Datan suodatus ja rajaus – 3 SP [READY] 
+
+Kuten kehitystiimi
+haluamme suodattaa epäoleelliset ja virheelliset sijaintipisteet
+jotta analyysit perustuvat luotettavaan aineistoon.
+   
+**Hyväksymiskriteerit:**
+- Kaupan rajojen ulkopuoliset pisteet tunnistetaan
+- Poistetut pisteet voidaan raportoida
+
+## User Story: Kuumat alueet (heatmap) – 3 SP [TODO] 
+
+Kuten kauppias
+haluan nähdä myymälän kuumat alueet
+jotta voin tunnistaa alueet, joissa asiakkaat viettävät eniten aikaa.
+   
+ **Hyväksymiskriteerit:**
+ - Heatmap muodostetaan paikannusdatan perusteella
+ - Aikaväli on rajattavissa
+
+## User Story: Pysähdyspaikat ja pysähdysajat – 5 SP [TODO] 
+Kuten kauppias  
+haluan tunnistaa asiakkaiden pysähdyspaikat ja pysähdysajat  
+jotta voin analysoida tuotteiden ja alueiden kiinnostavuutta.  
+   
+**Hyväksymiskriteerit:**
+- Pysähdys määritellään liikkumattomuuden perusteella
+- Pysähdykset voidaan visualisoida
+
+## User Story: Paikannustarkkuuden analyysi – 8 SP [TODO] 
+
+Kuten paikannusyrityksen edustaja
+haluan analysoida paikallaan olevien laitteiden sijaintivaihtelua
+jotta voin arvioida paikannusjärjestelmän tarkkuutta.
+
+## User Story: Datan kohinan ja virhepisteiden analyysi – 8 SP [TODO]
+
+Kuten paikannusyrityksen edustaja
+haluan tunnistaa epäloogiset tai kaupan ulkopuolella olevat sijaintipisteet
+jotta voin arvioida datan laatua ja käytettävyyttä.
+
+## Jatkokehitysidea: Ulkoisten datalähteiden yhdistäminen [TODO]
 
 # Projektin yhteenveto
 
 # Koko ryhmän työaikayhteenveto
 
-# Scrum-checklist
-
-## 1. Ydinidea
-
-Scrumissa tärkeintä on:
-
-* Toimivan ohjelmiston toimitus usein (≤ 4 viikkoa)
-* Liiketoiminnan kannalta tärkeimmän tekeminen
-* Jatkuva parantaminen
-
-## 2. Keskeiset roolit
-
-### Product Owner (PO)
 
 
 
-### Scrum Master (SM)
-
-
-### Tiimi
-
-
-## 3. Keskeiset artefaktit
-
-### Product Backlog (PBL)
 
 
 
-### Sprint Backlog
 
-* Sprintin tehtävät
-* Näkyvä ja päivitetään päivittäin
-* Tiimin omistama
 
-### Definition of Done (DoD)
+
+
+
+
+
+
+
 
