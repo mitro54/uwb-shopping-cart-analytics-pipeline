@@ -33,10 +33,37 @@ class OrchestratorAgent:
         )
 
     def process_request(self, question: str, thread_id: str = "default", status_callback=None) -> tuple[str, int]:
-        """Käsittelee käyttäjän pyynnön koordinoidusti."""
-        if status_callback:
-            status_callback("Analytiikka-agentti aloittaa työn...")
+        """Käsittelee käyttäjän pyynnön koordinoidusti, raportoiden jokaisesta vaiheesta."""
         
-        answer, interaction_id = self.analytics_agent.ask(question, thread_id=thread_id)
+        # Vaihe 1: Orkestraattori käynnistyy
+        if status_callback:
+            status_callback(
+                "agent_start", "orchestrator",
+                f"🎯 Orkestraattori vastaanotti pyyntösi (malli: {CONFIG.orchestrator_model})"
+            )
+        
+        # Vaihe 2: Skeema-tarkistus
+        if status_callback:
+            status_callback(
+                "agent_start", "schema",
+                f"🗄️ Skeema-agentti tarkistaa tietokannan rakenteen (malli: {CONFIG.schema_model})"
+            )
+        
+        # Vaihe 3: Analytiikka-agentti
+        if status_callback:
+            status_callback(
+                "agent_start", "analytics",
+                f"📊 Analytiikka-agentti aloittaa työn (malli: {CONFIG.analytics_model})"
+            )
+        
+        answer, interaction_id = self.analytics_agent.ask(
+            question,
+            thread_id=thread_id,
+            status_callback=status_callback,
+        )
+        
+        # Vaihe 4: Valmis
+        if status_callback:
+            status_callback("complete", None, "✅ Kaikki agentit ovat valmiit!")
         
         return answer, interaction_id
