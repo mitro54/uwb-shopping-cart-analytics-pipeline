@@ -1,43 +1,18 @@
-stages:
-  - test
-  - deploy
+image: python:3.12
 
-variables:
-  DBT_PROFILES_DIR: $CI_PROJECT_DIR/.dbt
-
-test_dbt:
-  stage: test
-  image: python:3.12
+default:
   before_script:
+    - export UV_LINK_MODE=copy
     - pip install uv
-    - uv sync
-    - mkdir -p $DBT_PROFILES_DIR
-    - |
-      cat << EOF > $DBT_PROFILES_DIR/profiles.yml
-      bytebuddies:
-        target: dev
-        outputs:
-          dev:
-            type: duckdb
-            path: $CI_PROJECT_DIR/data/bytebuddies.duckdb
-            external_root: $CI_PROJECT_DIR/data/raw
-      EOF
-  script:
-    - cd dbt
-    - uv run dbt debug
-    - uv run dbt build
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - uv venv
+    - uv pip install coverage pytest pylint mkdocs-material mkdocstrings[python]
 
 pages:
-  stage: deploy
-  image: squidfunk/mkdocs-material
   script:
-    - mkdocs build --site-dir public
+    - uv run mkdocs build --site-dir public
   artifacts:
     paths:
       - public
   pages: true
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

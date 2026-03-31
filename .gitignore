@@ -38,3 +38,9 @@ dbt/logs/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Agenttien muisti
+schema_cache.json
+checkpoints.sqlite
+feedback.sqlite
+checkpoints.*
