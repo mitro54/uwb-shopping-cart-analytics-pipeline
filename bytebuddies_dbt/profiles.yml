@@ -1,0 +1,10 @@
+bytebuddies_dbt:
+  outputs:
+    dev:
+      type: duckdb
+      path: '../data/warehouse/dev.duckdb'
+      extensions:
+        - httpfs
+        - parquet
+      threads: 4
+  target: dev
