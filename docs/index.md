@@ -284,24 +284,56 @@ Sprintin aikana pidetään päivittäinen Daily Scrum. Alla kirjaukset päivien 
 
 # Sprint 2 – Dataputken suunnittelu ja Bronze-ingestion
 
-**Tavoitteet:**
+## Suunnittelupalaveri – 30.3.2026 klo 18.30
 
+Vahvistimme projektisuunnitelman ja valitsimme arkkitehtuuriksi Bronze-Silver-Gold medalllion mallin. Tässä sprintissä siirrymme datan tutkimisesta sen tekniseen hallintaan. Päätimme käyttää DuckDB-tietokantaa ja dbt-työkalua datan muuntamiseen. Aloitamme työskentelyn alkupäästä ja valmistellen projektia.
+
+## Suunnittelupalaverin tuotokset
+Sprint Goal määritelty
+
+Alustava Sprint Backlog muodostettu
+
+Arkkitehtuuripäätökset lukittu (DuckDB + dbt + Medallion)
+
+## Sprintin tehtävät
 Lopullisen projektisuunnitelman vahvistaminen
-Tutustuminen DuckDB:hen ja dbt:hen
-Bronze-tason datan ingestion toteutus
 
-**Tehtävät:**
+dbt-projektin alustus
 
-Dataputken arkkitehtuuri: Bronze → Silver → Gold
-Bronze-taulujen suunnittelu ja luonti
-dbt-testien ja CI/CD-putken alustaminen
-Dokumentaation päivitys (mkdocs, hedgehoc sprintit)
+Dataputken arkkitehtuurin Bronze - Silver - Gold kuvauksen luonti
 
-**DoD:**
+Datan esikäsittely: Keinoja löytää validia dataa
 
-Bronze-taulut valmiit ja testatut
-dbt testit läpäisty
-Dokumentaatio ajantasalla
+Bronze-tason tietomalli: Taulujen rakenteen suunnittelu ja luonti
+
+Dokumentaation päivitys
+
+## Sprint Goal
+Vahvistaa lopullinen projektisuunnitelma sekä toteuttaa toimiva Bronze-tason ingestion, jossa raakadata ladataan DuckDB-ympäristöön dbt-työkalua hyödyntäen.
+
+## Sprint Backlog
+[ ] dbt-projektin alustus (Mitro)
+
+[ ] Bronze-taulujen luonti: SQL-mallit raakadatan lataamiseen (Tuija)
+
+[ ] Dokumentaatio: Dokumentaation päivitys työn edetessä (Joni)
+
+[ ] Dataputken arkkitehtuurikuvaus (Panu)
+
+## Sprintin Increment (toteutuva)
+
+Toimiva dbt-projekti kytkettynä DuckDB-tietokantaan
+
+Raakadata (Bronze) käytettävissä jatkojalostusta varten
+
+## Sprint DoD
+[ ] dbt-alustettu ja toimiva
+
+[ ] Bronze-taulut valmiit, ladatut
+
+[ ] Dokumentaatio päivitetty ajan tasalle
+
+[ ] Dataputken arkkitehtuuri on kuvattu ja tiimin hyväksymä
 
 # Sprint 3 – Silver-malli
 
