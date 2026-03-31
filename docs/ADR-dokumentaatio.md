@@ -45,3 +45,17 @@ Markdown-pohjainen, ei vaadi erillistä rakennusjärjestelmää, julkaistaan aut
 
 **JupyterLab:**
 Mahdollistaa nopean datantarkastelun suoraan DuckDB:stä SQL-kyselyillä ennen kuin koodi siirretään varsinaisiin Python-moduuleihin
+
+## Tietokanta-arkkitehtuuri: Raaka-Jalostettu -malli (Kärrydata)
+
+**Päätös:**
+Jaetaan analytiikkatietokanta (DuckDB/dbt) logaaliin rakenteeseen, jossa on puhdas raakadata (`havainto`), dimensiotaulut (`osasto`, `karry`) ja jalostettu aggregointidata (`kaynti`, `osastokaynti`). Mallinnus optimoidaan puhtaasti 2D-paikannukseen (x- ja y-koordinaatit), eikä projektissa toteuteta raskasta kolmiportaista Medallion-arkkitehtuuria (Bronze/Silver/Gold).
+
+**Tilanne ja ongelma:**
+Projektissa on kyse ostoskärryjen sensoridatan (x,y-koordinaatit ja aikaleimat) analysoinnista. Tarvitsemme tietokantarakenteen, joka pystyy varastoimaan suuren määrän toistuvia koordinaattipisteitä (event log), mutta josta saadaan samalla salamannopeasti ulos liiketoimintatason analytiikkaa (esim. kauppakäyntien matkat ja osastovierailujen kestot). Vaikka projektissa käsitellään staattista koulutusaineistoa, ohjelmistoarkkitehtuurin tulee mallintaa oikeaa, jatkuvasti laajentuvaa IoT-ympäristöä ("Design for scale, implement for scope").
+
+**Miksi valittiin:**
+1. **Suorituskyvyn eriyttäminen (OLTP vs OLAP):** Raakadata (`havainto`) ottaa nopeasti vastaan valtavia määriä pisteitä ilman raskaita relaatiotarkastuksia. Jalostetut data-mallit (`kaynti`, `osastokaynti/alue_kaynti`) puolestaan tiivistävät satojatuhansia rivejä selkeiksi asiointikerroiksi. BI-kyselyt kohdistetaan vain ja ainoastaan erittäin nopeisiin jalostettuihin tauluihin.
+2. **"Data Enrichment" (Esilaskenta):** Etäisyydet (`matka`) ja viipymät (`kesto`) lasketaan vain tasan kerran dbt-putkessa tai Python-skriptissä uusia `kaynti`-rivejä muodostettaessa. Niitä ei tarvitse koskaan purkaa raportointityökalujen lennosta laskettaviksi pullonkauloiksi. 
+3. **Geometristen alueiden hallinta Dimensiona:** Osastot ohjataan taulussa `osasto` ns. Bounding box -menetelmällä (`alku_x`, `loppu_x` jne.). Tämä tekee tilasääntöjen muuttamisesta ja kyselyistä äärimmäisen yksinkertaisia ilman raskaita GIS/Paikkatieto-laajennuksia.
+4. **Resurssien hallinta:** Arkitehtuuri eristää massiivisen koordinaattidatan tärkeästä liiketoimintahistoriasta. Raakadata-taulu voidaan teknisesti arkistoida tai tyhjentää esim. 1 vuoden välein ilman analytiikkatiedon katoamista. Lisäksi `viim_havainto` -kentillä (Kärry-taulussa) on helppo monitoroida IoT-laitteiden teknistä "elossa-oloa" eristämällä ylläpitokyselyt raakadatasta.
