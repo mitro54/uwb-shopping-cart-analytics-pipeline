@@ -29,7 +29,7 @@ class AppConfig:
         default_model = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
         return cls(
             duckdb_path=Path(
-                os.getenv("DUCKDB_PATH", str(DATA_ROOT / "warehouse" / "warehouse.duckdb"))
+                os.getenv("DUCKDB_PATH", str(DATA_ROOT / "warehouse" / "dev.duckdb"))
             ),
             ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
             orchestrator_model=os.getenv("ORCHESTRATOR_MODEL", "qwen2.5:3b"),
