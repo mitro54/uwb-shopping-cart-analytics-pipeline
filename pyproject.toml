@@ -23,5 +23,6 @@ dependencies = [
     "pyyaml>=6.0.1",
     "numpy>=1.26.0",
     "streamlit>=1.42.0",
-    "streamlit-chat>=0.1.1"
+    "streamlit-chat>=0.1.1",
+    "polars>=1.39.3",
 ]
