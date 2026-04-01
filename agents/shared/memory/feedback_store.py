@@ -31,12 +31,34 @@ class FeedbackExample:
     similarity: float
     rating: str
 
+class CustomGoogleGenAIEmbeddings:
+    """
+    Räätälöity 'wrapper' Google GenAI -upotusmallille (Embedding).
+    
+    Tämä luokka on rakennettu yksinomaan varajärjestelmää (fallback) varten 
+    tilanteisiin, joissa lokaali Ollama ei ole käytettävissä. Se ohittaa Langchainin 
+    omat ja asioi suoraan virallisen `google-genai` 
+    SDK:n kanssa. Tämä takaa uusimman rajapinnan toimivuuden.
+    """
+    def __init__(self, api_key: str, model: str = "gemini-embedding-001"):
+        from google import genai
+        self.client = genai.Client(api_key=api_key)
+        self.model = model
+
+    def embed_query(self, text: str) -> list[float]:
+        result = self.client.models.embed_content(
+            model=self.model,
+            contents=text
+        )
+        if hasattr(result, "embeddings") and len(result.embeddings) > 0:
+            return result.embeddings[0].values
+        return []
 
 class FeedbackStore:
     def __init__(self, db_path: Path):
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._model: OllamaEmbeddings | None = None
+        self._model = None
         self._init_db()
 
     def _conn(self) -> sqlite3.Connection:
@@ -67,12 +89,25 @@ class FeedbackStore:
                 ON interactions(thread_id);
             """)
 
-    def _embedder(self) -> OllamaEmbeddings:
+    def _embedder(self):
+        """
+        Palauttaa sopivan Embedding-mallin riippuen järjestelmän tilasta.
+        
+        Jos lokaali Ollama on poissa pelistä ja `gemini`-mallinnus on aktivoitunut
+        sovelluksessa, tämä siirtää upotushaut automaattisesti Googlen pilvipohjaiseen
+        APIin käyttämällä aiemmin määriteltyä CustomGoogleGenAIEmbeddings -käärettä.
+        """
         if self._model is None:
-            self._model = OllamaEmbeddings(
-                base_url=CONFIG.ollama_base_url,
-                model=CONFIG.embedding_model,
-            )
+            if "gemini" in CONFIG.embedding_model.lower() or "text-embedding" in CONFIG.embedding_model.lower():
+                self._model = CustomGoogleGenAIEmbeddings(
+                    api_key=CONFIG.gemini_api_key,
+                    model="gemini-embedding-001"
+                )
+            else:
+                self._model = OllamaEmbeddings(
+                    base_url=CONFIG.ollama_base_url,
+                    model=CONFIG.embedding_model,
+                )
         return self._model
 
     def _embed(self, text: str) -> list[float]:

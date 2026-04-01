@@ -13,7 +13,7 @@ from pathlib import Path
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from agents.shared.config import AGENTS_ROOT, CONFIG
-from agents.shared.llm import build_chat_ollama
+from agents.shared.llm import build_chat_model
 from agents.schema.agent import SchemaAgent
 from agents.analytics.agent import AnalyticsAgent
 
@@ -25,7 +25,7 @@ class OrchestratorAgent:
     def __init__(self) -> None:
         self.identity = yaml.safe_load(IDENTITY_PATH.read_text(encoding="utf-8"))
         self.base_prompt = PROMPT_PATH.read_text(encoding="utf-8")
-        self.llm = build_chat_ollama(model_name=CONFIG.orchestrator_model, temperature=0.1)
+        self.llm = build_chat_model(model_name=CONFIG.orchestrator_model, temperature=0.1)
         
         # Sub-agents
         self.schema_agent = SchemaAgent()

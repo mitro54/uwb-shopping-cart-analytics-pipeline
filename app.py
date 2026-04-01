@@ -19,6 +19,7 @@ import json
 import re
 import requests
 import plotly.io as pio
+import dotenv
 
 import agents.shared.config as config_module
 from agents.orchestrator.agent import OrchestratorAgent
@@ -78,18 +79,17 @@ MODEL_ROLES = [
 ]
 for ss_key, config_attr, _ in MODEL_ROLES:
     if ss_key not in st.session_state:
-        st.session_state[ss_key] = getattr(CONFIG, config_attr)
+        if not available_models:
+            st.session_state[ss_key] = "gemini-2.5-flash"
+        else:
+            st.session_state[ss_key] = getattr(CONFIG, config_attr)
 
-# Päivitetään globaali CONFIG session state -valinnoilla
-_effective_config = replace(
-    CONFIG,
-    orchestrator_model=st.session_state.model_orchestrator,
-    analytics_model=st.session_state.model_analytics,
-    plotter_model=st.session_state.model_plotter,
-    schema_model=st.session_state.model_schema,
-    embedding_model=st.session_state.model_embedding,
-)
-config_module.CONFIG = _effective_config
+# Päivitetään globaali CONFIG session state -valinnoilla (mutatoimalla)
+config_module.CONFIG.orchestrator_model = st.session_state.model_orchestrator
+config_module.CONFIG.analytics_model = st.session_state.model_analytics
+config_module.CONFIG.plotter_model = st.session_state.model_plotter
+config_module.CONFIG.schema_model = st.session_state.model_schema
+config_module.CONFIG.embedding_model = st.session_state.model_embedding
 
 # --- Agentit (avain = mallivalinnat → uudelleenluonti kun mallit vaihtuvat) ---
 @st.cache_resource
@@ -107,31 +107,31 @@ AGENT_INFO = [
         "icon": "🎯",
         "name": "Orkestraattori",
         "role": "Koordinoi muiden agenttien työtä",
-        "model": _effective_config.orchestrator_model,
+        "model": config_module.CONFIG.orchestrator_model,
     },
     {
         "icon": "📊",
         "name": "Analytiikka",
         "role": "SQL-kyselyt ja data-analyysi",
-        "model": _effective_config.analytics_model,
+        "model": config_module.CONFIG.analytics_model,
     },
     {
         "icon": "🎨",
         "name": "Visualisointi",
         "role": "Kaaviot, heatmapit ja plotit",
-        "model": _effective_config.plotter_model,
+        "model": config_module.CONFIG.plotter_model,
     },
     {
         "icon": "🗄️",
         "name": "Skeema",
         "role": "Tietokannan rakenteen hallinta",
-        "model": _effective_config.schema_model,
+        "model": config_module.CONFIG.schema_model,
     },
     {
         "icon": "📎",
         "name": "Embedding",
         "role": "Semanttinen haku ja muisti",
-        "model": _effective_config.embedding_model,
+        "model": config_module.CONFIG.embedding_model,
     },
 ]
 
@@ -178,7 +178,7 @@ if available_models:
         )
 else:
     # Fallback: teksti-input jos Ollama ei ole saatavilla
-    st.sidebar.warning("⚠️ Ollama API ei vastaa — kirjoita mallin nimi manuaalisesti.")
+    st.sidebar.warning("⚠️ Lokaalia Ollamaa ei havaittu — käytetään pilvipalvelua (Gemini).")
     for ss_key, config_attr, label in MODEL_ROLES:
         st.sidebar.text_input(
             label,
@@ -261,6 +261,30 @@ if page == "🏠 Etusivu":
             f'</div>',
             unsafe_allow_html=True,
         )
+
+    # Gemini varajärjestelmä
+    if not available_models:
+        st.markdown("---")
+        st.markdown("### ☁️ Pilvipalvelun varajärjestelmä (Gemini API)")
+        st.warning("Lokaalia Ollama-järjestelmää ei havaittu. Vaihto Gemini 2.5 Flash -pilvimalliin suoritettu automaattisesti.")
+        
+        current_api_key = os.getenv("GEMINI_API_KEY", "")
+        
+        with st.form("gemini_api_form"):
+            st.markdown("Syötä Google Gemini API -avain jatkaaksesi agenttien käyttöä ilmaiseksi pilvessä.")
+            api_key_input = st.text_input("Gemini API -avain", value=current_api_key, type="password")
+            submit_btn = st.form_submit_button("💾 Tallenna avain (.env)")
+            
+            if submit_btn:
+                if api_key_input:
+                    dotenv_path = Path(".env")
+                    dotenv.set_key(dotenv_path, "GEMINI_API_KEY", api_key_input)
+                    os.environ["GEMINI_API_KEY"] = api_key_input
+                    # Päivitetään ajonaikainen config suoraan
+                    config_module.CONFIG.gemini_api_key = api_key_input
+                    st.success("API-avain tallennettu onnistuneesti! Voit nyt käyttää agentti-chattia.")
+                else:
+                    st.error("API-avain ei voi olla tyhjä.")
 
     # Tilastot
     st.markdown("### 📊 Tietokannan tila")

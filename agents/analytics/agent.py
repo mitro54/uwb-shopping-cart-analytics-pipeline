@@ -14,7 +14,7 @@ import yaml
 from langgraph.prebuilt import create_react_agent
 
 from agents.shared.config import AGENTS_ROOT, CONFIG
-from agents.shared.llm import build_chat_ollama
+from agents.shared.llm import build_chat_model
 from agents.shared.memory.checkpointing import build_checkpointer
 from agents.shared.memory.feedback_store import FeedbackStore
 from agents.shared.schema_registry import SchemaRegistry
@@ -72,7 +72,7 @@ class AnalyticsAgent:
 
     def build(self, question: str):
         """Rakentaa LangGraph-pohjaisen agentin, jolla on pääsy analyysityökaluihin ja muistiin."""
-        llm = build_chat_ollama(model_name=CONFIG.analytics_model, temperature=0)
+        llm = build_chat_model(model_name=CONFIG.analytics_model, temperature=0)
         checkpointer = build_checkpointer(CHECKPOINT_PATH)
         return create_react_agent(
             model=llm,
@@ -119,7 +119,16 @@ class AnalyticsAgent:
         if not all_messages:
             answer = "Agentti ei tuottanut vastausta."
         else:
-            answer = all_messages[-1].content
+            final_content = all_messages[-1].content
+            if isinstance(final_content, list):
+                # Gemini saattaa palauttaa sisällön listana blokkeja
+                text_blocks = [
+                    b.get("text", "") if isinstance(b, dict) else str(b) 
+                    for b in final_content
+                ]
+                answer = "".join(text_blocks)
+            else:
+                answer = str(final_content)
 
         interaction_id = self.feedback_store.save_interaction(
             thread_id=thread_id,
