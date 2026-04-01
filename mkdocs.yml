@@ -4,3 +4,21 @@ site_dir: public
 docs_dir: docs
 theme:
   name: material
+nav:
+  - Etusivu: index.md
+  - Sprintit: sprintit.md
+  - Projektisuunnitelma: project_plan.md
+  - Dokumentaatio:
+      - ADR: ADR-dokumentaatio.md
+      - Agentti arkkitehtuuri: agentti_arkkitehtuuri.md
+      - Agentti käyttöohje: agentti_kayttoohje.md
+      - DBT käyttöohje: dbt-ohje.md
+
+markdown_extensions:
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - admonition
+  - pymdownx.details
+  - toc:
+      toc_depth: 3
