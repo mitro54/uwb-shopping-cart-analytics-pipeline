@@ -13,7 +13,7 @@ from pathlib import Path
 
 from langgraph.prebuilt import create_react_agent
 from agents.shared.config import AGENTS_ROOT, CONFIG
-from agents.shared.llm import build_chat_ollama
+from agents.shared.llm import build_chat_model
 from agents.shared.tools.plot_tools import ALL_PLOT_TOOLS
 
 AGENT_ROOT = AGENTS_ROOT / "plotter"
@@ -37,7 +37,7 @@ class PlotterAgent:
     def generate_plot(self, instruction: str) -> str:
         """Luo visualisoinnin annetun ohjeen ja datan perusteella. Tämä agentti on 'stateless'."""
         try:
-            llm = build_chat_ollama(model_name=CONFIG.plotter_model, temperature=0)
+            llm = build_chat_model(model_name=CONFIG.plotter_model, temperature=0)
             
             # Plotter-agentilla on vain visualisointityökalut käytössä
             graph = create_react_agent(

@@ -18,10 +18,16 @@ AGENTS_ROOT = PROJECT_ROOT / "agents"
 DATA_ROOT = PROJECT_ROOT / "data"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class AppConfig:
+    """Sovelluksen laajuiset asetusarvot ja riippuvuudet. Muutettu 'frozen=False', jotta varajärjestelmän lennossa asettamat arvot (kuten Gemini API-avain) siirtyvät kaikkiin agentteihin."""
     duckdb_path: Path
     ollama_base_url: str
+    
+    # --- Pilvipalvelun varajärjestelmä (Fallback) ---
+    # Syötetään Streamlitin kautta tai .env -tiedostosta, jos lokaali Ollama kaatuu
+    gemini_api_key: str | None
+    
     orchestrator_model: str
     analytics_model: str
     plotter_model: str
@@ -44,6 +50,7 @@ class AppConfig:
                 os.getenv("DUCKDB_PATH", str(DATA_ROOT / "warehouse" / "dev.duckdb"))
             ),
             ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            gemini_api_key=os.getenv("GEMINI_API_KEY"),
             orchestrator_model=os.getenv("ORCHESTRATOR_MODEL", "qwen2.5:3b"),
             analytics_model=os.getenv("ANALYTICS_MODEL", "qwen3.5:35b"),
             plotter_model=os.getenv("PLOTTER_MODEL", "qwen3.5:9b"),
