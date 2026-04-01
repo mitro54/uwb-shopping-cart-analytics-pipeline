@@ -44,6 +44,7 @@ TOOL_DISPLAY_NAMES = {
     "plot_chart": ("📈", "Piirretään kaavio"),
     "plot_interactive": ("📊", "Luodaan interaktiivinen kuvaaja"),
     "plot_on_floorplan": ("🗺️", "Piirretään pohjapiirrokselle"),
+    "refresh_schema": ("🌀", "Päivitetään tietokannan muistikuvaa"),
 }
 
 
