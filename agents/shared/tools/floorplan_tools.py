@@ -2,9 +2,11 @@
 Pohjapiirrostyökalu: piirtää UWB-dataa kaupan pohjapiirroksen (kauppa2.png) päälle.
 
 Koordinaattikartoitus:
-- UWB-data on senttimetreissä, muunnetaan metreihin (÷100)
-- Kaupan mitat: 104.06 m × 52.20 m
+- UWB-data on senttimetreissä, muunnetaan metreihin
+- Kaupan mitat: 104.06 m x 52.20 m (huomioi koordinaattimuunnoksen)
 - kuva kauppa2.png kartoitetaan näihin mittoihin
+
+Kirjoittaja: Toni Kiuru
 """
 from __future__ import annotations
 
@@ -123,7 +125,7 @@ def plot_on_floorplan(
         fig, ax = plt.subplots(1, 1, figsize=(16, 8), dpi=120)
 
         # Näytä pohjapiirros
-        ax.imshow(img, extent=[0, X_MAX_M, 0, Y_MAX_M], aspect="auto", zorder=0)
+        ax.imshow(img, extent=[0, X_MAX_M, Y_MAX_M, 0], aspect="auto", zorder=0)
 
         if plot_type == "heatmap":
             # KDE-pohjainen heatmap pohjapiirrroksen päälle
@@ -180,7 +182,7 @@ def plot_on_floorplan(
 
         # Tyylittelyt
         ax.set_xlim(0, X_MAX_M)
-        ax.set_ylim(0, Y_MAX_M)
+        ax.set_ylim(Y_MAX_M, 0)
         ax.set_title(title, fontsize=14, fontweight="bold", pad=12)
         ax.set_xlabel("x (m)", fontsize=10)
         ax.set_ylabel("y (m)", fontsize=10)

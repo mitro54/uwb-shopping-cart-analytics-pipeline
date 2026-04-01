@@ -1,3 +1,11 @@
+"""
+ByteBuddies UWB Dashboard analytiikka sovelluksen schema agentti.
+
+Schema agentti on vastuussa tietokannan rakenteen selvittämisestä ja tallentamisesta muistiin.
+
+Kirjoittaja: Toni Kiuru
+"""
+
 from __future__ import annotations
 
 from pathlib import Path

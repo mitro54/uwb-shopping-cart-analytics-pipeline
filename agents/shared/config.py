@@ -1,3 +1,9 @@
+"""
+ByteBuddies UWB Dashboard analytiikka sovelluksen konfiguraatio.
+
+Kirjoittaja: Toni Kiuru
+"""
+
 from __future__ import annotations
 
 import os
@@ -26,6 +32,12 @@ class AppConfig:
 
     @classmethod
     def from_env(cls) -> "AppConfig":
+        """
+        Luo AppConfig-instanssin ympäristömuuttujista.
+        
+        Returns:
+            AppConfig-instanssi
+        """
         default_model = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
         return cls(
             duckdb_path=Path(

@@ -1,3 +1,9 @@
+"""
+ByteBuddies UWB Dashboard analytiikka sovelluksen tietokannan rakenteen hallinta.
+
+Kirjoittaja: Toni Kiuru
+"""
+
 from __future__ import annotations
 
 import json
@@ -14,15 +20,32 @@ SCHEMA_CACHE_PATH = AGENTS_ROOT / "schema" / "memory" / "schema_cache.json"
 
 
 class SchemaRegistry:
+    """
+    Hallinnoi tietokannan rakenteen välimuistia.
+    
+    Args:
+        duckdb_path: Polku DuckDB-tietokantaan
+        cache_path: Polku skeemavälimuistiin
+    """
     def __init__(self, duckdb_path: Path | None = None, cache_path: Path | None = None):
         self.duckdb_path = duckdb_path or CONFIG.duckdb_path
         self.cache_path = cache_path or SCHEMA_CACHE_PATH
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
 
     def _connect(self) -> duckdb.DuckDBPyConnection:
+        """
+        Luo yhteyden DuckDB-tietokantaan.
+        
+        """
         return duckdb.connect(str(self.duckdb_path), read_only=True)
 
     def discover(self) -> dict:
+        """
+        Tutkii tietokannan rakenteen.
+        
+        Returns:
+            Skeema
+        """
         conn = self._connect()
         try:
             tables = conn.execute("""
@@ -57,6 +80,12 @@ class SchemaRegistry:
             conn.close()
 
     def refresh(self) -> dict:
+        """
+        Päivittää skeemavälimuistin.
+        
+        Returns:
+            Päivitetty skeema
+        """
         schema = self.discover()
         payload = {
             "schema_hash": self._hash_schema(schema),
@@ -67,11 +96,29 @@ class SchemaRegistry:
         return payload
 
     def load(self, refresh: bool = False) -> dict:
+        """
+        Lataa skeemavälimuistin.
+        
+        Args:
+            refresh: Päivitetäänkö skeema
+        
+        Returns:
+            Skeema
+        """
         if refresh or not self.cache_path.exists():
             return self.refresh()
         return json.loads(self.cache_path.read_text(encoding="utf-8"))
 
     def as_text(self, refresh: bool = False) -> str:
+        """
+        Palauttaa skeeman tekstimuodossa.
+        
+        Args:
+            refresh: Päivitetäänkö skeema
+        
+        Returns:
+            Skeema tekstimuodossa
+        """
         payload = self.load(refresh=refresh)
         lines: list[str] = []
         for table_name, info in payload["schema"].items():
@@ -81,10 +128,28 @@ class SchemaRegistry:
         return "\n".join(lines)
 
     def current_hash(self, refresh: bool = False) -> str:
+        """
+        Palauttaa skeeman hash-arvon.
+        
+        Args:
+            refresh: Päivitetäänkö skeema
+        
+        Returns:
+            Skeeman hash-arvo
+        """
         payload = self.load(refresh=refresh)
         return payload["schema_hash"]
 
     @staticmethod
     def _hash_schema(schema: dict) -> str:
+        """
+        Laskee skeeman hash-arvon.
+        
+        Args:
+            schema: Skeema
+        
+        Returns:
+            Skeeman hash-arvo
+        """
         raw = json.dumps(schema, sort_keys=True, default=str)
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]

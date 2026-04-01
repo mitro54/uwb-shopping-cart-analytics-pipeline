@@ -1,3 +1,11 @@
+"""
+ByteBuddies UWB Dashboard analytiikka sovelluksen orkestraattori agentti.
+
+Orkestraattori agentti on vastuussa tehtävien jakamisesta ja koordinoinnista.
+
+Kirjoittaja: Toni Kiuru
+"""
+
 from __future__ import annotations
 
 import yaml

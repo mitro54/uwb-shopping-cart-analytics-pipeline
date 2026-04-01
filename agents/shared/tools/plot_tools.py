@@ -1,3 +1,9 @@
+"""
+ByteBuddies UWB Dashboard analytiikka sovelluksen visualisointityökalut.
+
+Kirjoittaja: Toni Kiuru
+"""
+
 from __future__ import annotations
 
 import os
@@ -21,8 +27,8 @@ def _get_conn() -> duckdb.DuckDBPyConnection:
 @tool
 def plot_heatmap(sql: str, x_col: str, y_col: str, title: str = "UWB Heatmap") -> str:
     """
-    Generates a heatmap based on a SQL query. 
-    The SQL should return at least x and y coordinates.
+    Luo heatmapin SQL-kyselyn perusteella. 
+    SQL-kyselyn tulee palauttaa vähintään x ja y koordinaatit.
     """
     try:
         conn = _get_conn()
@@ -30,7 +36,7 @@ def plot_heatmap(sql: str, x_col: str, y_col: str, title: str = "UWB Heatmap") -
         conn.close()
 
         if df.empty:
-            return "Query returned no data for heatmap."
+            return "Kysely ei palauttanut dataa heatmapia varten."
 
         plt.figure(figsize=(10, 8))
         sns.kdeplot(data=df, x=x_col, y=y_col, fill=True, cmap="rocket", thresh=0.05, levels=20)
@@ -41,15 +47,14 @@ def plot_heatmap(sql: str, x_col: str, y_col: str, title: str = "UWB Heatmap") -
         plt.savefig(filepath)
         plt.close()
 
-        return f"Heatmap generated successfully: {filepath.absolute()}"
+        return f"Heatmap luotu onnistuneesti: {filepath.absolute()}"
     except Exception as e:
-        return f"Error generating heatmap: {e}"
+        return f"Virhe heatmapin luomisessa: {e}"
 
 @tool
 def plot_chart(sql: str, chart_type: str, x_col: str, y_col: str, title: str = "Analysis Chart") -> str:
     """
-    Generates a bar, line or scatter chart.
-    chart_type options: 'bar', 'line', 'scatter'
+    Luo pylväs-, viiva- tai pistekaavion SQL-kyselyn perusteella.
     """
     try:
         conn = _get_conn()
@@ -57,7 +62,7 @@ def plot_chart(sql: str, chart_type: str, x_col: str, y_col: str, title: str = "
         conn.close()
 
         if df.empty:
-            return "Query returned no data for chart."
+            return "Kysely ei palauttanut dataa kuvaajaa varten."
 
         plt.figure(figsize=(10, 6))
         if chart_type == "bar":
@@ -67,7 +72,7 @@ def plot_chart(sql: str, chart_type: str, x_col: str, y_col: str, title: str = "
         elif chart_type == "scatter":
             sns.scatterplot(data=df, x=x_col, y=y_col)
         else:
-            return f"Unsupported chart type: {chart_type}"
+            return f"Kuvaajatyyppiä ei ole tuettu: {chart_type}"
 
         plt.title(title)
         plt.xticks(rotation=45)
@@ -78,9 +83,9 @@ def plot_chart(sql: str, chart_type: str, x_col: str, y_col: str, title: str = "
         plt.savefig(filepath)
         plt.close()
 
-        return f"Chart generated successfully: {filepath.absolute()}"
+        return f"Kuvaaja luotu onnistuneesti: {filepath.absolute()}"
     except Exception as e:
-        return f"Error generating chart: {e}"
+        return f"Virhe kuvaajan luomisessa: {e}"
 
 import plotly.express as px
 import plotly.io as pio

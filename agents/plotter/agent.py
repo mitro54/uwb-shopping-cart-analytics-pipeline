@@ -1,3 +1,11 @@
+"""
+ByteBuddies UWB Dashboard analytiikka sovelluksen plotter agentti.
+
+Plotter agentti on vastuussa visualisointien luomisesta.
+
+Kirjoittaja: Toni Kiuru
+"""
+
 from __future__ import annotations
 
 import yaml

@@ -1,3 +1,11 @@
+"""
+ByteBuddies UWB Dashboard analytiikka sovelluksen muistin checkpointing.
+
+Tämä moduuli tarjoaa rajapinnan LLM-mallien antaman palautteen tallentamiseen ja hakemiseen.
+
+Kirjoittaja: Toni Kiuru
+"""
+
 import sqlite3
 from pathlib import Path
 from langgraph.checkpoint.sqlite import SqliteSaver

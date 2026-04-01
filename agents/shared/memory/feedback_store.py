@@ -1,3 +1,11 @@
+"""
+ByteBuddies UWB Dashboard analytiikka sovelluksen muistin feedback store.
+
+Tämä moduuli tarjoaa rajapinnan LLM-mallien antaman palautteen tallentamiseen ja hakemiseen.
+
+Kirjoittaja: Toni Kiuru
+"""
+
 from __future__ import annotations
 
 import json

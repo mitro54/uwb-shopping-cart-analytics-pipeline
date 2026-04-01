@@ -6,6 +6,8 @@ ostoskärryanalytiikan agentteja. Sen avulla voidaan tarkastella tietokannan
 rakennetta, keskustella orkestraattorin kanssa ja hallinnoida agenttien muistia.
 
 Tarkemmat käyttöohjeet löytyvät tiedostosta: docs/agentti_kayttoohje.md
+
+Kirjoittaja: Toni Kiuru
 """
 
 
