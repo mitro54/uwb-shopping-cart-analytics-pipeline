@@ -31,14 +31,10 @@ def build_chat_model(model_name: str | None = None, temperature: float = 0.0) ->
     model = model_name or CONFIG.orchestrator_model
     
     if "gemini" in model.lower():
-        if not CONFIG.gemini_api_key:
-            raise ValueError(
-                "Gemini-malli valittu, mutta GEMINI_API_KEY puuttuu .env tiedostosta "
-                "tai ympäristömuuttujista."
-            )
+        api_key = CONFIG.gemini_api_key or "ODOTTAA_AVAINTA_KAYTTOLIITTYMASTA"
         return ChatGoogleGenerativeAI(
             model=model,
-            google_api_key=CONFIG.gemini_api_key,
+            google_api_key=api_key,
             temperature=temperature,
         )
 
