@@ -119,6 +119,18 @@ def run_query(sql: str) -> str:
         conn.close()
 
 
+@tool
+def refresh_schema() -> str:
+    """Päivittää tietokannan rakenteen (skeeman) agentin muistiin. Käytä tätä, jos käyttäjä ilmoittaa muuttaneensa tietokantaa."""
+    from agents.shared.schema_registry import SchemaRegistry
+    registry = SchemaRegistry()
+    try:
+        registry.refresh()
+        return "Skeema päivitetty onnistuneesti välimuistiin. Agentti näkee uuden rakenteen seuraavassa viestissä."
+    except Exception as exc:
+        return f"Skeeman päivitys epäonnistui: {exc}"
+
+
 ALL_TOOLS = [
     list_tables,
     describe_table,
@@ -126,4 +138,5 @@ ALL_TOOLS = [
     get_row_count,
     get_column_stats,
     run_query,
+    refresh_schema,
 ]
