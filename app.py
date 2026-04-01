@@ -148,7 +148,7 @@ st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigointi",
-    ["🏠 Etusivu", "💬 Agenttichat", "📊 Datatutkimus", "🖼️ Visualisoinnit"],
+    ["🏠 Etusivu", "🔑 API-avain", "💬 Agenttichat", "📊 Datatutkimus", "🖼️ Visualisoinnit"],
     label_visibility="collapsed",
 )
 
@@ -157,7 +157,7 @@ st.sidebar.markdown("---")
 # --- Mallivalikot sivupalkissa ---
 st.sidebar.markdown('<div class="section-header">🤖 LLM-mallit</div>', unsafe_allow_html=True)
 
-st.sidebar.markdown("HUOM! Agentit toimivat lokaalisti! Agenttichat vaatii Ollaman toimiakseen.")
+st.sidebar.markdown("HUOM! Agentteja suositellaan ajamaan lokaalisti Ollamaa hyödyntäen. Mikäli se ei ole mahdollista, gemini API-avaimen voi syöttää sivupalkin API-avain osiossa.")
 
 if available_models:
     for ss_key, config_attr, label in MODEL_ROLES:
@@ -188,16 +188,7 @@ else:
             args=(ss_key, f"_txt_{ss_key}"),
         )
 
-st.sidebar.markdown("---")
 
-if st.sidebar.button("🗑️ Nollaa keskustelu", width='stretch'):
-    st.session_state.messages = []
-    import uuid
-    st.session_state.thread_id = str(uuid.uuid4())
-    st.rerun()
-
-st.sidebar.markdown("---")
-st.sidebar.caption(f"Thread: `{st.session_state.thread_id[:12]}…`")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -262,29 +253,7 @@ if page == "🏠 Etusivu":
             unsafe_allow_html=True,
         )
 
-    # Gemini varajärjestelmä
-    if not available_models:
-        st.markdown("---")
-        st.markdown("### ☁️ Pilvipalvelun varajärjestelmä (Gemini API)")
-        st.warning("Lokaalia Ollama-järjestelmää ei havaittu. Vaihto Gemini 2.5 Flash -pilvimalliin suoritettu automaattisesti.")
-        
-        current_api_key = os.getenv("GEMINI_API_KEY", "")
-        
-        with st.form("gemini_api_form"):
-            st.markdown("Syötä Google Gemini API -avain jatkaaksesi agenttien käyttöä ilmaiseksi pilvessä.")
-            api_key_input = st.text_input("Gemini API -avain", value=current_api_key, type="password")
-            submit_btn = st.form_submit_button("💾 Tallenna avain (.env)")
-            
-            if submit_btn:
-                if api_key_input:
-                    dotenv_path = Path(".env")
-                    dotenv.set_key(dotenv_path, "GEMINI_API_KEY", api_key_input)
-                    os.environ["GEMINI_API_KEY"] = api_key_input
-                    # Päivitetään ajonaikainen config suoraan
-                    config_module.CONFIG.gemini_api_key = api_key_input
-                    st.success("API-avain tallennettu onnistuneesti! Voit nyt käyttää agentti-chattia.")
-                else:
-                    st.error("API-avain ei voi olla tyhjä.")
+
 
     # Tilastot
     st.markdown("### 📊 Tietokannan tila")
@@ -314,6 +283,38 @@ if page == "🏠 Etusivu":
 
 
 # ═══════════════════════════════════════════════════════════════
+# 1.5. API-AVAIN
+# ═══════════════════════════════════════════════════════════════
+elif page == "🔑 API-avain":
+    st.markdown("## 🔑 Varajärjestelmän API-avain")
+    st.markdown("Gemini API avain vaaditaan vain siinä tapauksessa, mikäli lokaali ympäristö ei ole saavutettavissa.")
+    st.markdown("Gemini API avaimen voi generoida itselleen osoitteesta: https://ai.google.dev/gemini-api/docs/api-key")
+    
+    if not available_models:
+        st.warning("Lokaalia Ollama-järjestelmää ei havaittu. Vaihto Gemini 2.5 Flash -pilvimalliin suoritettu automaattisesti. Tarvitset API-avaimen käyttääksesi sovellusta.")
+    
+    current_api_key = os.getenv("GEMINI_API_KEY", "")
+    
+    with st.form("gemini_api_form"):
+        st.markdown("Syötä Google Gemini API -avain jatkaaksesi agenttien käyttöä.")
+        api_key_input = st.text_input("Gemini API -avain", value=current_api_key, type="password")
+        submit_btn = st.form_submit_button("💾 Tallenna avain (.env)")
+        
+        if submit_btn:
+            if api_key_input:
+                dotenv_path = Path(".env")
+                dotenv_path.touch(exist_ok=True) # Varmistaa että tiedosto luodaan jos puuttuu
+                dotenv.set_key(dotenv_path, "GEMINI_API_KEY", api_key_input)
+                os.environ["GEMINI_API_KEY"] = api_key_input
+                import agents.shared.config as config_module
+                config_module.CONFIG.gemini_api_key = api_key_input
+                get_agents.clear() # Pakota agentit uudelleenrakentumaan (poistaa feikkiavaimen)
+                st.success("API-avain tallennettu onnistuneesti! Voit nyt siirtyä lukemaan dataa tai keskustelemaan agentin kanssa.")
+            else:
+                st.error("API-avain ei voi olla tyhjä.")
+
+
+# ═══════════════════════════════════════════════════════════════
 # 2. AGENTTICHAT
 # ═══════════════════════════════════════════════════════════════
 elif page == "💬 Agenttichat":
@@ -321,7 +322,7 @@ elif page == "💬 Agenttichat":
 
     # --- Pikavalinnat (kiinteä yläpalkki) ---
     st.markdown('<div class="quick-actions-label">💡 Pikavalinnat</div>', unsafe_allow_html=True)
-    qa1, qa2, qa3 = st.columns(3)
+    qa1, qa2, qa3, qa4, qa5 = st.columns(5)
 
     button_query = None
     if qa1.button("📊 Mitä dataa on?", key="qa_data", width='stretch'):
@@ -341,7 +342,18 @@ elif page == "💬 Agenttichat":
             "miltä ajanjaksolta data on, kuinka monta eri ostoskärryä (node_id) "
             "ja mitä ovat tärkeimmät havainnot."
         )
+    if qa4.button("🌀 Päivitä taulut", key="qa_refresh", width='stretch'):
+        button_query = ("Päivitä tietokannan muistisi. "
+        "Tein muutoksia kantaan, tarkista uudet taulut"
+        )
+    if qa5.button("🗑️ Nollaa keskustelu", key="qa_reset", width='stretch'):
+        st.session_state.messages = []
+        import uuid
+        st.session_state.thread_id = str(uuid.uuid4())
+        st.rerun()
+
     st.markdown('</div>', unsafe_allow_html=True)
+    st.caption(f"Aktiivinen keskustelu: `{st.session_state.thread_id[:12]}…`")
 
     # --- Apufunktio: visualisointien näyttö viestin sisällöstä ---
     def _render_inline_visuals(content: str):
@@ -491,7 +503,7 @@ elif page == "📊 Datatutkimus":
         with st.expander("🗄️ Tietokannan skeema", expanded=True):
             st.code(schema_text, language="sql")
 
-        st.markdown("### 🔍 Selaa taulun sisältöä")
+        st.markdown("### 🔍 Selaa taulujen sisältöä")
         import duckdb
         conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
         tables = conn.execute(
@@ -513,6 +525,63 @@ elif page == "📊 Datatutkimus":
             st.dataframe(df, width='stretch')
     except Exception as e:
         st.error(f"Virhe datan selaamisessa: {e}")
+
+    st.markdown("---")
+    st.markdown("### ✍️ Suorita oma SQL-kysely")
+    
+    with st.expander("💡 Esimerkkikyselyjä (kopioi tästä)"):
+        st.markdown("""
+        **1. Datan perushaku (10 ensimmäistä riviä)**
+        ```sql
+        SELECT * FROM main.m_data_tag_position LIMIT 10;
+        ```
+        **2. Datarivien määrä ja aikaväli**
+        ```sql
+        SELECT 
+            COUNT(*) as havaintojen_maara, 
+            MIN(timestamp) as ensimmainen, 
+            MAX(timestamp) as viimeisin 
+        FROM main.m_data_tag_position;
+        ```
+        **3. Havaintojen määrä per ostoskärry (node_id)**
+        ```sql
+        SELECT node_id, count(*) as havaintoja 
+        FROM main.m_data_tag_position 
+        GROUP BY node_id 
+        ORDER BY havaintoja DESC;
+        ```
+        """)
+
+    # SQL Input
+    user_query = st.text_area("SQL-kysely", height=150, placeholder="Kirjoita SQL-kyselysi tähän ja paina 'Suorita'...")
+    
+    # Rivirajoitin asetus
+    use_limit = st.checkbox("Käytä automaattista rivirajoitinta (LIMIT 10000)", value=True, help="Estää selaimen kaatumisen liian suurien tulosten latautuessa. Ota pois päältä jos todella tarvitset yli 10 000 riviä alas.")
+
+    if st.button("▶️ Suorita kysely", type="primary"):
+        if not user_query.strip():
+            st.warning("Syötä ensin kysely tekstikenttään.")
+        else:
+            final_query = user_query.strip()
+            # Jos valintaruutu on ruksattu ja kysely ei sisällä jo validia LIMIT sanaa
+            if use_limit and not re.search(r'\blimit\s+\d+', final_query, re.IGNORECASE):
+                final_query = final_query.rstrip(";") + " LIMIT 10000;"
+
+            try:
+                import duckdb
+                # read_only on äärimmäisen tärkeä käyttäjien vapaissa hauissa
+                conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
+                res_df = conn.execute(final_query).fetchdf()
+                conn.close()
+                
+                if res_df.empty:
+                    st.info("Kysely suoritettiin onnistuneesti, mutta se ei palauttanut rivejä.")
+                else:
+                    st.success(f"Kysely valmis! Palautettiin {len(res_df)} riviä.")
+                    st.dataframe(res_df, width='stretch')
+                    
+            except Exception as e:
+                st.error(f"Virhe kyselyn suorituksessa:\\n\\n{e}")
 
 
 # ═══════════════════════════════════════════════════════════════
