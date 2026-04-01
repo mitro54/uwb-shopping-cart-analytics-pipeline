@@ -279,7 +279,7 @@ section[data-testid="stSidebar"] hr {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
-/* Piilota Streamlitin yläosa */
+/* Piilota Streamlitin yläosa (poistettu header:n piilotus, jotta Stop-nappula ja latausindikaattori näkyvät) */
 #MainMenu {visibility: hidden;}
-header {visibility: hidden;}
+/* header {visibility: hidden;} POISTETTU */
 footer {visibility: hidden;}
