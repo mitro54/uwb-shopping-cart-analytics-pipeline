@@ -61,3 +61,6 @@ Sesonkiajat ovat loistavaa kaupusteluaikaa. Voimme siis olettaa, että:
 
 - Kassa-alueen jonoutumisilmiö
     - Vaikka varsinainen kassa-alue on filtteröity datasta pois, sesonkiaikojen valtava asiakasmassa voi aiheuttaa sen, että jonot pidentyvät pääkäytävälle asti. Tämä voi näkyä datassa pitkinä paikallaanoloaikoina aivan reittien loppupäässä, mitä ei tule sekoittaa tuotteiden tutkiskeluun.
+
+## Asiakasprofilointi
+Tälläisestä datasta on hyvin hankala muodostaa luotettavasti minkäänlaista profiilia asiakkaiden iästä, sukupuolesta tai statuksesta. Esimerkiksi hitaasti kulkeva reitti voi ensiajatukselta vaikuttaa iäkkäältä asiakkaalta, mutta voi todellisuudessa olla ihan yhtä hyvin lapsiperheen tai puhelinta tiuhaan tahtiin selaavan asiakkaan kärry. Joten on suositeltavaa välttää analyysissä liiallista asiakkaan profilointia.
