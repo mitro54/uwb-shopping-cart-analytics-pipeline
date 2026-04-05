@@ -26,4 +26,5 @@ dependencies = [
     "streamlit-chat>=0.1.1",
     "polars>=1.39.3",
     "langchain-google-genai>=1.0.8",
+    "scikit-learn>=1.8.0",
 ]
