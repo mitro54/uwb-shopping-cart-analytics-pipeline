@@ -1,5 +1,13 @@
 osasto_id,nimi,alku_x,alku_y,loppu_x,loppu_y
-1,Kassat,0,0,2000,5220
-2,Hyllyväli 1,2000,0,6000,2600
-3,Hyllyväli 2,2000,2600,6000,5220
-4,Hyllyväli 3,6000,0,10406,5220
+1,Kassa ja poistuminen,0,0,800,5220
+2,Sesonki ja torialue,1200,1800,2800,3800
+3,Pukeutuminen,1000,0,4500,1800
+4,Koti ja sisustus,4500,0,7500,2500
+5,Teknokemia ja hygienia,2800,2800,5500,5220
+6,Vapaa-aika ja lelut,5500,2800,7500,5220
+7,Työkalut ja autotarvike,7500,0,9000,2500
+8,Lemmikit,7500,2800,9000,5220
+9,Elintarvikkeet,9000,0,10406,4000
+10,Puutarha (ulko-osasto),9000,4000,10406,5220
+11,Pääkäytävä (vaaka),800,2500,9000,2800
+12,Sisääntulo ja kärryt,0,2300,1000,2700
