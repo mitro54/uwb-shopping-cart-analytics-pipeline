@@ -163,9 +163,9 @@ Vahvistaa lopullinen projektisuunnitelma sekä toteuttaa toimiva Bronze-tason in
 
 [x] Bronze-taulujen luonti: SQL-mallit raakadatan lataamiseen (Tuija)
 
-[ ] Dokumentaatio: Dokumentaation päivitys työn edetessä (Joni)
+[x] Dokumentaatio: Dokumentaation päivitys työn edetessä (Joni)
 
-[ ] Dataputken arkkitehtuurikuvaus (Panu)
+[x] Dataputken arkkitehtuurikuvaus (Panu)
 
 #### Sprintin Increment (toteutuva)
 
@@ -174,21 +174,31 @@ Toimiva dbt-projekti kytkettynä DuckDB-tietokantaan
 Raakadata (Bronze) käytettävissä jatkojalostusta varten
 
 #### Sprint DoD
-[ ] dbt-alustettu ja toimiva
+[x] dbt-alustettu ja toimiva
 
-[ ] Bronze-taulut valmiit, ladatut
+[x] Bronze-taulut valmiit, ladatut
 
-[ ] Dokumentaatio päivitetty ajan tasalle
+[x] Dokumentaatio päivitetty ajan tasalle
 
 [ ] Dataputken arkkitehtuuri on kuvattu ja tiimin hyväksymä
 
 ### Daily tiistai
-    - Miten menee
-    - Onko ongelmia
     
     Keskusteltiin miten dbt lähtee päälle. Mietittiin, että voisi lisätä läpinäkyvyyttä ulkopuolelle. Mietittiin datan rakennetta.
     
     Paikalla kaikki: Joni, Toni, Panu, Tuija, Mitro
+
+### Daily eskiviikko
+    
+    Mitro esitteli, jopa filosofisia mietteitä asiakkaista dataan pohjautuen.
+    
+    Paikalla Joni, Toni, Panu, Tuija, Mitro
+    
+### Daily Torstai
+    
+    Keskusteltiin, että tää viikko on aika mellow ja ensi viikolla aletaan tekemään modeleita jolloin saadaan harppauksin eteenpäin.
+    
+    Paikalla Joni, Toni, Panu, Mitro
 
 ## Sprint 3 – Silver-malli
 
