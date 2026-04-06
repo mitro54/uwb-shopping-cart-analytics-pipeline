@@ -1,3 +1,5 @@
+---- Alkuperäinen data, poistettu z-koordinaatti ja lisätty latausajankohta
+
 {{ config(materialized='table') }}
 
 SELECT
