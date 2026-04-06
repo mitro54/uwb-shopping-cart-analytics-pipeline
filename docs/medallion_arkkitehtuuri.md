@@ -4,7 +4,7 @@ Tässä projektissa hyödynnetään Medallion-arkkitehtuuria (Bronze-Silver-Gold
 
 Bronze-kerros (raakadata)
 
-Bronze-kerros sisältää ostoskärryjen liikedatan sellaisena kuin se saadaan lähteestä, eli CSV-tiedostoista. Jokainen rivi kuvaa yksittäistä mittausta (ping), joka sisältää kärryn sijainnin (x, y, z), aikaleiman sekä laadun kuvaavan q-arvon.
+Bronze-kerros sisältää ostoskärryjen liikedatan sellaisena kuin se saadaan lähteestä, eli CSV-tiedostoista. Jokainen rivi kuvaa yksittäistä mittausta (ping), joka sisältää kärryn sijainnin (x, y), aikaleiman sekä laadun kuvaavan q-arvon. Z-koordinaatti on pudotettu pois heti latausvaiheessa puhtaan 2D-paikannuksen optimoimiseksi.
 
 Tässä kerroksessa dataan tehdään vain kevyitä teknisiä muokkauksia, kuten sarakkeiden nimeämistä ja tietotyyppien muuntamista. Lisäksi voidaan lisätä metatietoa, kuten lähdetiedoston nimi tai datan latausajankohta. Varsinaista liiketoimintalogiikkaa ei tässä vaiheessa sovelleta.
 

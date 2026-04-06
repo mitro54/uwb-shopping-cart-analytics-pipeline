@@ -24,7 +24,7 @@ uv run dbt run
 Tämä komento:
 1. Lukee kaikki tiedostot polusta `data/raw/*.csv`.
 2. Luo DuckDB-tietokantaan taulun nimeltä `stg_csv_data`.
-3. Muuntaa sarakkeet oikeisiin tietotyyppeihin (INT, TIMESTAMPTZ).
+3. Muuntaa sarakkeet oikeisiin tietotyyppeihin (VARCHAR, INT, TIMESTAMPTZ) ja lisää `latausajankohta`-metatiedon.
 
 ## 3. Datan ja mallien testaus
 Voit varmistaa datan laadun ja eheyden ajamalla dbt-testit:
