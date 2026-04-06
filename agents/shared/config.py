@@ -62,3 +62,11 @@ class AppConfig:
 
 
 CONFIG = AppConfig.from_env()
+
+# Varmistetaan, että tietokantatiedosto on olemassa, jottei read_only=True aiheuta kaatumista.
+# Jos tiedostoa ei ole, luodaan tyhjä tietokanta. Käyttäjä voi myöhemmin ajaa dbt-mallit sen täyttämiseksi.
+if not CONFIG.duckdb_path.exists():
+    CONFIG.duckdb_path.parent.mkdir(parents=True, exist_ok=True)
+    import duckdb
+    _conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=False)
+    _conn.close()

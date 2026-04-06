@@ -44,3 +44,50 @@ Klusteroinnin tuloksena syntynyt hajontakuvio vahvistaa alkuperäisen käyttäyt
 
 !!! success "Datan jalostamisen tuoma lisäarvo"
     Yksinkertainen keston tai matkan tuijottaminen ei olisi riittänyt näin tarkan ja luotettavan profiilin luomiseen. Ottamalla huomioon **Dwell Time** -mittarin ja suodattamalla esiin vain aidot yli 15 sekunnin pysähdykset, algoritmi kykeni löytämään asiakkaiden todellisen motiivin. Esimerkiksi nopeakin kauppareissu on voitu luokitella tutkiskeluksi, jos asiakas on viettänyt suhteellisen suuren osan ajastaan pysähdyksissä tutkien tiettyä tuoteryhmää.
+
+# Asiakasprofiilien Jakauma ja Spatiaalinen Vaikutus
+
+## Jakauman muoto: Moodi vs. Mediaani
+Aikaisemmissa teorioissa oletettiin, että massadatan jakauma on vinoutunut ja että Läpikävelijät muodostavat jakauman painopisteen. Visualisoimalla kokonaiskeston jakauman (Histogrammi), havaittiin selkeä bimodaalinen, eli kaksihuippuinen ilmiö.
+
+- **Analyysin tulos (Histogrammi):** Jakauma ei ole normaali, vaan se koostuu kahdesta päällekkäisestä jakaumasta.
+    - Koko datan **moodi** (yleisin kesto) asettuu Läpikävelijöiden piikkiin (n. 8–10 min). Tämä vahvistaa, että Läpikävelijät ovat asiakaskunnan suurin yksittäinen ryhmä.
+    - Tutkiskelijoiden laajempi jakauma (moodi n. 25–30 min) vetää koko datan **mediaanin (18.6 min)** huomattavasti alkupään huipun yli.
+- **Johtopäätös:** Teoria piti paikkansa. Jakauman muoto osoittaa suoraan asiakaskunnan kahtiajakoisuuden ja vahvistaa segmentoinnin tarpeellisuuden.
+
+## Spatiaalinen Analyysi ja Myymälän Valtaväylät
+Teorisoimme, että Läpikävelijät vaikuttavat massiivisesti myymälän lämpökarttoihin ja paljastavat myymälän "luonnollisen valtaväylän". Piirsimme lämpökartat (Mittauspisteiden tiheys) erikseen kummallekin profiilille, jotta näemme niiden todellisen spatiaalisen vaikutuksen myymälän pohjakartalle.
+
+- **Analyysin tulos (Spatiaalinen lämpökartta):**
+    - **Läpikävelijät (Luonnollinen Valtaväylä):** Kuvaaja paljastaa äärimmäisen selkeän ja terävän reittiverkoston. Tämä on se väylä, jota massat käyttävät suoriutuessaan tehokkaasti sisäänkäynniltä kassoille.
+    - **Tutkiskelijat (Myymälän käyttö):** Kuvaaja leviää tasaisesti koko myymälän alueelle, paljastaen sesonkihyllyjen ja harvemmin vierailtujen alueiden käytön.
+- **Johtopäätös:** Teoria piti täydellisesti paikkansa. Tutkiskelijat tuovat "lämmön" kylmiin alueisiin, kun taas Läpikävelijät kuluttavat valtaväylää. Tämä vahvistaa, että myymälän pohjapiirroksen optimoinnissa on huomioitava näiden kahden ryhmän erilaiset spatiaaliset tarpeet.
+
+!!! warning "Ruuhka-aikojen nopeushypoteesin hylkääminen"
+    Teorisoimme myös, että ruuhka-aikoina (arkipäivinä 16–17 ja viikonloppuina 12–14) asiakkaiden keskinopeus pienenisi ruuhkautumisen vuoksi. Vertaamalla aikasarjalämpökarttoja (Asiakasvolyymi vs. Keskinopeus tunti/viikonpäivä -akselilla), emme pystyneet vahvistamaan tätä hypoteesia. Vaikka volyymi kasvaa odotetusti, nopeus ei putoa vastaavassa suhteessa. Tämä saattaa johtua siitä, että kauppa on fyysisesti niin laaja, ettei ruuhkautuminen vaikuta koko reissun keskinopeuteen. Jätämme tämän hypoteesin raportista pois vahvistamattomana.
+
+# Sesonkianalyysi: Arkirutiinit vs. Joulusesonki
+
+## Vertailuasetelma ja Datapohja
+Testataksemme teorioita sesongin vaikutuksesta ostoskäyttäytymiseen, jaoimme datan kahteen vertailukauteen. Sesonkiajaksi valittiin joulunalusaika (joulukuun 1.–23. päivä). Puhtaimmaksi arjen vertailukohdaksi (baseline) valikoitui syyskuu. Syyskuussa arki rullaa rutiinilla, lomat ovat ohi, eikä isoja juhlasesonkeja ole käynnissä.
+
+## 1. Asiakasprofiilien suhteen muutos
+Teorisoimme, että sesongin aikana nopeat rutiiniostajat (Läpikävelijät) muuttuvat juhlajärjestelyjen myötä enemmän aikaa viettäviksi Tutkiskelijoiksi. 
+
+- **Analyysin tulos (Pylväsdiagrammi):** Syyskuussa Tutkiskelijoiden osuus oli 62.5 %. Joulukuussa tämä osuus kasvoi **70.1 prosenttiin**. Vastaavasti nopeiden Läpikävelijöiden osuus kutistui alle 30 prosenttiin.
+- **Johtopäätös:** Hypoteesi vahvistettu. Myymälän asiakasvirran luonne muuttuu sesongin aikana mitattavasti hitaammaksi ja tutkiskelevammaksi. Asiakkaat tekevät selkeästi arjesta poikkeavia hankintoja.
+
+## 2. Kestojen jakauman litistyminen
+Teorisoimme matemaattisesti, että sesongin aikana kauppareissujen kestojen jakauman alkupään piikki madaltuu ja mediaaniviiva siirtyy oikealle.
+
+- **Analyysin tulos (KDE-tiheyskuvaaja):** Visuaalinen kuvaaja osoittaa selkeästi, kuinka syyskuun vihreä "vuori" litistyy joulukuussa ja jakauman "häntä" paksunee. Kauppareissun mediaanikesto kasvoi syyskuun 17.6 minuutista joulukuun 20.4 minuuttiin. Keskimääräinen asiakas viettää siis sesonkina **2.8 minuuttia kauemmin** myymälässä.
+- **Johtopäätös:** Hypoteesi vahvistettu. Ylimääräinen kolme minuuttia per asiakas tarkoittaa massatasolla valtavaa potentiaalia heräteostoksille, ja myymälän sesonkihyllyillä on poikkeuksellisen paljon silmäpareja.
+
+## 3. Kassa-alueen jonoutumisilmiö
+Koska varsinainen kassa-alue filtteröitiin pois raakadatasta, teorisoimme, että massiiviset sesonkiruuhkat näkyisivät datassa "jonon häntänä". Oletus oli, että asiakkaiden Dwell Time (paikallaanoloaika) reitin viimeisen 120 sekunnin aikana kasvaisi räjähdysmäisesti joulukuussa, kun kassajonot purkautuvat pääkäytävälle.
+
+- **Analyysin tulos (Boxplot & Keskiarvot):** Datan perusteella paikallaanoloaika reitin lopussa ei juurikaan eronnut kausien välillä (Syyskuu 45.0 s vs. Joulukuu 46.6 s). Myös boxplot hajonta pysyi lähes identtisenä.
+- **Johtopäätös:** Hypoteesi jonojen purkautumisesta myymälän puolelle **hylättiin**. 
+
+!!! success "Liiketoiminnallinen huomio: Onnistunut resursointi"
+    Vaikka teoria jonoutumisilmiöstä ei näkynyt datassa, tämä on toimeksiantajan kannalta erinomainen uutinen! Vaikka myymälässä on merkittävästi enemmän hitaita Tutkiskelijoita ja kesto on pidempi, reitin lopun jonotusaika ei kasva. Tämä viittaa vahvasti siihen, että myymälän kapasiteetin hallinta toimii: sesonkiaikoina kassoja on avattu riittävästi vastaamaan kasvaneeseen kysyntään, jolloin pullonkaulaa ei pääse syntymään itse ostosalueelle.
