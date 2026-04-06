@@ -1,4 +1,10 @@
-{{ config(materialized='table') }}
+{{ config(
+    materialized='table',
+    post_hook=[
+        "CREATE UNIQUE INDEX IF NOT EXISTS pk_f_kaynti ON {{ this }} (kaynti_id)",
+        "CREATE INDEX IF NOT EXISTS idx_f_kaynti_node ON {{ this }} (node_id)"
+    ]
+) }}
 
 WITH aggregoidut_sessiot AS (
     -- 1. Yhdistetään session datapisteet yhdeksi analytiikalle käyttökelpoiseksi "kauppareissuksi"

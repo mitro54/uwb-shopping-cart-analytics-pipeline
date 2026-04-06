@@ -1,4 +1,9 @@
-{{ config(materialized='table') }}
+{{ config(
+    materialized='table',
+    post_hook=[
+        "CREATE UNIQUE INDEX IF NOT EXISTS pk_dim_karry ON {{ this }} (node_id)"
+    ]
+) }}
 
 -- Kärry-dimensio: Yhdistää uniikit kärryt ja niiden elinkaaren
 SELECT
