@@ -310,6 +310,38 @@ Kuten paikannusyrityksen edustaja
 haluan tunnistaa epäloogiset tai kaupan ulkopuolella olevat sijaintipisteet
 jotta voin arvioida datan laatua ja käytettävyyttä.
 
+#### Tekninen backlog-item: Silver-mallista Gold-malliin [TODO]
+
+Kehittäjänä
+haluan, että data kulkee Silver-kerroksen mallien kautta Gold-kerroksen malleihin dbt:n `ref()`-viittausten avulla
+jotta dataputki on selkeä, toistettava ja testattava ilman manuaalisia välivaiheita.
+
+**Hyväksymiskriteerit:**
+- Gold-mallit viittaavat Silver-malleihin `ref()`-funktiolla
+- `dbt run` ajaa mallit oikeassa järjestyksessä (Silver ennen Goldia)
+- `dbt test` vahvistaa Gold-taulujen avainmittarit
+- Lineage-kaavio näyttää selkeän ketjun Bronze → Silver → Gold
+
+#### User Story: Aikarajauksella suodatettava dashboard [TODO]
+
+Asiakkaana
+haluan tarkastella dashboardin dataa päivä-, viikko- ja kuukausitasolla
+jotta voin seurata asiakaskäyttäytymistä ja myymälän toimivuutta haluamaltani aikaväliltä.
+
+**Hyväksymiskriteerit:**
+- Dashboardissa on valitsin, jolla aikaväli valitaan (päivä / viikko / kuukausi)
+- Kaikki visualisoinnit päivittyvät valitun aikavälin mukaan
+
+#### Tekninen backlog-item: Gold-tauluista data BI-alustalle [TODO]
+
+Kehittäjänä
+haluan, että Gold-kerroksen taulut ovat käytettävissä BI-alustalla (Streamlit)
+jotta analyytikot ja asiakkaat voivat hyödyntää jalostettua dataa ilman suoraa tietokantayhteyttä.
+
+**Hyväksymiskriteerit:**
+- Streamlit lukee datan suoraan DuckDB:n Gold-tauluista
+- Yhteydenotto tapahtuu vain yhden konfiguraatiotiedoston kautta
+
 #### Jatkokehitysidea: Ulkoisten datalähteiden yhdistäminen [TODO]
 
 ## Projektin yhteenveto
