@@ -1,0 +1,5 @@
+osasto_id,nimi,alku_x,alku_y,loppu_x,loppu_y
+1,Kassat,0,0,2000,5220
+2,Hyllyväli 1,2000,0,6000,2600
+3,Hyllyväli 2,2000,2600,6000,5220
+4,Hyllyväli 3,6000,0,10406,5220
