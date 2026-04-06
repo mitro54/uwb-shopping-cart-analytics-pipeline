@@ -1,7 +1,7 @@
 {{ config(materialized='view') }}
 
-WITH puhdistettu AS (
-    -- 1. Silver-tason peruspuhdistus
+WITH perus_puhdistus AS (
+    -- 1. Silver-tason peruspuhdistus: laatu, rajat ja aukioloajat
     SELECT DISTINCT
         node_id,
         timestamp AS aika,
@@ -13,6 +13,18 @@ WITH puhdistettu AS (
         q > 0 
         AND x IS NOT NULL 
         AND y IS NOT NULL
+        -- Geofencing: Kaupan rajat (Maksimileveys 10406 cm, Maksimikorkeus 5220 cm)
+        AND x >= 0 AND x <= 10406
+        AND y >= 0 AND y <= 5220
+        -- Ongelmalliset alueet (Latauspisteet 1 ja 2 pythagoraan säteellä pisteestä)
+        AND (POWER(x - 100, 2) + POWER(y - 2500, 2)) > POWER(400, 2)  -- Turvaportit
+        AND (POWER(x - 900, 2) + POWER(y - 3600, 2)) > POWER(600, 2)  -- Liukuportaat
+        -- Aukioloajat (DuckDB isodow: 1=Ma..7=Su)
+        AND (
+            (EXTRACT('isodow' FROM timestamp) BETWEEN 1 AND 6 AND EXTRACT('hour' FROM timestamp) BETWEEN 8 AND 20)
+            OR 
+            (EXTRACT('isodow' FROM timestamp) = 7 AND EXTRACT('hour' FROM timestamp) BETWEEN 10 AND 19)
+        )
 ),
 liikkeet AS (
     -- 2. Haetaan edellinen sijainti ja aika per kärry
@@ -25,23 +37,59 @@ liikkeet AS (
         LAG(x) OVER (PARTITION BY node_id ORDER BY aika) AS edellinen_x,
         LAG(y) OVER (PARTITION BY node_id ORDER BY aika) AS edellinen_y,
         LAG(aika) OVER (PARTITION BY node_id ORDER BY aika) AS edellinen_aika
-    FROM puhdistettu
+    FROM perus_puhdistus
 ),
 rikastettu AS (
-    -- 3. Lasketaan matka, aikaväli ja nopeus
+    -- 3. Lasketaan matka ja aikaväli sekunteina
     SELECT
         *,
-        -- Matka (Pythagoraan lause)
-        SQRT(POWER(x - edellinen_x, 2) + POWER(y - edellinen_y, 2)) AS matka_edellisesta,
-        -- Aikaväli sekunteina
+        -- Matka (Pythagoraan lause), muunnos senttimetreistä (1 yksikkö = 1cm) -> metreiksi (/ 100.0)
+        SQRT(POWER(x - edellinen_x, 2) + POWER(y - edellinen_y, 2)) / 100.0 AS dist_m,
         DATE_DIFF('second', edellinen_aika, aika) AS sekuntia_edellisesta
     FROM liikkeet
+),
+jitter_suodatus AS (
+    -- 4. Karsitaan yksittäiset Jitter-hypyt (MAX_JUMP_SPEED > 3.0 m/s)
+    SELECT *
+    FROM rikastettu
+    WHERE sekuntia_edellisesta IS NULL 
+       OR sekuntia_edellisesta = 0
+       OR (dist_m / sekuntia_edellisesta) <= 3.0
+),
+sessiomerkinta AS (
+    -- 5. Tunnistetaan pitkän viipymän jälkeinen session katkeaminen (SESSION_GAP_THRESHOLD = 900s / 15 min)
+    SELECT
+        *,
+        CASE 
+            WHEN edellinen_aika IS NULL OR sekuntia_edellisesta > 900 THEN 1 
+            ELSE 0 
+        END AS is_new_session
+    FROM jitter_suodatus
+),
+sessiot AS (
+    -- 6. Kumulatiivinen summa is_new_session-arvoista muodostaa yksilöllisen session numeron
+    SELECT
+        *,
+        SUM(is_new_session) OVER (PARTITION BY node_id ORDER BY aika) AS session_id
+    FROM sessiomerkinta
 )
+
 SELECT
-    *,
-    -- Nopeus (yksikköä / sekunti), vältetään nollalla jakaminen
+    node_id,
+    aika,
+    x,
+    y,
+    q,
+    CAST(aika AS DATE) AS dt,
+    EXTRACT('hour' FROM aika) AS hour,
+    EXTRACT('isodow' FROM aika) AS weekday,
+    session_id,
+    MD5(node_id || '_' || CAST(session_id AS VARCHAR)) AS full_session_id,
+    dist_m,
+    sekuntia_edellisesta,
+    -- Nopeus (m/s)
     CASE 
-        WHEN sekuntia_edellisesta > 0 THEN matka_edellisesta / sekuntia_edellisesta 
+        WHEN sekuntia_edellisesta > 0 THEN dist_m / sekuntia_edellisesta 
         ELSE 0 
-    END AS nopeus
-FROM rikastettu
+    END AS speed_mps
+FROM sessiot
