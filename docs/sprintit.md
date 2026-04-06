@@ -136,24 +136,24 @@ Sprintin aikana pidetään päivittäinen Daily Scrum. Alla kirjaukset päivien 
 Vahvistimme projektisuunnitelman ja valitsimme arkkitehtuuriksi Bronze-Silver-Gold medalllion mallin. Tässä sprintissä siirrymme datan tutkimisesta sen tekniseen hallintaan. Päätimme käyttää DuckDB-tietokantaa ja dbt-työkalua datan muuntamiseen. Aloitamme työskentelyn alkupäästä ja valmistellen projektia.
 
 #### Suunnittelupalaverin tuotokset
-Sprint Goal määritelty
+- Sprint Goal määritelty
 
-Alustava Sprint Backlog muodostettu
+- Alustava Sprint Backlog muodostettu
 
 Arkkitehtuuripäätökset lukittu (DuckDB + dbt + Medallion)
 
 #### Sprintin tehtävät
-Lopullisen projektisuunnitelman vahvistaminen
+- Lopullisen projektisuunnitelman vahvistaminen
 
-dbt-projektin alustus
+- dbt-projektin alustus
 
-Dataputken arkkitehtuurin Bronze - Silver - Gold kuvauksen luonti
+- Dataputken arkkitehtuurin Bronze - Silver - Gold kuvauksen luonti
 
-Datan esikäsittely: Keinoja löytää validia dataa
+- Datan esikäsittely: Keinoja löytää validia dataa
 
-Bronze-tason tietomalli: Taulujen rakenteen suunnittelu ja luonti
+- Bronze-tason tietomalli: Taulujen rakenteen suunnittelu ja luonti
 
-Dokumentaation päivitys
+- Dokumentaation päivitys
 
 #### Sprint Goal
 Vahvistaa lopullinen projektisuunnitelma sekä toteuttaa toimiva Bronze-tason ingestion, jossa raakadata ladataan DuckDB-ympäristöön dbt-työkalua hyödyntäen.
@@ -182,23 +182,22 @@ Raakadata (Bronze) käytettävissä jatkojalostusta varten
 
 [ ] Dataputken arkkitehtuuri on kuvattu ja tiimin hyväksymä
 
-### Daily tiistai
+### Daily tiistai  
+Keskusteltiin miten dbt lähtee päälle. Mietittiin, että voisi lisätä läpinäkyvyyttä ulkopuolelle. Mietittiin datan rakennetta.
     
-    Keskusteltiin miten dbt lähtee päälle. Mietittiin, että voisi lisätä läpinäkyvyyttä ulkopuolelle. Mietittiin datan rakennetta.
-    
-    Paikalla kaikki: Joni, Toni, Panu, Tuija, Mitro
+Paikalla kaikki: Joni, Toni, Panu, Tuija, Mitro
 
 ### Daily eskiviikko
     
-    Mitro esitteli, jopa filosofisia mietteitä asiakkaista dataan pohjautuen.
+Mitro esitteli, jopa filosofisia mietteitä asiakkaista dataan pohjautuen.
     
-    Paikalla Joni, Toni, Panu, Tuija, Mitro
+Paikalla kaikki Joni, Toni, Panu, Tuija, Mitro
     
 ### Daily Torstai
     
-    Keskusteltiin, että tää viikko on aika mellow ja ensi viikolla aletaan tekemään modeleita jolloin saadaan harppauksin eteenpäin.
+Keskusteltiin, että tää viikko on aika mellow ja ensi viikolla aletaan tekemään modeleita jolloin saadaan harppauksin eteenpäin.
     
-    Paikalla Joni, Toni, Panu, Mitro
+Paikalla Joni, Toni, Panu, Mitro
 
 ## Sprint 3 – Silver-malli
 
