@@ -30,6 +30,10 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   bytebuddies_dbt:
-    staging:
+    bronze:
+      +materialized: table
+    silver:
+      +materialized: view
+    gold:
       +materialized: table
 
