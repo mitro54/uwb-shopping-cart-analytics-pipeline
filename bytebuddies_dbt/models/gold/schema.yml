@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: f_kaynti
+    description: "Yksi rivi per uniikki kauppakäynti (sessio). Sisältää keston, matkan ja keskinopeuden."
+    columns:
+      - name: kaynti_id
+        description: "Uniikki sessiotunniste (full_session_id)."
+        tests:
+          - unique
+          - not_null
+      - name: node_id
+        description: "Kärryn tunniste."
+      - name: alku
+        description: "Käynnin alkuaika."
+      - name: loppu
+        description: "Käynnin loppuaika."
+      - name: kesto_sekunteina
+        description: "Käynnin kesto (s)."
+      - name: matka
+        description: "Käynnin aikana kuljettu matka (m)."
+      - name: keskinopeus
+        description: "Käynnin keskinopeus (m/s)."
+
+  - name: dim_karry
+    description: "Kärrydimensio: Yksilölliset kärryt ja niiden elinkaari."
+    columns:
+      - name: node_id
+        description: "Uniikki kärryn tunniste."
+        tests:
+          - unique
+          - not_null
+      - name: snro
+        description: "Luettava kärryn sarjanumero (esim. 'Kärry 123')."
+
+  - name: f_osastokaynti
+    description: "Yksi rivi per osastokäynti per sessio. Yhdistää sijaintidataa osastojen koordinaatteihin."
+    columns:
+      - name: kaynti_id
+        description: "Uniikki sessiotunniste."
+      - name: node_id
+        description: "Kärryn tunniste."
+      - name: osasto_id
+        description: "Osaston sisäinen tunniste."
+      - name: osaston_nimi
+        description: "Osaston nimi (esim. 'Maito', 'Hevi')."
+      - name: osasto_sisaantulo
+        description: "Milloin kärry saapui osastolle."
+      - name: osasto_poistuminen
+        description: "Milloin kärry poistui osastolta."
+      - name: vietetty_aika_sekunteina
+        description: "Osastolla vietetty aika (s)."
