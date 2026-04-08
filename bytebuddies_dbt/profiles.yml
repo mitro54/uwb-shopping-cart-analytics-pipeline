@@ -6,5 +6,5 @@ bytebuddies_dbt:
       extensions:
         - httpfs
         - parquet
-      threads: 4
+      threads: 1
   target: dev
