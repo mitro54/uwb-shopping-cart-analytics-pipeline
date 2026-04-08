@@ -8,7 +8,7 @@ WITH perus_puhdistus AS (
         x,
         y,
         q
-    FROM {{ ref('stg_csv_data') }}
+    FROM {{ ref('bronze_csv_data') }}
     WHERE 
         q > 0 
         AND x IS NOT NULL 
