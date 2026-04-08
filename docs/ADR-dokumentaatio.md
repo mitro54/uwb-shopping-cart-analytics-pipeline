@@ -59,3 +59,15 @@ Projektissa on kyse ostoskärryjen sensoridatan (x,y-koordinaatit ja aikaleimat)
 2. **"Data Enrichment" (Esilaskenta):** Etäisyydet (`matka`) ja viipymät (`kesto`) lasketaan vain tasan kerran dbt-putkessa tai Python-skriptissä uusia `kaynti`-rivejä muodostettaessa. Niitä ei tarvitse koskaan purkaa raportointityökalujen lennosta laskettaviksi pullonkauloiksi. 
 3. **Geometristen alueiden hallinta Dimensiona:** Osastot ohjataan taulussa `osasto` ns. Bounding box -menetelmällä (`alku_x`, `loppu_x` jne.). Tämä tekee tilasääntöjen muuttamisesta ja kyselyistä äärimmäisen yksinkertaisia ilman raskaita GIS/Paikkatieto-laajennuksia.
 4. **Resurssien hallinta:** Arkitehtuuri eristää massiivisen koordinaattidatan tärkeästä liiketoimintahistoriasta. Raakadata-taulu voidaan teknisesti arkistoida tai tyhjentää esim. 1 vuoden välein ilman analytiikkatiedon katoamista. Lisäksi `viim_havainto` -kentillä (Kärry-taulussa) on helppo monitoroida IoT-laitteiden teknistä "elossa-oloa" eristämällä ylläpitokyselyt raakadatasta.
+
+## Tietokanta-arkkitehtuuri: Dimensiotaulut Gold-kerroksessa (Star Schema)
+
+**Päätös:**
+Projektissa laajennettiin dbt-käyttöä täyteen Medallion -arkkitehtuuriin (Bronze -> Silver -> Gold). Tämän myötä teimme tietoisen arkkitehtuurisen linjauksen sijoittaa kaikki konformiset dimensiotaulut (kuten `dim_osastot` ja `dim_karry`) suoraan ylimpään **Gold-kerrokseen**, aivan faktataulujen (`f_kaynti` ja `f_osastokaynti`) viereen. Seedeistä ladattava data muutetaan dynaamisiksi Gold-tason `table` -materialisoiduiksi dimensioiksi.
+
+**Tilanne ja ongelma:**
+Datatiimin piti päättää pitkien dbt-putkien osalta, mihin kerrokseen perinteiset Master Data -taulut (kuten osastojen fyysiset rajat `seeds/osastot.csv` -tiedostosta) materialisoidaan. Pieniä referenssejä voidaan periaatteessa hallita "puhtaassa" Silver-tasossa heti, mutta se olisi rikkonut analytiikkatason eheyden.
+
+**Miksi valittiin:**
+1. **BI-työkalujen (Star Schema) palveleminen:** Sijoittamalla kaikki dashboardin tarvitsemat taulut (sekä Faktat että niitä selittävät Dimensiot) samaan Gold-kansioon, voimme muodostaa täydellisen ja modernin Star Schema -kokonaisuuden yhdelle tasolle. Raportointityökalun ei tarvitse koskaan "kurkkia" Silver-kerrokseen hakeakseen metatietoja osastojen nimistä.
+2. **Käyttöoikeudet ja Abstraktio:** Gold-kerros on tarkoitettu vain puhtaaseen analytiikkaan ja loppukäyttäjille valmiina datamarttina. Silver-kerros on tässä projektissa ("silver_positions.sql") pyhitetty erittäin monimutkaiselle moottorilogiikalle (CTE:t, Jitter-suodatus, Geofencing ja signaalikatkojen katkaisu). Pitämällä Dimensiot Gold-tasolla faktojen vieressä pidämme loppukäyttäjän näkymän irrotettuna raskaan siivousvaiheen tietokantaprosesseista.

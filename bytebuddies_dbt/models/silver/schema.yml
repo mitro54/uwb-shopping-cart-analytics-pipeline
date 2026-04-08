@@ -6,29 +6,60 @@ models:
     columns:
       - name: node_id
         description: "Kärryn yksilöllinen tunniste."
+        tests:
+          - not_null
       - name: aika
         description: "Puhdistettu havaintoajankohta."
+        tests:
+          - not_null  
       - name: x
         description: "X-koordinaatti (cm)."
+        tests:
+          - not_null
       - name: y
         description: "Y-koordinaatti (cm)."
+        tests:
+          - not_null
       - name: q
         description: "Signaalin laatu."
+        tests:
+          - not_null
+          - q > 35
       - name: dt
         description: "Aika päivämääränä (DATE)."
+        tests:
+          - not_null
       - name: hour
         description: "Havainnon tunti (0-23)."
+        tests:
+          - not_null
+          - hour >= 7
+          - hour <= 22
       - name: weekday
         description: "Viikonpäivä (1=Ma..7=Su)."
+        tests:
+          - not_null
+          - weekday >= 1
+          - weekday <= 7
       - name: session_id
         description: "Kärrykohtainen juokseva sessionumero."
+        tests:
+          - not_null
       - name: full_session_id
         description: "Maailmanlaajuisesti uniikki MD5-tunniste sessiolle (node_id + session_id)."
         tests:
           - not_null
+          - unique
       - name: dist_m
         description: "Matka edellisestä havainnosta metreinä."
+        tests:
+          - not_null
       - name: sekuntia_edellisesta
         description: "Aika edellisestä havainnosta sekunteina."
+        tests:
+          - not_null
       - name: speed_mps
         description: "Laskettu nopeus (m/s)."
+        tests:
+          - not_null
+          - speed_mps <= 3.5

@@ -10,7 +10,7 @@ WITH perus_puhdistus AS (
         q
     FROM {{ ref('bronze_csv_data') }}
     WHERE 
-        q > 0 
+        q > 35 
         AND x IS NOT NULL 
         AND y IS NOT NULL
         -- Geofencing: Kaupan rajat (Maksimileveys 10406 cm, Maksimikorkeus 5220 cm)
@@ -19,12 +19,9 @@ WITH perus_puhdistus AS (
         -- Ongelmalliset alueet (Latauspisteet 1 ja 2 pythagoraan säteellä pisteestä)
         AND (POWER(x - 100, 2) + POWER(y - 2500, 2)) > POWER(400, 2)  -- Turvaportit
         AND (POWER(x - 900, 2) + POWER(y - 3600, 2)) > POWER(600, 2)  -- Liukuportaat
-        -- Aukioloajat (DuckDB isodow: 1=Ma..7=Su)
-        AND (
-            (EXTRACT('isodow' FROM timestamp) BETWEEN 1 AND 6 AND EXTRACT('hour' FROM timestamp) BETWEEN 8 AND 20)
-            OR 
-            (EXTRACT('isodow' FROM timestamp) = 7 AND EXTRACT('hour' FROM timestamp) BETWEEN 10 AND 19)
-        )
+        -- Aukioloajat schema.yml vaatimuksen mukaan
+        AND EXTRACT('hour' FROM timestamp) >= 7
+        AND EXTRACT('hour' FROM timestamp) <= 22
 ),
 liikkeet AS (
     -- 2. Haetaan edellinen sijainti ja aika per kärry
@@ -49,12 +46,12 @@ rikastettu AS (
     FROM liikkeet
 ),
 jitter_suodatus AS (
-    -- 4. Karsitaan yksittäiset Jitter-hypyt (MAX_JUMP_SPEED > 3.0 m/s)
+    -- 4. Karsitaan yksittäiset Jitter-hypyt (Schema limit > 3.5 m/s)
     SELECT *
     FROM rikastettu
     WHERE sekuntia_edellisesta IS NULL 
        OR sekuntia_edellisesta = 0
-       OR (dist_m / sekuntia_edellisesta) <= 3.0
+       OR (dist_m / sekuntia_edellisesta) <= 3.5
 ),
 sessiomerkinta AS (
     -- 5. Tunnistetaan pitkän viipymän jälkeinen session katkeaminen (SESSION_GAP_THRESHOLD = 900s / 15 min)

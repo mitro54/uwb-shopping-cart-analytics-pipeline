@@ -17,7 +17,7 @@ WITH vierailut AS (
         s.sekuntia_edellisesta,
         s.dist_m
     FROM {{ ref('silver_positions') }} s
-    INNER JOIN {{ ref('osastot') }} o
+    INNER JOIN {{ ref('dim_osastot') }} o
         ON s.x >= o.alku_x AND s.x <= o.loppu_x
        AND s.y >= o.alku_y AND s.y <= o.loppu_y
 )
