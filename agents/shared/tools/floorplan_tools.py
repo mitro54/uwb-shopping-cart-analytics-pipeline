@@ -93,8 +93,7 @@ def plot_on_floorplan(
     Parametrit:
     - sql: SQL-kysely joka palauttaa x ja y sarakkeet (cm-yksikössä).
            Voit lisätä WHERE-ehtoja rajoittaaksesi ajanjakson, node_id:n jne.
-           Esim: SELECT x, y FROM main.stg_csv_data WHERE timestamp BETWEEN '2019-03-08' AND '2019-03-09' LIMIT 500000
-    - title: Kuvan otsikko
+           Esim: SELECT x, y FROM main.bronze_csv_data WHERE timestamp BETWEEN '2019-03-08' AND '2019-03-09' LIMIT 500000    - title: Kuvan otsikko
     - plot_type: 'heatmap' (oletus, KDE-tiheys) tai 'scatter' (yksittäiset pisteet)
     - alpha: Läpinäkyvyys (0.0–1.0)
     """

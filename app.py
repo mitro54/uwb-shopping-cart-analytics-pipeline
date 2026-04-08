@@ -533,7 +533,7 @@ elif page == "📊 Datatutkimus":
         st.markdown("""
         **1. Datan perushaku (10 ensimmäistä riviä)**
         ```sql
-        SELECT * FROM main.stg_csv_data LIMIT 10;
+        SELECT * FROM main.bronze_csv_data LIMIT 10;
         ```
         **2. Datarivien määrä ja aikaväli**
         ```sql
@@ -541,12 +541,12 @@ elif page == "📊 Datatutkimus":
             COUNT(*) as havaintojen_maara, 
             MIN(timestamp) as ensimmainen, 
             MAX(timestamp) as viimeisin 
-        FROM main.stg_csv_data;
+        FROM main.bronze_csv_data;
         ```
         **3. Havaintojen määrä per ostoskärry (node_id)**
         ```sql
         SELECT node_id, count(*) as havaintoja 
-        FROM main.stg_csv_data
+        FROM main.bronze_csv_data
         GROUP BY node_id 
         ORDER BY havaintoja DESC;
         ```

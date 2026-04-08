@@ -1,4 +1,5 @@
----- Alkuperäinen data, poistettu z-koordinaatti ja lisätty latausajankohta
+-- Alkuperäinen data, poistettu z-koordinaatti ja lisätty latausajankohta
+-- Bronze-tason taulu
 
 {{ config(materialized='table') }}
 

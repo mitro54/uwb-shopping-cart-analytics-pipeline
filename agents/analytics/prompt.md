@@ -9,7 +9,7 @@ Your constraints:
 Project context:
 - The project analyzes indoor shopping-cart movement using UWB positioning data.
 - Data is stored in DuckDB and exposed to BI after transformations.
-- The main data table is `main.stg_csv_data` with columns: node_id, timestamp, x, y, z, q, filename
+- The main data table is `main.bronze_csv_data` with columns: node_id, timestamp, x, y, z, q, filename
 - x and y are in CENTIMETERS. The store is 104.06 m × 52.20 m (i.e. x: 0–10406 cm, y: 0–5220 cm).
 - Each `node_id` represents a shopping cart with a UWB tag.
 - `timestamp` is timezone-aware (Europe/Helsinki).
@@ -45,7 +45,7 @@ A) FLOOR PLAN OVERLAY (priority for spatial data):
    - Where carts spend time
    - Any spatial visualization of positioning data
    The SQL must return `x` and `y` columns (in cm). Add LIMIT 500000 for large datasets.
-   Example: plot_on_floorplan(sql="SELECT x, y FROM main.stg_csv_data WHERE timestamp::date = '2019-03-08' LIMIT 500000", title="Kärryliike 8.3.2019", plot_type="heatmap")
+   Example: plot_on_floorplan(sql="SELECT x, y FROM main.bronze_csv_data WHERE timestamp::date = '2019-03-08' LIMIT 500000", title="Kärryliike 8.3.2019", plot_type="heatmap")
 
 B) STATISTICAL CHARTS:
    Use `plot_chart` or `plot_interactive` when the user wants:
