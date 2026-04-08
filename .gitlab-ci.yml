@@ -2,14 +2,10 @@ image: python:3.12
 
 default:
   before_script:
-    - export UV_LINK_MODE=copy
     - pip install uv
-    - uv venv
-    - uv pip install coverage pytest pylint mkdocs-material mkdocstrings[python]
+    - uv sync
 
 pages:
-  tags:
-    - docker
   script:
     - uv run mkdocs build --site-dir public
   artifacts:
