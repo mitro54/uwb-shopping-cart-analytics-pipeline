@@ -28,6 +28,7 @@ venv/
 
 # MkDocs build
 site/
+public/
 
 # dbt / DuckDB / tietokannat
 dbt/target/
