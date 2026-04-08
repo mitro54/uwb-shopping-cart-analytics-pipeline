@@ -11,7 +11,7 @@ graph LR
 
     %% Bronze Layer
     subgraph Staging - Bronze
-        stg_csv_data{{stg_csv_data.sql\n'Datan luku ja validointi'}}
+        bronze_csv_data{{bronze_csv_data.sql\n'Datan luku ja validointi'}}
     end
 
     %% Silver Layer
@@ -27,8 +27,8 @@ graph LR
     end
 
     %% Riippuvuudet (dbt ref)
-    CSV -->|Datan Ingestio| stg_csv_data
-    stg_csv_data -->|ref 'stg_csv_data'| silver_positions
+    CSV -->|Datan Ingestio| bronze_csv_data
+    bronze_csv_data -->|ref 'bronze_csv_data'| silver_positions
     silver_positions -->|ref 'silver_positions'| f_kaynti
     silver_positions -->|ref 'silver_positions'| dim_karry
     silver_positions -.->|ref 'silver_positions'| f_osastokaynti
@@ -40,7 +40,7 @@ graph LR
     classDef gold fill:#ffd700,stroke:#b8860b,stroke-width:2px,color:#000
 
     class CSV source
-    class stg_csv_data bronze
+    class bronze_csv_data bronze
     class silver_positions silver
     class f_kaynti,dim_karry,f_osastokaynti gold
 ```
