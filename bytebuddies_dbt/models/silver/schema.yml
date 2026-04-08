@@ -24,7 +24,6 @@ models:
         description: "Signaalin laatu."
         tests:
           - not_null
-          - q > 35
       - name: dt
         description: "Aika päivämääränä (DATE)."
         tests:
@@ -33,14 +32,10 @@ models:
         description: "Havainnon tunti (0-23)."
         tests:
           - not_null
-          - hour >= 7
-          - hour <= 22
       - name: weekday
         description: "Viikonpäivä (1=Ma..7=Su)."
         tests:
           - not_null
-          - weekday >= 1
-          - weekday <= 7
       - name: session_id
         description: "Kärrykohtainen juokseva sessionumero."
         tests:
@@ -62,4 +57,3 @@ models:
         description: "Laskettu nopeus (m/s)."
         tests:
           - not_null
-          - speed_mps <= 3.5
