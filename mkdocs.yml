@@ -27,7 +27,7 @@ theme:
     - content.tabs
 
 nav:
-  - Etusivu: Index.md
+  - Etusivu: index.md
   - Tehtävä: projekti_tehtävä.md
   - Projektisuunnitelma: project_plan.md
   - Sprintit: sprintit.md
