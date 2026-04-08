@@ -6,6 +6,8 @@ default:
     - uv sync
 
 pages:
+  tags:
+    - docker
   script:
     - uv run mkdocs build --site-dir public
   artifacts:
