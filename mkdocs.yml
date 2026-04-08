@@ -4,6 +4,28 @@ site_dir: public
 docs_dir: docs
 theme:
   name: material
+  palette:
+    - scheme: slate
+      primary: cyan
+      accent: lime
+      toggle:
+        icon: material/weather-sunny
+        name: Vaihda vaaleaan tilaan
+
+    - scheme: default
+      primary: cyan
+      accent: lime
+      toggle:
+        icon: material/weather-night
+        name: Vaihda tummaan tilaan
+  font:
+    text: "Fira Sans"
+    code: "Fira Code"
+  features:
+    - navigation.instant
+    - search.highlight
+    - content.tabs
+
 nav:
   - Etusivu: index.md
   - Sprintit: sprintit.md
@@ -14,6 +36,13 @@ nav:
       - Agentti käyttöohje: agentti_kayttoohje.md
       - DBT käyttöohje: dbt-ohje.md
       - Medallion arkkitehtuuri: medallion_arkkitehtuuri.md
+  - Kaaviot & Analyysit:
+      - ER-kaavio: ER_kaavio.md
+      - Arkkitehtuurikaavio: arkkitehtuuri_kaavio.md
+      - DBT Lineage: dbt_lineage_kaavio.md
+      - Data-analyysit: data_analyyseja.md
+      - Data-teoriat: data_teoriat.md
+      - Puhdistusasetukset: puhdistus_asetukset.md
 
 markdown_extensions:
   - def_list
@@ -21,5 +50,16 @@ markdown_extensions:
       custom_checkbox: true
   - admonition
   - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - toc:
       toc_depth: 3
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python: {}
