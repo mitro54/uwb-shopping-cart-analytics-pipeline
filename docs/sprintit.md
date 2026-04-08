@@ -187,7 +187,7 @@ Keskusteltiin miten dbt lähtee päälle. Mietittiin, että voisi lisätä läpi
     
 Paikalla kaikki: Joni, Toni, Panu, Tuija, Mitro
 
-### Daily eskiviikko
+### Daily keskiviikko
     
 Mitro esitteli, jopa filosofisia mietteitä asiakkaista dataan pohjautuen.
     
@@ -201,21 +201,48 @@ Paikalla Joni, Toni, Panu, Mitro
 
 ## Sprint 3 – Silver-malli
 
-**Tavoitteet:**
+### Suunnittelupalaveri – 6.4.2026 klo 17:00
 
-Normalisoidut Silver-taulut ja aggregaatiot
-Dimensiotaulujen luonti
+PO - Toni Kiuru
+Scrum Master - Joni Helminen
+Developers - Mitro, Panu, Tuija
+
+Lähdetään toteuttamaan lopullista projektisuunnitelmaa. Saatu arvokasta tietoa EDA analyyseistä kahden ensimmäisen viikon aikana. Pystytään määrittämään selkeämmin, mitkä asiat datassa ovat arvokkaita ja miten niitä voidaan hyödyntää.
+
+
+#### Sprintin 3 - Tavoitteet:
+
+Lopullisen projektisuunnitelman toteuttaminen
+- EDA notebookkien läpi käynti ja tulosten dokumentointi
+- luodaan data pipeline asiakkaiden segmentointia varten
+- uudelleen nimetään stg (staging) -> bronze, jonka jälkeen jatketaan medallionki arkkitehtuurin nimeämistä (bronze, silver, gold)
+Saadaan Silver taulut valmiiksi
+- datan putsaus (mikä data kuuluu ja mikä ei kuulu)
+- standardointi (yhtenäiset päivämäärä formaatit, yhtenäiset kenttien nimet jne.)
+- session_id määrittely (miten tunnistetaan asiakas)
+Saadaan Gold taulut valmiiksi
+- kärry dimensio - listaus kaikista uniikeista kärryistä
+- osasto dimensio - seed taulu  (`seeds/osastot.csv`)
+- käynti fakta - yksi rivi per kauppareissu
+- osastokäynti fakta - yksi rivi per osastokäynti
+Skeemat ja testit kuntoon `schema.yml`
 
 **Tehtävät:**
 
-Silver-taulujen transformointi Bronze-datasta
-Dimensiotaulujen ja avainmittareiden määrittely
-Dokumentaatiopäivitykset (mkdocs, hedgehoc sprintit)
+EDA notebookkien läpi käynti ja tulosten dokumentointi (Mitro)
+Nimetään uudelleen stg -> bronze (Toni) ja siihen liittyvät probleemat
+Datan putsaus (Tuija päävastuussa; Panu, Mitro ja Toni supporttina)
+Datan standardointi (Panu päävastuussa; Tuija, Mitro ja Toni supporttina)
+Session_id määrittely (Mitro päävastuussa; Panu, Tuija ja Toni supporttina)
+Dimensiotaulujen (seeds), scrum liidinä avainmittareita määrittelemässä Joni
+Kaikki muistaa dokumentaatiopäivitykset (mkdocs, hedgehoc sprintit)
+- erityisesti kaikkiin päätöksiin tarvitaan
 
 **DoD:**
 
-Silver-taulut valmiit ja testatut
-Dimensiotaulut oikein ja testit OK
+Silver-taulut valmiit ja testattu
+Gold-taulut valmiit ja testattu
+Dimensiotaulut toimii oikein ja testattu
 Dokumentaatio ajan tasalla
 
 
