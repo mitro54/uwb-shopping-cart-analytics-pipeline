@@ -83,3 +83,15 @@ IoT-datan alkuperäinen puhdistus suunniteltiin alun perin Python/Jupyter-puolel
 **Miksi valittiin:**
 1. **Silver-logiikan eheys:** Yhdistämällä kaikki puhdistussäännöt selkeisiin, peräkkäisiin CTE-blokkeihin (Common Table Expressions) yhdellä arkkitehtuurisella tasolla, varmistetaan se, että jokainen ylempi Gold-taulu (`f_kaynti`, `f_osastokaynti`) kykenee luottamaan raa'an asiointidatan laatuun 100-prosenttisesti. Jos esimerkiksi Jitter-sääntöä halutaan löysentää (3.5 -> 5.0 m/s), muutos tehdään vain yhteen Silver-malliin, ja se valuu kaikkialle alaspäin.
 2. **Kynnysarvojen automattinen valvonta (Schema-Määräävyys):** Arvojen ylläpito on siirretty tietokannan SQL-koodin lisäksi dbt:n YAML-testeihin (`schema.yml`). Näin tietokanta-arkkitehtuuri ei ainoastaan suodata tuotantoarvoja, vaan myös automaattisesti testaa niiden läpäisyä suhteessa asetettuihin rajoihin, turvaten mallinnuksen inhimillisiltä muutoksilta jatkossa.
+
+## Tietokanta-arkkitehtuuri: Kahdennettu analytiikkaputki (IoT vs Myymälä)
+
+**Päätös:**
+Bronze-tason raakadata eriytetään Silver-tasolla kahteen täysin erilliseen malliin: `silver_positions` (myymäläanalytiikkaan) ja `silver_device_diagnostics` (laitteiston toiminnan monitorointiin). Kumpikin malli palvelee eri Gold-tason faktatauluja omilla liiketoimintalogiikoillaan.
+
+**Tilanne ja ongelma:**
+IoT-laitteiston toimittaja ja myymälän liiketoimintajohto tarvitsivat analytiikkaa selkeästi ristiriitaisin intressein. Myymälä haluaa kliinistä, suodatettua ostoskäyttäytymistä, josta kaikki laitevirheet, jitterit ja signaalikatveet on suodatettu armotta pois. Paikannuslaitteiden toimittaja ("paikannusyritys") taas tarvitsee kiinni nimenomaan nämä virheellisesti käyttäytyvät laitteet ja myymälän katvealueet laitekannan laadun takaamiseksi. Viankorjaus ja myymäläanalytiikka samasta yhdestä suppilosta olisi johtanut mahdottomaan kompromissiin suodatuksen kireydessä - se mikä on myymäläanalytiikalle roskaa, on laitevalvonnalle kultaa.
+
+**Miksi valittiin:**
+1. **Datan eheyden suojaaminen käyttäjätason intressein:** Rakentamalla laitteistolle oma malli, joka ei hukkaa (suodata) heikkolaatuisia (q < 35) tai epätodellisen nopeita (m/s > 3.5) rivejä, vaan ainoastaan liputtaa ne boolean-muodolla (esim. `is_jitter`, `is_low_quality`), mahdollistamme rikkinäisen tiedon tiivistämisen Gold-tasolla. Tämän rinnalla myymälädata voi säilyä tiukasti laatusuodatettuna puhtaana ostoskäyttäytymisenä toisessa mallissaan.
+2. **Kuumuuskarttatyyppinen vianetsintä (Heatmap):** Raaka diagnostiikkamalli valmistaa datan josta kääntyy helposti `f_verkko_laatu` faktataulu, joka pystytään sitomaan vapaavalintaiseen esim. 1x1 metrin fyysiseen grid-resoluutioon. Tämän vuoksi ohjaus Dashboardeilla voidaan palauttaa nopealla laskennalla tilaohjatuksi sensorivikojen löytämiseksi.

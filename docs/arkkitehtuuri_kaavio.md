@@ -26,17 +26,21 @@ graph TD
         %% Silver
         subgraph Silver["🥈 Silver-kerros (puhdistettu ja rikastettu)"]
             silv["<span style='color:#000 !important'>silver_positions<br>laadun suodatus, geofencing,<br>sessioiden pilkkominen ja jitter-karsinta</span>"]:::silver
+            silv_diag["<span style='color:#000 !important'>silver_device_diagnostics<br>Laitteistoliputukset (ei roskan poistoa)</span>"]:::silver
         end
         
         %% Gold
         subgraph Gold["🥇 Gold-kerros (liiketoimintadata)"]
             gold_f["<span style='color:#000 !important'>f_kaynti & f_osastokaynti<br>valmiit faktataulut asioinneista</span>"]:::gold
-            gold_d["<span style='color:#000 !important'>dim_karry & dim_osastot<br>laitteiston ja kaupan master data</span>"]:::gold
+            gold_d["<span style='color:#000 !important'>dim_karry & dim_osastot<br>kaupan master data</span>"]:::gold
+            gold_iot["<span style='color:#000 !important'>f_verkko_laatu & f_laite_status<br>Laitteisto- ja katvediagnostiikka</span>"]:::gold
         end
 
         stg -->|dbt run| silv
+        stg -->|dbt run| silv_diag
         silv -->|dbt run| gold_f
         silv -->|dbt run| gold_d
+        silv_diag -->|dbt run| gold_iot
     end
 
     %% Raportointi ja Analyysi
@@ -47,11 +51,16 @@ graph TD
     CSV -.->|ingestio / lataus| stg
     gold_f --> BI
     gold_d --> BI
+    gold_iot --> BI
 ```
 
 ## Arkkitehtuurin vaiheet:
 1. **Lähdejärjestelmät:** Ostoskärryt tuottavat reaaliaikaista (viiveellä siirrettävää) lokaatiodataa csv-muodossa. Z-koordinaatti on rajattu heti alussa pois keveyden vuoksi.
 2. **Bronze (raakadata):** `bronze_csv_data` -malli ottaa datan vastaan muuttumattomana. Tässä vaiheessa tiedot validoidaan teknisesti (tietotyypit).
-3. **Silver (puhdistettu ja rikastettu):** `silver_positions` -malli putsaa epäilyttävät datapisteet pois schemassa määriteltyjen rajojen mukaisesti (esim. q > 35) ja laskee nopeuden (m/s) sekä etäisyydet esilaskentana. Tässä kerroksessa toteutetaan ankarat tuotantotason siivoussäännöt: geofencing (rajojen ja lataustelakoiden poisto), aukioloaikojen suodatus, sekä pitkien signaalitaukojen (yli 15 min) pilkkominen eri asioinneiksi uuden `session_id`:n avulla.
-4. **Gold (liiketoimintadata):** Viedään data tasolle, jossa se vastaa suoraan liiketoiminnan kysymyksiin: kuinka pitkiä kauppareissut ovat ja millä alueilla karttaa vietetään eniten aikaa. Sisältää valmiit faktataulut (`f_kaynti`, `f_osastokaynti`) sekä dimensiotaulut (`dim_osastot`, `dim_karry`), muodostaen yhdessä helppokäyttöisen tähtimallin (star schema).
-5. **Loppukäyttö:** Helposti hyödynnettävä ja skaalautuva muoto, johon analyytikot tai BI-työkalut (esim. Power BI) voivat yhdistää suoraan, välttäen raskaiden kyselyiden pyörittämistä lennosta.
+3. **Silver (puhdistettu ja rikastettu):** Datan prosessointi haarautuu kahteen erilliseen putkeen:
+   - **Kaupan alan analytiikka:** `silver_positions` putsaa datapisteet tiukasti rajojen mukaisesti (esim. q > 35) ja poistaa ulkopuoliset kävelyt. Tämä jättää jälkeensä vain kliinistä aitoa ostosdataa.
+   - **IoT-laitevalvonta:** `silver_device_diagnostics` säilyttää kaiken roskadatan nimenomaan virheiden profilointia varten: se tunnistaa ja liputtaa katvealueet (q<35) ja siirtymän jitterit asettamatta poistosuodatusta.
+4. **Gold (liiketoimintadata):** Viedään data tasolle, jossa se vastaa suoraan liiketoiminnan kysymyksiin: 
+   - **Myymäläanalytiikka:** `f_kaynti`, `f_osastokaynti`, `dim_osastot` muodostavat tähtimallin myymälän läpäisyn ja tuottojen analysointiin.
+   - **Laitteistoanalytiikka:** `f_verkko_laatu` ja `f_laite_status` luovat 1x1m tarkkuuden kuumuuskarttoja katvealueista sekä päivätason laitekohtaisia virheprosentteja (esim. signaalien laatu ja hypyt).
+5. **Loppukäyttö:** Helposti hyödynnettävä ja skaalautuva muoto, johon analyytikot tai BI-työkalut (esim. Power BI) voivat yhdistää suoraan.
