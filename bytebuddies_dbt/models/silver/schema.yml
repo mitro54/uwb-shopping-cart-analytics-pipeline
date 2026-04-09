@@ -57,3 +57,19 @@ models:
         description: "Laskettu nopeus (m/s)."
         tests:
           - not_null
+
+  - name: silver_device_diagnostics
+    description: "IoT-laitteiston diagnostiikkadata. Sisältää kaiken datan laatuongelmineen, ja merkitsee poikkeamat lipuilla."
+    columns:
+      - name: node_id
+        description: "Kärryn tunniste."
+      - name: aika
+        description: "Aikaleima."
+      - name: is_low_quality
+        description: "1 jos q-arvo on vaaditun rajan alle."
+      - name: is_out_of_bounds
+        description: "1 jos x/y -koordinaatit ovat kaupan seinien ulkopuolella."
+      - name: is_jitter
+        description: "1 jos kärry on siirtynyt liian nopeasti."
+      - name: is_night_time
+        description: "1 jos havainto tehtiin kaupan aukioloaikojen ulkopuolella."

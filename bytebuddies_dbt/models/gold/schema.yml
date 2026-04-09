@@ -50,3 +50,25 @@ models:
         description: "Milloin kärry poistui osastolta."
       - name: vietetty_aika_sekunteina
         description: "Osastolla vietetty aika (s)."
+
+  - name: f_verkko_laatu
+    description: "Kuumuuskarttatyyppinen (Heatmap) faktataulu, joka kokoaa signaalinlaadun 1x1 metrin ruudukkoon (grid). Käytetään katvealueiden paikannukseen."
+    columns:
+      - name: grid_x
+        description: "Koordinaattiruudun x-arvo (aloitus x)."
+      - name: grid_y
+        description: "Koordinaattiruudun y-arvo (aloitus y)."
+      - name: avg_quality
+        description: "Ruudussa mitattu keskimääräinen signaalin laatu (q)."
+      - name: low_quality_pct
+        description: "Prosenttiosuus heikoista (q<35) signaaleista kyseisessä ruudussa."
+
+  - name: f_laite_status
+    description: "Päivätason aggregaatti jokaisen laitteen (kärryn) tilasta, virheistä ja heikoista signaaleista verkon toiminnan monitorointiin."
+    columns:
+      - name: node_id
+        description: "Kärryn tunniste."
+      - name: pvm
+        description: "Pisteiden päivämäärä."
+      - name: error_rate_pct
+        description: "Kuinka monta prosenttia laitteen pingauksista päivän aikana sisälsi jotain vikaa (heikko signaali, jitter tai ulkona kaupasta)."
