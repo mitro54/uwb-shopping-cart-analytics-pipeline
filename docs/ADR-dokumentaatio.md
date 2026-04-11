@@ -30,7 +30,7 @@ Saraketallennus ja vektorisoitu suoritus tekevät sadoista miljoonista riveistä
 dbt (Data Build Tool) hallinnoi SQL-mallit, niiden väliset riippuvuudet, automaattiset testit ja dokumentaation yhtenä kokonaisuutena. Mallit kirjoitetaan `.sql`-tiedostoihin ja dbt huolehtii oikeasta ajojärjestyksestä. Kaikki on versionhallinnassa ja tiimi voi tehdä muutoksia turvallisesti.
 
 **dbt-duckdb:**
-DuckDB-adapteri dbt:lle. Ilman adapteria dbt ei tiedä miten ottaa yhteyttä tietokantaan tai miten ajaa mallit sitä vasten. dbt-duckdb mahdollistaa koko putken ajamisen paikallisesti ilman pilveä tai erillistä palvelinta.
+DuckDB-adapteri dbt:lle. Ilman adapteria dbt ei tiedä miten ottaa yhteyttä tietokantaan tai miten ajaa mallit sitä vasten. dbt-duckdb mahsitavallistaa koko putken ajamisen paikallisesti ilman pilveä tai erillistä palvelinta.
 
 **pandas & polars:**
 Pandas datan käsittelyn treenaamiseen. Sopiva työkalu aloittelijoille.
@@ -95,3 +95,37 @@ IoT-laitteiston toimittaja ja myymälän liiketoimintajohto tarvitsivat analytii
 **Miksi valittiin:**
 1. **Datan eheyden suojaaminen käyttäjätason intressein:** Rakentamalla laitteistolle oma malli, joka ei hukkaa (suodata) heikkolaatuisia (q < 35) tai epätodellisen nopeita (m/s > 3.5) rivejä, vaan ainoastaan liputtaa ne boolean-muodolla (esim. `is_jitter`, `is_low_quality`), mahdollistamme rikkinäisen tiedon tiivistämisen Gold-tasolla. Tämän rinnalla myymälädata voi säilyä tiukasti laatusuodatettuna puhtaana ostoskäyttäytymisenä toisessa mallissaan.
 2. **Kuumuuskarttatyyppinen vianetsintä (Heatmap):** Raaka diagnostiikkamalli valmistaa datan josta kääntyy helposti `f_verkko_laatu` faktataulu, joka pystytään sitomaan vapaavalintaiseen esim. 1x1 metrin fyysiseen grid-resoluutioon. Tämän vuoksi ohjaus Dashboardeilla voidaan palauttaa nopealla laskennalla tilaohjatuksi sensorivikojen löytämiseksi.
+
+## Tietokanta-arkkitehtuuri: Tuotantotason datan siivousasetukset ja liiketoimintasäännöt
+
+**Päätös:**
+IoT-datan virhelähteet ja myymälän operatiiviset poikkeamat (kuten hylätyt kärryt) siivotaan pois ennalta määritetyillä liiketoimintasäännöillä ja fysiologisilla rajoilla.
+
+**Miksi valittiin:**
+* **Q-arvon kynnys (`Q_THRESHOLD` / `q_threshold`):** IoT-signaaleissa (esim. UWB) on usein kohinaa, joka voi vääristää koordinaatit hetkellisesti kymmenien metrien päähän. Heikkolaatuisten pisteiden karsiminen estää "seinien läpi teleporttaamisen".
+* **Aukioloaikojen rajaus (`SHOP_HOURS`):** Yöllinen liikehdintä koostuu myymälän hyllytyksestä, siivouksesta tai laitteiston kalibroinnista. Nämä rajataan pois, jotta data edustaa vain aitoja asiakasvirtoja ja asiointia.
+* **Ongelmallisten alueiden poisto (`PROBLEMATIC_COORDS`):** Esimerkiksi latauspisteillä olevat ostoskärryt lähettävät dataa jatkuvasti samasta paikasta tuntikausia. Ilman näiden alueiden geofencing-poistoa viipymäaika-analyysit ja lämpökartat vääristyisivät massiivisesti.
+* **Geofencing-validoinnit (`CHECKOUT_ZONE` ja `START_ZONE`):** Pakottamalla sessio alkamaan sisäänkäynniltä ja päättymään kassoille karsitaan pois laitteiden satunnaiset uudelleenkäynnistymiset keskellä kauppaa, sekä työntekijöiden kärryjen siirtelyt, jotka eivät ole aitoja ostoskierroksia.
+* **Paikallaanolo-leikkuri (Säde ja aikaraja):** Asiakkaat ja henkilökunta hylkäävät toisinaan kärryjä keskelle myymälää. Leikkuri (esim. 20 min paikallaan) katkaisee reissun. Logiikka vaatii *säteen* (radius) eikä vain puhdasta nollaliikettä, koska IoT-laitteiden koordinaateissa on aina pientä huojuntaa (jitter), vaikka fyysinen laite olisi täysin paikallaan.
+* **Jitter- ja fysiologiset filtterit (Matka-, nopeus- ja aikarajat):** Rajat perustuvat ihmisen liikkumiskykyyn. Kärryä ei voi työntää yli 3.5 m/s, eikä asiointi yleensä kestä alle 3 minuuttia tai kulje alle 30 metriä. Spatiaalinen hajonta (`MIN_SPATIAL_SPREAD`) vaatii, että reitti on liikkunut aidosti eri puolilla myymälää, karsien pois paikallaan hyppivät "haamureitit".
+
+
+---
+
+# 2. Asiakaskäyttäytymisen Analyysi ja Logiikan Selitykset
+
+## Session ID: Miten data pilkotaan asioinneiksi?
+
+IoT-ostoskärryt lähettävät koordinaattidataa taukoamatta. Laitteella ei ole painiketta, josta asiakas kertoisi aloittavansa tai lopettavansa ostokset. Siksi yhtenäinen datavirta on pilkottava yksittäisiksi kauppareissuiksi (sessioiksi) erillisen säännöstön avulla.
+
+### Miten logiikka toimii teknisesti?
+Sessioiden tunnistaminen tapahtuu etsimällä datasta "laukaisimia" (triggers), jotka tarkoittavat, että kärryn käyttäjä on loogisesti vaihtunut:
+1. **Laitteen vaihtuminen:** Datarivin `node_id` on eri kuin edellisellä rivillä.
+2. **Aukko ajassa (Time Gap):** Peräkkäisten datapisteiden välillä on yli 15 minuutin hiljaisuus (esim. kärry viety varastoon tai ulos alueelta).
+3. **Kassa-alueelta poistuminen:** Kärry on ollut edellisessä pisteessä kassa-alueella (`CHECKOUT_ZONE`), mutta ei ole enää uudessa pisteessä. Tämä tarkoittaa, että edellinen asiakas maksoi ostoksensa ja uusi asiakas on ottanut kärryn käyttöön.
+
+Kun jokin näistä ehdoista täyttyy, koodi merkitsee kyseiselle riville lipun: `is_new_session = 1` (muulloin arvo on 0). Tämän jälkeen datalle ajetaan **kumulatiivinen summa** (SQL:ssä `SUM(is_new_session) OVER (...)`, Pythonissa `.cumsum()`). Tämä muuttaa yksittäiset 0- ja 1-liput nousevaksi numerosarjaksi (1, 1, 1... 2, 2, 2... 3, 3, 3...). 
+
+### Miksi tämä tehdään juuri näin?
+* **Suorituskyky:** Kumulatiivinen summa on ns. vektorisoitu operaatio. Sen ajaminen kymmenille miljoonille riveille on tuhansia kertoja nopeampaa kuin datan läpikäynti rivi riviltä (for-looppaaminen).
+* **MD5 Full Session ID:** Lopuksi laitteen ID ja tämä juokseva numero yhdistetään (esim. `kärryA_2`) ja niistä luodaan MD5-tiiviste. Tämä siksi, että tietokannan Gold-kerros saa tasapitkän ja uniikin pääavaimen (Primary Key), joka nopeuttaa taulujen yhdistämistä (JOIN).
