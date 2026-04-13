@@ -261,13 +261,15 @@ Dokumentaatio ajan tasalla
 
 ### Sprint Review - ma 13.4.2026 klo 20.10
 
-- Demottiin asiakkaalle ja demo meni hyvin. Joni selitti projektin struktuurin, Tuija esitteli visualisoinnit ja Toni esitteli agentit ja frontendin.
-- Käytiin läpi samalla koko edellisviikon asiat.
-- Todettiin storypointit: Silver-tason suunnittelu ja toteutus, arvio oli 3 pistettä ja lopputulema 3 pistettä.
-
 **Paikalla: Kaikki**
 
+- Demottiin asiakkaalle ja demo meni hyvin. Joni selitti projektin struktuurin, Tuija esitteli visualisoinnit ja Toni esitteli agentit ja frontendin.
+- Käytiin läpi samalla koko edellisviikon asiat.
+- Todettiin jälkikäteen vielä palaverissa storypointit: Silver-tason suunnittelu ja toteutus, arvio oli 3 pistettä ja lopputulema 3 pistettä.
+
 ### Sprint Retro - ma 13.4.2026 klo 20.10
+
+**Paikalla: Kaikki**
 
 Retrossa käytiin läpi kulunutta sprinttiä Liked, Learnt ja Lacked -teemojen kautta `Retrotool.io`lla:
 
@@ -296,6 +298,8 @@ Retrossa käytiin läpi kulunutta sprinttiä Liked, Learnt ja Lacked -teemojen k
 ## Sprint 4 – Gold-tason jalostus ja visualisoinnit
 
 ### Suunnittelupalaveri – 13.4.2026 klo 20:10
+
+**Paikalla: Kaikki**
 
 Keskusteltiin seuraavan viikon asioista. Huomioitiin, että projektissa on "lähdetty laukalle", mutta positiivisella tavalla, sillä siitä oppii enemmän asioita. Mietittiin Apachen roolia ja mitä tehdään keskikäytävän haasteille. Pidetyssä ajatusriihessä pohdittiin ominaisuuksia ja sitä, mitä asiakas todella haluaa ja tarvitsee.
 
