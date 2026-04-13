@@ -221,6 +221,8 @@ Paikalla Joni, Toni, Panu, Mitro
 
 ### Suunnittelupalaveri – 6.4.2026 klo 17:00
 
+**Paikalla: Kaikki**
+
 Lähdetään toteuttamaan lopullista projektisuunnitelmaa. Saatu arvokasta tietoa EDA analyyseistä kahden ensimmäisen viikon aikana. Pystytään määrittämään selkeämmin, mitkä asiat datassa ovat arvokkaita ja miten niitä voidaan hyödyntää.
 
 
