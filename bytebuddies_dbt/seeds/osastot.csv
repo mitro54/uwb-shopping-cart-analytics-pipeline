@@ -1,13 +1,16 @@
 osasto_id,nimi,alku_x,alku_y,loppu_x,loppu_y
-1,Kassa ja poistuminen,0,0,800,5220
-2,Sesonki ja torialue,1200,1800,2800,3800
-3,Pukeutuminen,1000,0,4500,1800
-4,Koti ja sisustus,4500,0,7500,2500
-5,Teknokemia ja hygienia,2800,2800,5500,5220
-6,Vapaa-aika ja lelut,5500,2800,7500,5220
-7,Työkalut ja autotarvike,7500,0,9000,2500
-8,Lemmikit,7500,2800,9000,5220
-9,Elintarvikkeet,9000,0,10406,4000
-10,Puutarha (ulko-osasto),9000,4000,10406,5220
-11,Pääkäytävä (vaaka),800,2500,9000,2800
-12,Sisääntulo ja kärryt,0,2300,1000,2700
+1,Kausituotteet ja Miny,649,2350,2935,3560
+2,Naisten vaatteet,1519,3560,3050,5220
+3,Sisustus ja elektroniikka,2935,2350,6865,3560
+5,Astiat ja säilytys,3050,3560,4350,5220
+6,Miesten vaatteet ja asusteet,4350,3560,6865,5220
+7,rakennus ja urheilu,6865,2350,10406,5220
+8,Ruokaosasto,6247,0,10406,2350
+9,Siivous,4954,0,6247,1190
+10,leivonta,5525,1190,6247,2350
+11,Lapset ja lelut,4293,1190,5525,2350
+12,Tarvikkeet ja puutarha,751,1190,4293,2350
+13,lemmikkiruoat,4293,0,4954,1190
+14,kosmetiikka,2875,0,4293,1190
+15,Snacks ja pakasteet,751,0,2875,1190
+16,kassat,0,0,751,2350
