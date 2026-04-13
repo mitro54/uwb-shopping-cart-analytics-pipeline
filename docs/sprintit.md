@@ -448,6 +448,58 @@ jotta analyytikot ja asiakkaat voivat hyödyntää jalostettua dataa ilman suora
 - Streamlit lukee datan suoraan DuckDB:n Gold-tauluista
 - Yhteydenotto tapahtuu vain yhden konfiguraatiotiedoston kautta
 
+#### User Story: Aukioloaikojen ulkopuolisen datan erottelu ja hyödyntäminen [TODO]
+Kuten paikannusyrityksen edustaja
+haluan, että aukioloaikojen ulkopuolinen paikannusdata erotellaan asiakasdatasta
+jotta voin analysoida esimerkiksi hyllytyksen, siivouksen tai vartioinnin reittejä ja varmistaa, ettei tämä vääristä asiakasanalytiikkaa.
+
+**Hyväksymiskriteerit:**
+- Data jaotellaan aikaleimojen perusteella aukioloaikojen sisäiseen ja ulkoiseen dataan
+- Ulkopuoliselle datalle luodaan oma tunniste tai näkymä (view)
+- Asiakaskäyttäytymisen mittarit (Gold-taulut) eivät sisällä aukioloaikojen ulkopuolista dataa
+
+#### Tekninen backlog-item: Keskikäytävän dataongelmien ja koordinaattien korjaus [TODO]
+Kehittäjänä
+haluan analysoida ja korjata keskikäytävän alueella esiintyvät paikannusdatan epätarkkuudet tai puutteet
+jotta koko myymälän läpi kulkevat reitit piirtyvät ja analysoituvat luotettavasti.
+
+**Hyväksymiskriteerit:**
+- Keskikäytävän ongelmakohdat on tunnistettu ja dokumentoitu
+- Koordinaattien hienosäätö (esim. interpolointi tai poikkeamien siivous) on toteutettu Silver/Gold-tasolla
+- Reittien yhtenäisyys keskikäytävällä on todennettu testausdatalla
+
+#### User Story: Agenttipohjainen liikkeen visualisointi [TODO]
+Kuten asiakas
+haluan tarkastella asiakkaiden liikkumista myymälässä agenttipohjaisella (animoitulla) visualisoinnilla
+jotta ymmärrän dynaamisesti ja konkreettisesti, miten massat ja yksilöt liikkuvat tilassa ajan kuluessa.
+
+**Hyväksymiskriteerit:**
+- Agenttipohjainen malli kykenee lukemaan dataa Gold-tason tauluista
+- Visualisointi esittää kärryjen liikkeet kaupan pohjakartalla
+- Käyttöliittymä mahdollistaa ajan kelaamisen ja nopeuden säätämisen
+
+#### User Story: Osastokohtainen analytiikka Supersetissä [TODO]
+Kuten kauppias
+haluan nähdä Superset-dashboardilta osastokohtaiset tunnusluvut (esim. kävijämäärät, viipymät)
+jotta voin arvioida eri tuoteosastojen houkuttelevuutta ja tehokkuutta.
+
+**Hyväksymiskriteerit:**
+- Superset on kytketty osastotason Gold-dataan (`osastokäynti fakta`)
+- Dashboardilla on visualisoinnit osastojen väliselle vertailulle (esim. bar chart tai heatmap osastoittain)
+- Data on suodatettavissa ajan ja osaston mukaan
+
+#### Tekninen backlog-item: Apachen roolin määrittely ja käyttöönotto [TODO]
+Kehittäjänä
+haluan määritellä ja ottaa käyttöön Apache-työkalun (esim. Airflow dataputkien orkestrointiin tai Kafka datastriimaukseen)
+jotta dataputken ajot ja skaalautuvuus on hallittavissa tuotantomaisessa ympäristössä.
+
+**Hyväksymiskriteerit:**
+- Työkalun käyttötarkoitus osana arkkitehtuuria on dokumentoitu
+- Proof of Concept (PoC) tai lokaali kehitysympäristö on pystytetty
+- Integroituvuus nykyiseen dbt/DuckDB-putkeen on todennettu
+
+***
+
 #### Jatkokehitysidea: Ulkoisten datalähteiden yhdistäminen [TODO]
 
 ## Projektin yhteenveto
