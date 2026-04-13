@@ -96,14 +96,10 @@ IoT-laitteiston toimittaja ja myymälän liiketoimintajohto tarvitsivat analytii
 1. **Datan eheyden suojaaminen käyttäjätason intressein:** Rakentamalla laitteistolle oma malli, joka ei hukkaa (suodata) heikkolaatuisia (q < 35) tai epätodellisen nopeita (m/s > 3.5) rivejä, vaan ainoastaan liputtaa ne boolean-muodolla (esim. `is_jitter`, `is_low_quality`), mahdollistamme rikkinäisen tiedon tiivistämisen Gold-tasolla. Tämän rinnalla myymälädata voi säilyä tiukasti laatusuodatettuna puhtaana ostoskäyttäytymisenä toisessa mallissaan.
 2. **Kuumuuskarttatyyppinen vianetsintä (Heatmap):** Raaka diagnostiikkamalli valmistaa datan josta kääntyy helposti `f_verkko_laatu` faktataulu, joka pystytään sitomaan vapaavalintaiseen esim. 1x1 metrin fyysiseen grid-resoluutioon. Tämän vuoksi ohjaus Dashboardeilla voidaan palauttaa nopealla laskennalla tilaohjatuksi sensorivikojen löytämiseksi.
 
-## Tekninen Arkkitehtuuri: Raportoinnin irtikytkentä (Tietokannasta Parquet-tulosteeseen)
+## Tekninen Arkkitehtuuri: Visualisointi Apache Supersetillä
 
 **Päätös:**
-Aiempi ratkaisu yhdistää Power BI suoraan DuckDB-tietokantatiedostoon ODBC-ajurin kautta korvattiin taltioimalla kaikki dbt:n Gold-tason (`gold/` -kansio) luomat taulut automaattisina asynkronisina `.parquet` -tiedostoina `data/gold/` -hakemistoon asettamalla default materialisaatioksi `external`. Tällöin Power BI yhdistää vain flat-tiedostoihin tietokannan sijaan.
+Raportointiin ja visualisointiin käytetään Apache Superset -alustaa, joka lukee dataa suoraan DuckDB-tietokannasta. Gold-tason taulut käsitellään tavallisina tietokantatauluina, mikä yksinkertaistaa arkkitehtuuria ja mahdollistaa suoran pääsyn valmiiseen liiketoimintadataan.
 
 **Tilanne ja ongelma:**
-IoT-koostedatan myötä dbt-muunnoksista ja lukevissa Power BI -näkymissä käytettävistä fact-tauluista muodostui erittäin raskaita. DuckDB on äärimmäisen nopea suljettu paikallinen tiedosto, mutta "yhden tiedoston" -tietokantana samanaikaiset pitkäkestoiset massakirjoitukset (dbt run) sekä raskaat visualisointikyselyt ajurin yli (Power BI refresh) aiheuttivat säännöllisesti ns. tietokannan varauslukituksia (Table Reserved / Database Locked -virheet), jotka kaatoivat usein molemmat prosessit. 
-
-**Miksi valittiin:**
-1. **Zero-Locking -arkkitehtuuri:** Muuttamalla `dbt_project.yml` kautta kaikki Gold-tason mittaristot "external" materialisaatioiksi, DuckDB kääntää taulut salamannopeasti levylle erillisiksi tiedostoiksi. Power BI on sisäänrakennetusti erikoistunut sarakepohjaisten Parquet-tiedostojen erittäin massiiviseen lukuun. Tiedostojen lukeminen levyltä "read only" -tyyppisesti vapaasti ei aiheuta enää kilpailutilanteita (Race Condition) DuckDB:n sisäisestä tilasta dbt-ajojen putken kanssa.
-2. **Data Contract -periaate:** Tietohakemistoon ilmestyvät staattiset Parquet-tiedostot muodostavat selkeän ja testatun rajapinnan (ns. Data Contract) analytiikan rakentajien ja dashboardin piirtäjien välillä. Raportoijat eivät voi enää teknisesti sorkkia dbt:n omaa varastoa tai lukita epähuomiossa keskeneräisiä malleja.
+Aiemmin tutkitut vaihtoehtoiset vientitavat (kuten Parquet-vienti) todettiin tarpeettoman monimutkaisiksi nykyiseen käyttötarpeeseen nähden. Suora yhteys tietokantaan on riittävä ja tarjoaa parhaan suorituskyvyn analytiikan kehitykseen.

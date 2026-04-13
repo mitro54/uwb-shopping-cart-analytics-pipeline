@@ -3,9 +3,7 @@ bytebuddies_dbt:
     dev:
       type: duckdb
       path: '../data/warehouse/dev.duckdb'
-      external_root: '../data/gold'
       extensions:
         - httpfs
-        - parquet
       threads: 1
   target: dev

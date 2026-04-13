@@ -45,13 +45,13 @@ graph TD
 
     %% Raportointi ja Analyysi
     subgraph Analytics["Loppukäyttö ja analytiikka"]
-        BI["<span style='color:#000 !important'>Power BI / analytiikkatyökalut<br>Parquet-tiedostojen luku</span>"]:::bi
+        BI["<span style='color:#000 !important'>Apache Superset / analytiikkatyökalut<br>Suora DuckDB-yhteys</span>"]:::bi
     end
 
     CSV -.->|ingestio / lataus| stg
-    gold_f -->|Export Parquet| BI
-    gold_d -->|Export Parquet| BI
-    gold_iot -->|Export Parquet| BI
+    gold_f -->|Direct Read| BI
+    gold_d -->|Direct Read| BI
+    gold_iot -->|Direct Read| BI
 ```
 
 ## Arkkitehtuurin vaiheet:
@@ -63,4 +63,4 @@ graph TD
 4. **Gold (liiketoimintadata):** Viedään data tasolle, jossa se vastaa suoraan liiketoiminnan kysymyksiin: 
    - **Myymäläanalytiikka:** `f_kaynti`, `f_osastokaynti`, `dim_osastot` muodostavat tähtimallin myymälän läpäisyn ja tuottojen analysointiin.
    - **Laitteistoanalytiikka:** `f_verkko_laatu` ja `f_laite_status` luovat 1x1m tarkkuuden kuumuuskarttoja katvealueista sekä päivätason laitekohtaisia virheprosentteja (esim. signaalien laatu ja hypyt).
-5. **Loppukäyttö:** Tietokantataulut viedään dbt-ajojen päätteeksi automaattisesti fyysisiksi, nopeiksi ja sarakepohjaisiksi `.parquet` -tiedostoiksi (External Materialization). Tämän ansiosta analyytikot tai BI-työkalut (esim. Power BI) voivat lukea dataa täydellä teholla vapaasti (Data Contract) aiheuttamatta alkuperäisen duckdb-tietokannan lukittumista (Zero-locking architecture).
+5. **Loppukäyttö:** Tietokantataulut ovat suoraan analytiikkatyökalujen (esim. Apache Superset) käytettävissä DuckDB-tietokannan kautta. Tämä mahdollistaa nopean ja suoran pääsyn valmiiseen liiketoimintadataan ilman erillisiä vientivaiheita.
