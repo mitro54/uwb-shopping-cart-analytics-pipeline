@@ -36,6 +36,7 @@ nav:
       - Agentti arkkitehtuuri: agentti_arkkitehtuuri.md
       - Agentti käyttöohje: agentti_kayttoohje.md
       - DBT käyttöohje: dbt-ohje.md
+      - Git-käytännöt: git_ohje.md
       - Medallion arkkitehtuuri: medallion_arkkitehtuuri.md
   - Kaaviot & Analyysit:
       - ER-kaavio: ER_kaavio.md
