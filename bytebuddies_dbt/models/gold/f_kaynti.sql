@@ -14,9 +14,11 @@ WITH aggregoidut_sessiot AS (
         
         DATE_DIFF('second', MIN(aika), MAX(aika)) AS kesto_sekunteina,
         COALESCE(SUM(dist_m), 0) AS matka,
+        -- Haetaan session ensimmäisen datapisteen alku_x ja alku_y tarkistaaksemme sisääntuloalueen (REQUIRE_START_ZONE)
         COUNT(*) AS pisteita,
         MIN_BY(x, aika) AS aloitus_x,
         MIN_BY(y, aika) AS aloitus_y,
+        -- Spatiaalisen hajonnan eli levittäytyvyyden (MIN_SPATIAL_SPREAD) mittaaminen senttimetreistä metreihih
         SQRT(POWER(MAX(x) - MIN(x), 2) + POWER(MAX(y) - MIN(y), 2)) / 100.0 AS levittaytyvyys_m
     FROM {{ ref('silver_positions') }}
     GROUP BY full_session_id, node_id
