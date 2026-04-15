@@ -12,7 +12,7 @@ Tiimiin kuuluu: Toni, Joni, Mitro, Tuija, Panu
 
 ---
 
-[Ryhmäblogi @ HedgeHoc](https://gitlab.dclabra.fi/wiki/ERujcdkMQWuH6QKSgV94oQ)   
-[Projektisuunnitelma @ HedgeHoc]()  
+[Ryhmäblogi @ HedgeDoc](https://gitlab.dclabra.fi/wiki/ERujcdkMQWuH6QKSgV94oQ)   
+[Projektisuunnitelma @ HedgeDoc]()  
 [Clockify Dashboard](https://app.clockify.me/dashboard)  
 [Gitlab Repository](https://gitlab.dclabra.fi/ttm25sai/projekti1/bytebuddies)  
