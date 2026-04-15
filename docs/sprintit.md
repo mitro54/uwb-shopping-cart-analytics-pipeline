@@ -331,6 +331,12 @@ Keskusteltiin seuraavan viikon asioista. Huomioitiin, että projektissa on "läh
 * Asiakastarpeet on selkeytetty ja yhteinen suunta on kirkas
 * Dokumentaatio ajan tasalla
 
+### 14.4 Daily
+- Keskusteltiin projektin mahdollisuuksista, vaihdettiin kuulumiset ja näkemykset. Ei havaittu esteitä etenemiselle ja seuraavat askeleet on selvät.
+
+### 15.4 Daily
+- Keskusteltiin kuulumisista ja toteutuneista/toteutettavista asioista, kerrattiin git:n toimintoja, tuli myös ilmi, että luomani taskit eivät olleet soveltuvia sovittuun agile-teemaan, joten loin ne uudelleen issue:ina ja poistin task -versiot.
+
 -------
 ## Product Backlog
 
