@@ -5,6 +5,5 @@ bytebuddies_dbt:
       path: '../data/warehouse/dev.duckdb'
       extensions:
         - httpfs
-        - parquet
       threads: 1
   target: dev

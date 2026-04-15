@@ -1,11 +1,3 @@
-{{ config(
-    materialized='table',
-    post_hook=[
-        "CREATE UNIQUE INDEX IF NOT EXISTS pk_f_osastokaynti ON {{ this }} (kaynti_id, osasto_id, osasto_sisaantulo)",
-        "CREATE INDEX IF NOT EXISTS idx_osasto_id ON {{ this }} (osasto_id)"
-    ]
-) }}
-
 -- Rakennetaan osastovierailut yhdistämällä puhdistetut koordinaatit osastojen laatikkorajoihin
 WITH vierailut AS (
     SELECT
