@@ -35,6 +35,7 @@ dbt/target/
 dbt/logs/
 *.duckdb
 *.db
+*.parquet
 
 # Lokit ja tilapäiset tiedostot
 *.log
