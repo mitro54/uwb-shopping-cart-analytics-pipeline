@@ -11,15 +11,17 @@ Run from the project root:
     streamlit run scripts/overnight_explorer.py
 
 Author: Antigravity / ByteBuddies
+
+Memory-optimised version: uses Polars + SQL-side filtering to stay well
+within 16 GB RAM.
 """
 
 import math
-import sys
 from pathlib import Path
 
 import duckdb
-import pandas as pd
 import plotly.graph_objects as go
+import polars as pl
 import streamlit as st
 from PIL import Image
 
@@ -49,6 +51,23 @@ CHARGING_STATIONS = [
 #   hour < 7  OR  hour > 22  → is_night_time = 1
 SHOP_OPEN  = 7
 SHOP_CLOSE = 22
+
+# ---------------------------------------------------------------------------
+# Build SQL WHERE clause fragment that excludes charging-station circles.
+# Doing this in SQL avoids loading millions of rows then filtering in Python.
+# ---------------------------------------------------------------------------
+def _charging_zone_exclusion_sql() -> str:
+    """Return a SQL AND clause that excludes all charging station circles."""
+    parts = []
+    for cs in CHARGING_STATIONS:
+        # (x - cx)^2 + (y - cy)^2 > r^2  ← point is OUTSIDE the circle
+        r_sq = cs["radius"] ** 2
+        parts.append(
+            f"((x - {cs['x']}) * (x - {cs['x']}) "
+            f"+ (y - {cs['y']}) * (y - {cs['y']}) > {r_sq})"
+        )
+    return " AND ".join(parts)
+
 
 # ---------------------------------------------------------------------------
 # Page setup
@@ -119,69 +138,99 @@ def load_image(path: Path) -> Image.Image:
     return Image.open(path)
 
 
-@st.cache_data(show_spinner="🔗 Haetaan dataa DuckDB:stä…")
-def fetch_night_data() -> pd.DataFrame:
-    """Load all overnight pings from silver_device_diagnostics."""
+@st.cache_resource(show_spinner=False)
+def _get_connection():
+    """Return a read-only DuckDB connection (singleton across the session)."""
     if not DUCKDB_PATH.exists():
         st.error(f"DuckDB-tietokantaa ei löydy: {DUCKDB_PATH}\n\nAja ensin `dbt run`.")
         st.stop()
+    return duckdb.connect(str(DUCKDB_PATH), read_only=True)
 
-    conn = duckdb.connect(str(DUCKDB_PATH), read_only=True)
-    try:
-        df = conn.execute("""
-            SELECT
-                node_id,
-                aika,
-                CAST(aika AS DATE)           AS paiva,
-                EXTRACT('hour' FROM aika)    AS tunti,
-                x,
-                y,
-                q,
-                speed_mps,
-                is_low_quality,
-                is_jitter
-            FROM silver_device_diagnostics
-            WHERE is_night_time = 1
-              AND x IS NOT NULL
-              AND y IS NOT NULL
-            ORDER BY node_id, aika
-        """).fetchdf()
-    finally:
-        conn.close()
+
+@st.cache_data(show_spinner="📅 Haetaan saatavilla olevat yöt…", ttl=300)
+def fetch_available_dates() -> list[str]:
+    """Fetch the distinct dates that have overnight observations outside
+    charging stations.  Returns ISO date strings – very lightweight query."""
+    conn = _get_connection()
+    exclusion = _charging_zone_exclusion_sql()
+    rows = conn.execute(f"""
+        SELECT DISTINCT CAST(aika AS DATE) AS paiva
+        FROM silver_device_diagnostics
+        WHERE is_night_time = 1
+          AND x IS NOT NULL AND y IS NOT NULL
+          AND {exclusion}
+        ORDER BY paiva
+    """).fetchall()
+    return [str(r[0]) for r in rows]
+
+
+@st.cache_data(show_spinner="🔗 Haetaan valitun yön dataa…", ttl=300)
+def fetch_night_data_for_date(date_str: str) -> pl.DataFrame:
+    """Load overnight pings for a single date, already filtered in SQL.
+
+    Returns a Polars DataFrame with down-cast dtypes to save memory:
+    - Int16 for node_id, tunti, q, is_low_quality, is_jitter
+    - Float32 for x, y, speed_mps
+    """
+    conn = _get_connection()
+    exclusion = _charging_zone_exclusion_sql()
+
+    # Fetch only one day at a time – dramatic RAM reduction
+    arrow_table = conn.execute(f"""
+        SELECT
+            node_id,
+            aika,
+            EXTRACT('hour' FROM aika)    AS tunti,
+            x,
+            y,
+            q,
+            speed_mps,
+            is_low_quality,
+            is_jitter
+        FROM silver_device_diagnostics
+        WHERE is_night_time = 1
+          AND x IS NOT NULL AND y IS NOT NULL
+          AND CAST(aika AS DATE) = CAST('{date_str}' AS DATE)
+          AND {exclusion}
+        ORDER BY node_id, aika
+    """).fetch_arrow_table()
+
+    # Arrow → Polars (zero-copy) then downcast for minimum footprint
+    df = pl.from_arrow(arrow_table)
+
+    # Downcast numeric columns to reduce memory
+    df = df.cast({
+        "tunti": pl.Int16,
+        "q": pl.Int16,
+        "is_low_quality": pl.Int8,
+        "is_jitter": pl.Int8,
+        "x": pl.Float32,
+        "y": pl.Float32,
+        "speed_mps": pl.Float32,
+    })
 
     return df
 
 
-def is_in_charging_zone(x: float, y: float) -> bool:
-    """Return True if the coordinate falls inside any charging station circle."""
-    for st_cfg in CHARGING_STATIONS:
-        dist = math.sqrt((x - st_cfg["x"]) ** 2 + (y - st_cfg["y"]) ** 2)
-        if dist <= st_cfg["radius"]:
-            return True
-    return False
-
-
-def filter_outside_stations(df: pd.DataFrame) -> pd.DataFrame:
-    """Remove pings that are inside charging-station exclusion zones."""
-    mask = ~df.apply(lambda r: is_in_charging_zone(r["x"], r["y"]), axis=1)
-    return df[mask].copy()
-
-
 def build_figure(
-    df: pd.DataFrame,
+    df: pl.DataFrame,
     img: Image.Image,
     color_mode: str = "Ajan mukaan",
     point_size: int = 6,
     point_opacity: float = 0.75,
 ) -> go.Figure:
-    """Overlay scatter points on the floor-plan image using Plotly."""
+    """Overlay scatter points on the floor-plan image using Plotly.
+
+    Converts only the needed columns to Python lists for Plotly –
+    avoids materialising a full pandas copy.
+    """
 
     img_w, img_h = img.size  # pixel dimensions → aspect ratio
 
     # We map data coords [0, MAP_MAX_X] × [0, MAP_MAX_Y] to the image.
     # Plotly yref="y" grows upward; image origin is top-left → flip y.
-    df = df.copy()
-    df["y_plot"] = MAP_MAX_Y - df["y"]   # flip so top of image = y=0 in data
+    x_vals = df["x"].to_list()
+    y_vals = (pl.lit(MAP_MAX_Y) - df["y"]).to_list()  # flipped
 
     fig = go.Figure()
 
@@ -218,42 +267,52 @@ def build_figure(
 
     # ── Scatter: colour coding ───────────────────────────────────────────────
     if color_mode == "Ajan mukaan":
-        # Encode time as numeric (minutes from midnight) for continuous colour
-        df["color_val"] = df["tunti"]
+        marker_color = df["tunti"].to_list()
         color_title = "Tunti (0-23)"
         colorscale = "Viridis"
-        marker_color = df["color_val"]
-        colorbar = dict(title=color_title, thickness=14, len=0.6)
     elif color_mode == "Kärry (node_id)":
-        # Categorical – assign integer index per node_id
-        cats = df["node_id"].astype("category")
-        df["color_val"] = cats.cat.codes
+        # Map node_id to integer codes for colour scale
+        unique_nodes = df["node_id"].unique().sort()
+        node_map = {n: i for i, n in enumerate(unique_nodes.to_list())}
+        marker_color = df["node_id"].map_elements(
+            lambda n: node_map.get(n, 0), return_dtype=pl.Int32
+        ).to_list()
+        color_title = "Kärry-indeksi"
         colorscale = "Turbo"
-        marker_color = df["color_val"]
-        colorbar = dict(title="Kärry-indeksi", thickness=14, len=0.6)
     elif color_mode == "Signaalin laatu (q)":
-        df["color_val"] = df["q"]
+        marker_color = df["q"].to_list()
+        color_title = "Q-arvo"
         colorscale = "RdYlGn"
-        marker_color = df["color_val"]
-        colorbar = dict(title="Q-arvo", thickness=14, len=0.6)
     else:  # Nopeus
-        df["color_val"] = df["speed_mps"].clip(0, 3)
+        marker_color = df["speed_mps"].clip(0, 3).to_list()
+        color_title = "Nopeus (m/s)"
         colorscale = "Plasma"
-        marker_color = df["color_val"]
-        colorbar = dict(title="Nopeus (m/s)", thickness=14, len=0.6)
 
-    hover_text = (
-        "Kärry: " + df["node_id"].astype(str) + "<br>"
-        + "Aika: " + df["aika"].astype(str) + "<br>"
-        + "x=" + df["x"].round(0).astype(int).astype(str)
-        + " y=" + df["y"].round(0).astype(int).astype(str) + "<br>"
-        + "Q=" + df["q"].astype(str)
-        + "  v=" + df["speed_mps"].round(2).astype(str) + " m/s"
+    colorbar = dict(title=color_title, thickness=14, len=0.6)
+
+    # ── Hover: use customdata instead of pre-building giant string arrays ──
+    # customdata columns: [node_id, aika, x, y, q, speed_mps]
+    customdata_cols = df.select(
+        "node_id",
+        pl.col("aika").cast(pl.Utf8).alias("aika_str"),
+        pl.col("x").round(0).cast(pl.Int32),
+        pl.col("y").round(0).cast(pl.Int32),
+        "q",
+        pl.col("speed_mps").round(2),
+    )
+    customdata = customdata_cols.to_numpy()
+
+    hovertemplate = (
+        "Kärry: %{customdata[0]}<br>"
+        "Aika: %{customdata[1]}<br>"
+        "x=%{customdata[2]} y=%{customdata[3]}<br>"
+        "Q=%{customdata[4]}  v=%{customdata[5]} m/s"
+        "<extra></extra>"
     )
 
     fig.add_trace(go.Scatter(
-        x=df["x"],
-        y=df["y_plot"],
+        x=x_vals,
+        y=y_vals,
         mode="markers",
         marker=dict(
             size=point_size,
@@ -263,8 +322,8 @@ def build_figure(
             colorbar=colorbar,
             line=dict(width=0),
         ),
-        text=hover_text,
-        hoverinfo="text",
+        customdata=customdata,
+        hovertemplate=hovertemplate,
         name="Yöhavainnot",
         showlegend=True,
     ))
@@ -301,19 +360,13 @@ def build_figure(
 
 
 # ---------------------------------------------------------------------------
-# Data loading
+# Data loading – only fetch the lightweight date list first
 # ---------------------------------------------------------------------------
-raw_df = fetch_night_data()
+available_dates = fetch_available_dates()
 
-if raw_df.empty:
+if not available_dates:
     st.warning("🌙 Yöaikaisia havaintoja ei löytynyt tietokannasta. Tarkista että dbt-malli on ajettu.")
     st.stop()
-
-# Exclude charging stations
-df_outside = filter_outside_stations(raw_df)
-
-# Parse dates
-df_outside["paiva"] = pd.to_datetime(df_outside["paiva"]).dt.date
 
 # ---------------------------------------------------------------------------
 # Sidebar – filters
@@ -321,22 +374,21 @@ df_outside["paiva"] = pd.to_datetime(df_outside["paiva"]).dt.date
 st.sidebar.markdown("## 🔍 Suodattimet")
 
 # ── Date picker ─────────────────────────────────────────────────────────────
-available_dates = sorted(df_outside["paiva"].unique())
-if not available_dates:
-    st.sidebar.warning("Ei päiviä saatavilla latausasemien suodatuksen jälkeen.")
-    st.stop()
-
 selected_date = st.sidebar.selectbox(
     "📅 Valitse yö (päivämäärä)",
     options=available_dates,
-    format_func=lambda d: str(d),
     index=len(available_dates) - 1,
 )
 
+# ── Load data for the selected date only ────────────────────────────────────
+df_day = fetch_night_data_for_date(selected_date)
+
+if df_day.is_empty():
+    st.sidebar.warning("Ei havaintoja valitulle päivälle latausasemien suodatuksen jälkeen.")
+    st.stop()
+
 # ── Cart picker ─────────────────────────────────────────────────────────────
-carts_on_date = sorted(
-    df_outside[df_outside["paiva"] == selected_date]["node_id"].unique()
-)
+carts_on_date = sorted(df_day["node_id"].unique().to_list())
 all_option = "— Kaikki kärryt —"
 
 selected_cart = st.sidebar.selectbox(
@@ -374,40 +426,43 @@ st.sidebar.markdown(
 # ---------------------------------------------------------------------------
 # Filter data by selections
 # ---------------------------------------------------------------------------
-df_filtered = df_outside[df_outside["paiva"] == selected_date].copy()
+df_filtered = df_day
 if selected_cart != all_option:
-    df_filtered = df_filtered[df_filtered["node_id"] == selected_cart]
+    df_filtered = df_filtered.filter(pl.col("node_id") == selected_cart)
 
 # ---------------------------------------------------------------------------
 # Metrics row
 # ---------------------------------------------------------------------------
 col1, col2, col3, col4 = st.columns(4)
 
+n_rows = len(df_filtered)
 with col1:
     st.markdown(
-        f'<div class="metric-card"><div class="val">{len(df_filtered):,}</div>'
+        f'<div class="metric-card"><div class="val">{n_rows:,}</div>'
         f'<div class="lbl">Havaintoja</div></div>',
         unsafe_allow_html=True,
     )
 with col2:
-    n_carts = df_filtered["node_id"].nunique()
+    n_carts = df_filtered["node_id"].n_unique()
     st.markdown(
         f'<div class="metric-card"><div class="val">{n_carts}</div>'
         f'<div class="lbl">Kärryjä aktiivisia</div></div>',
         unsafe_allow_html=True,
     )
 with col3:
-    hour_range = (
-        f"{int(df_filtered['tunti'].min())}–{int(df_filtered['tunti'].max())} h"
-        if not df_filtered.empty else "–"
-    )
+    if n_rows > 0:
+        h_min = df_filtered["tunti"].min()
+        h_max = df_filtered["tunti"].max()
+        hour_range = f"{h_min}–{h_max} h"
+    else:
+        hour_range = "–"
     st.markdown(
         f'<div class="metric-card"><div class="val">{hour_range}</div>'
         f'<div class="lbl">Aktiiviset tunnit</div></div>',
         unsafe_allow_html=True,
     )
 with col4:
-    avg_q = f"{df_filtered['q'].mean():.1f}" if not df_filtered.empty else "–"
+    avg_q = f"{df_filtered['q'].mean():.1f}" if n_rows > 0 else "–"
     st.markdown(
         f'<div class="metric-card"><div class="val">{avg_q}</div>'
         f'<div class="lbl">Keskimääräinen Q</div></div>',
@@ -419,7 +474,7 @@ with col4:
 # ---------------------------------------------------------------------------
 st.markdown('<div class="section-title">🗺️ Pohjapiirros – yöaktiivisuus</div>', unsafe_allow_html=True)
 
-if df_filtered.empty:
+if df_filtered.is_empty():
     st.info("💤 Ei havaintoja valituilla suodattimilla.")
 else:
     img = load_image(IMAGE_PATH)
@@ -430,13 +485,18 @@ else:
     st.markdown('<div class="section-title">⏱️ Aktiivisuus tunneittain</div>', unsafe_allow_html=True)
 
     hour_counts = (
-        df_filtered.groupby("tunti").size().reset_index(name="havaintoja")
+        df_filtered
+        .group_by("tunti")
+        .len()
+        .rename({"len": "havaintoja"})
+        .sort("tunti")
     )
+
     hour_fig = go.Figure(go.Bar(
-        x=hour_counts["tunti"],
-        y=hour_counts["havaintoja"],
+        x=hour_counts["tunti"].to_list(),
+        y=hour_counts["havaintoja"].to_list(),
         marker_color="#6366f1",
-        text=hour_counts["havaintoja"],
+        text=hour_counts["havaintoja"].to_list(),
         textposition="outside",
     ))
     hour_fig.update_layout(
@@ -462,7 +522,9 @@ else:
         show_cols = ["node_id", "aika", "tunti", "x", "y", "q", "speed_mps",
                      "is_low_quality", "is_jitter"]
         st.dataframe(
-            df_filtered[show_cols].sort_values(["node_id", "aika"]).reset_index(drop=True),
+            df_filtered.select(show_cols)
+            .sort(["node_id", "aika"])
+            .to_pandas(),       # st.dataframe expects pandas; small per-date
             use_container_width=True,
             height=300,
         )
