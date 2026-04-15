@@ -24,18 +24,6 @@ models:
         description: "Signaalin laatu."
         tests:
           - not_null
-      - name: dt
-        description: "Aika päivämääränä (DATE)."
-        tests:
-          - not_null
-      - name: hour
-        description: "Havainnon tunti (0-23)."
-        tests:
-          - not_null
-      - name: weekday
-        description: "Viikonpäivä (1=Ma..7=Su)."
-        tests:
-          - not_null
       - name: session_id
         description: "Kärrykohtainen juokseva sessionumero."
         tests:

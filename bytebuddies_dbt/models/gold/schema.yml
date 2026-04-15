@@ -21,6 +21,12 @@ models:
         description: "Käynnin aikana kuljettu matka (m)."
       - name: keskinopeus
         description: "Käynnin keskinopeus (m/s)."
+      - name: kaynti_paiva
+        description: "Asioinnin päivämäärä."
+      - name: kaynti_tunti
+        description: "Asioinnin aloitustunti (0-23)."
+      - name: kaynti_viikonpaiva
+        description: "Asioinnin viikonpäivä (1=Ma..7=Su)."
 
   - name: dim_karry
     description: "Kärrydimensio: Yksilölliset kärryt ja niiden elinkaari."
