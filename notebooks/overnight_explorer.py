@@ -153,11 +153,14 @@ def fetch_available_dates() -> list[str]:
     conn = _get_connection()
     exclusion = _charging_zone_exclusion_sql()
     rows = conn.execute(f"""
-        SELECT DISTINCT CAST(aika AS DATE) AS paiva
+        SELECT CAST(aika AS DATE) AS paiva
         FROM silver_device_diagnostics
         WHERE is_night_time = 1
           AND x IS NOT NULL AND y IS NOT NULL
+          AND x >= 500
           AND {exclusion}
+        GROUP BY CAST(aika AS DATE)
+        HAVING COUNT(*) > 500
         ORDER BY paiva
     """).fetchall()
     return [str(r[0]) for r in rows]
@@ -189,6 +192,7 @@ def fetch_night_data_for_date(date_str: str) -> pl.DataFrame:
         FROM silver_device_diagnostics
         WHERE is_night_time = 1
           AND x IS NOT NULL AND y IS NOT NULL
+          AND x >= 500
           AND CAST(aika AS DATE) = CAST('{date_str}' AS DATE)
           AND {exclusion}
         ORDER BY node_id, aika
