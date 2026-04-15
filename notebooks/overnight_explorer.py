@@ -63,8 +63,7 @@ def _charging_zone_exclusion_sql() -> str:
         # (x - cx)^2 + (y - cy)^2 > r^2  ← point is OUTSIDE the circle
         r_sq = cs["radius"] ** 2
         parts.append(
-            f"((x - {cs['x']}) * (x - {cs['x']}) "
-            f"+ (y - {cs['y']}) * (y - {cs['y']}) > {r_sq})"
+            f"(POWER(x - {cs['x']}, 2) + POWER(y - {cs['y']}, 2) > {r_sq})"
         )
     return " AND ".join(parts)
 
@@ -193,13 +192,14 @@ def fetch_night_data_for_date(date_str: str) -> pl.DataFrame:
           AND CAST(aika AS DATE) = CAST('{date_str}' AS DATE)
           AND {exclusion}
         ORDER BY node_id, aika
-    """).fetch_arrow_table()
+    """).to_arrow_table()
 
     # Arrow → Polars (zero-copy) then downcast for minimum footprint
     df = pl.from_arrow(arrow_table)
 
     # Downcast numeric columns to reduce memory
     df = df.cast({
+        "node_id": pl.Int32,
         "tunti": pl.Int16,
         "q": pl.Int16,
         "is_low_quality": pl.Int8,
@@ -230,7 +230,7 @@ def build_figure(
     # We map data coords [0, MAP_MAX_X] × [0, MAP_MAX_Y] to the image.
     # Plotly yref="y" grows upward; image origin is top-left → flip y.
     x_vals = df["x"].to_list()
-    y_vals = (pl.lit(MAP_MAX_Y) - df["y"]).to_list()  # flipped
+    y_vals = (MAP_MAX_Y - df["y"]).to_list()  # flipped
 
     fig = go.Figure()
 
@@ -271,12 +271,8 @@ def build_figure(
         color_title = "Tunti (0-23)"
         colorscale = "Viridis"
     elif color_mode == "Kärry (node_id)":
-        # Map node_id to integer codes for colour scale
-        unique_nodes = df["node_id"].unique().sort()
-        node_map = {n: i for i, n in enumerate(unique_nodes.to_list())}
-        marker_color = df["node_id"].map_elements(
-            lambda n: node_map.get(n, 0), return_dtype=pl.Int32
-        ).to_list()
+        # Use native Polars categorical encoding instead of Python lambda (much faster)
+        marker_color = df["node_id"].cast(pl.String).cast(pl.Categorical).to_physical().to_list()
         color_title = "Kärry-indeksi"
         colorscale = "Turbo"
     elif color_mode == "Signaalin laatu (q)":
@@ -294,7 +290,7 @@ def build_figure(
     # customdata columns: [node_id, aika, x, y, q, speed_mps]
     customdata_cols = df.select(
         "node_id",
-        pl.col("aika").cast(pl.Utf8).alias("aika_str"),
+        pl.col("aika").cast(pl.String).alias("aika_str"),
         pl.col("x").round(0).cast(pl.Int32),
         pl.col("y").round(0).cast(pl.Int32),
         "q",
@@ -310,7 +306,7 @@ def build_figure(
         "<extra></extra>"
     )
 
-    fig.add_trace(go.Scatter(
+    fig.add_trace(go.Scattergl(
         x=x_vals,
         y=y_vals,
         mode="markers",
@@ -374,10 +370,10 @@ if not available_dates:
 st.sidebar.markdown("## 🔍 Suodattimet")
 
 # ── Date picker ─────────────────────────────────────────────────────────────
-selected_date = st.sidebar.selectbox(
+selected_date = st.sidebar.select_slider(
     "📅 Valitse yö (päivämäärä)",
     options=available_dates,
-    index=len(available_dates) - 1,
+    value=available_dates[-1] if available_dates else None,
 )
 
 # ── Load data for the selected date only ────────────────────────────────────
@@ -391,9 +387,10 @@ if df_day.is_empty():
 carts_on_date = sorted(df_day["node_id"].unique().to_list())
 all_option = "— Kaikki kärryt —"
 
-selected_cart = st.sidebar.selectbox(
+selected_cart = st.sidebar.select_slider(
     "🛒 Valitse kärry",
     options=[all_option] + list(carts_on_date),
+    value=all_option,
 )
 
 # ── Visual controls ──────────────────────────────────────────────────────────
@@ -524,7 +521,7 @@ else:
         st.dataframe(
             df_filtered.select(show_cols)
             .sort(["node_id", "aika"])
-            .to_pandas(),       # st.dataframe expects pandas; small per-date
+            .to_arrow(),        # Zero-copy transfer to Streamlit
             use_container_width=True,
             height=300,
         )
