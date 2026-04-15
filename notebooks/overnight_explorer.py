@@ -157,7 +157,7 @@ def fetch_available_dates() -> list[str]:
         FROM silver_device_diagnostics
         WHERE is_night_time = 1
           AND x IS NOT NULL AND y IS NOT NULL
-          AND x >= 500
+          AND x >= 780
           AND {exclusion}
         GROUP BY CAST(aika AS DATE)
         HAVING COUNT(*) > 500
