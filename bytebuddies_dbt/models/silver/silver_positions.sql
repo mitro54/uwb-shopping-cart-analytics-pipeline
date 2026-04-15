@@ -1,4 +1,3 @@
-{{ config(materialized='view') }}
 
 -- =========================================================================
 -- ⚙️ TUOTANTOTASON DATAN SIIVOUS -ASETUKSET (Jinja Config)

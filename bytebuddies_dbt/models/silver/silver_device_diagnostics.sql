@@ -1,4 +1,3 @@
-{{ config(materialized='view') }}
 
 -- =========================================================================
 -- ⚙️ LAITTEISTODIAGNOSTIIKKA -ASETUKSET (Jinja Config)
