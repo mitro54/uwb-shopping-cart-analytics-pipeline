@@ -20,6 +20,7 @@ import math
 from pathlib import Path
 
 import duckdb
+import numpy as np
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
@@ -554,3 +555,185 @@ else:
             use_container_width=True,
             height=300,
         )
+
+# ---------------------------------------------------------------------------
+# Positioning accuracy analysis (visible only when a single cart is selected)
+# ---------------------------------------------------------------------------
+if selected_cart != all_option and not df_filtered.is_empty():
+    st.markdown(
+        '<div class="section-title">🎯 Paikannustarkkuusanalyysi</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<div style='font-size:0.85rem;color:#64748b;margin-bottom:1rem;'>"
+        "Laite oli paikallaan koko yön – sijaintijakauma kuvaa paikannusjärjestelmän tarkkuutta.</div>",
+        unsafe_allow_html=True,
+    )
+
+    x_arr = df_filtered["x"].to_numpy().astype(float)
+    y_arr = df_filtered["y"].to_numpy().astype(float)
+
+    cx = float(np.mean(x_arr))
+    cy = float(np.mean(y_arr))
+    std_x = float(np.std(x_arr))
+    std_y = float(np.std(y_arr))
+
+    dists = np.sqrt((x_arr - cx) ** 2 + (y_arr - cy) ** 2)
+    cep50 = float(np.percentile(dists, 50))
+    cep68 = float(np.percentile(dists, 68))
+    cep95 = float(np.percentile(dists, 95))
+
+    # ── Accuracy metrics row ─────────────────────────────────────────────────
+    m1, m2, m3, m4, m5 = st.columns(5)
+    for col, label, val, unit in [
+        (m1, "σ X (std)",   std_x,  "cm"),
+        (m2, "σ Y (std)",   std_y,  "cm"),
+        (m3, "CEP50",       cep50,  "cm"),
+        (m4, "CEP68 (1σ)",  cep68,  "cm"),
+        (m5, "CEP95",       cep95,  "cm"),
+    ]:
+        col.markdown(
+            f'<div class="metric-card">'
+            f'<div class="val">{val:.0f}</div>'
+            f'<div class="lbl">{label} ({unit})</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ── Two-column layout: deviation scatter + radial error histogram ────────
+    left, right = st.columns([3, 2])
+
+    with left:
+        st.markdown(
+            "<div style='font-size:0.85rem;font-weight:600;color:#312e81;"
+            "margin:0.8rem 0 0.4rem;'>Sijaintipilvi suhteessa keskipisteeseen</div>",
+            unsafe_allow_html=True,
+        )
+        dx = (x_arr - cx).tolist()
+        dy = (y_arr - cy).tolist()
+
+        scatter_fig = go.Figure()
+        scatter_fig.add_trace(go.Scattergl(
+            x=dx, y=dy,
+            mode="markers",
+            marker=dict(
+                size=3,
+                color=df_filtered["tunti"].to_list(),
+                colorscale="Viridis",
+                opacity=0.45,
+                colorbar=dict(title="Tunti", thickness=10, len=0.6),
+                line=dict(width=0),
+            ),
+            name="Havainnot",
+        ))
+
+        # CEP circles
+        angles = np.linspace(0, 2 * math.pi, 361)
+        cos_a, sin_a = np.cos(angles).tolist(), np.sin(angles).tolist()
+        for radius, color, label in [
+            (cep50, "#22c55e", f"CEP50 {cep50:.0f} cm"),
+            (cep68, "#f59e0b", f"CEP68 {cep68:.0f} cm"),
+            (cep95, "#ef4444", f"CEP95 {cep95:.0f} cm"),
+        ]:
+            scatter_fig.add_trace(go.Scatter(
+                x=[radius * c for c in cos_a],
+                y=[radius * s for s in sin_a],
+                mode="lines",
+                line=dict(color=color, width=2),
+                name=label,
+            ))
+
+        scatter_fig.update_layout(
+            xaxis=dict(title="ΔX (cm)", zeroline=True, zerolinewidth=1,
+                       zerolinecolor="#cbd5e1", showgrid=True),
+            yaxis=dict(title="ΔY (cm)", zeroline=True, zerolinewidth=1,
+                       zerolinecolor="#cbd5e1", showgrid=True,
+                       scaleanchor="x", scaleratio=1),
+            height=420,
+            margin=dict(l=50, r=20, t=10, b=50),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(248,250,252,1)",
+            legend=dict(font=dict(size=11)),
+        )
+        st.plotly_chart(scatter_fig, use_container_width=True)
+
+    with right:
+        st.markdown(
+            "<div style='font-size:0.85rem;font-weight:600;color:#312e81;"
+            "margin:0.8rem 0 0.4rem;'>Säteisvirheen jakauma</div>",
+            unsafe_allow_html=True,
+        )
+        hist_vals, bin_edges = np.histogram(dists, bins=50)
+        bin_centers = ((bin_edges[:-1] + bin_edges[1:]) / 2).tolist()
+
+        err_fig = go.Figure()
+        err_fig.add_trace(go.Bar(
+            x=bin_centers,
+            y=hist_vals.tolist(),
+            marker_color="#6366f1",
+            opacity=0.8,
+            name="Havainnot",
+        ))
+        for radius, color, label in [
+            (cep50, "#22c55e", f"CEP50"),
+            (cep95, "#ef4444", f"CEP95"),
+        ]:
+            err_fig.add_vline(
+                x=radius, line_color=color, line_width=2, line_dash="dash",
+                annotation_text=label, annotation_position="top right",
+                annotation_font_size=11,
+            )
+        err_fig.update_layout(
+            xaxis=dict(title="Säteisvirhe (cm)"),
+            yaxis=dict(title="Havaintojen määrä"),
+            height=420,
+            margin=dict(l=50, r=20, t=10, b=50),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(248,250,252,1)",
+            showlegend=False,
+        )
+        st.plotly_chart(err_fig, use_container_width=True)
+
+    # ── Temporal drift: x and y over time ───────────────────────────────────
+    st.markdown(
+        "<div style='font-size:0.85rem;font-weight:600;color:#312e81;"
+        "margin:0.8rem 0 0.4rem;'>Sijainnin ajallinen vaihtelu (drift)</div>",
+        unsafe_allow_html=True,
+    )
+    times = df_filtered["aika"].cast(pl.String).to_list()
+    drift_fig = go.Figure()
+    drift_fig.add_trace(go.Scattergl(
+        x=times, y=(x_arr - cx).tolist(),
+        mode="markers", marker=dict(size=2, color="#6366f1", opacity=0.4),
+        name="ΔX",
+    ))
+    drift_fig.add_trace(go.Scattergl(
+        x=times, y=(y_arr - cy).tolist(),
+        mode="markers", marker=dict(size=2, color="#ec4899", opacity=0.4),
+        name="ΔY",
+    ))
+    drift_fig.add_hline(y=0, line_color="#94a3b8", line_width=1)
+    drift_fig.update_layout(
+        xaxis=dict(title="Aika (Helsinki)"),
+        yaxis=dict(title="Poikkeama keskipisteestä (cm)"),
+        height=260,
+        margin=dict(l=50, r=20, t=10, b=50),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(248,250,252,1)",
+        legend=dict(orientation="h", y=1.08),
+    )
+    st.plotly_chart(drift_fig, use_container_width=True)
+
+    # ── Summary table ────────────────────────────────────────────────────────
+    with st.expander("📊 Tarkkuustaulukko"):
+        summary = pl.DataFrame({
+            "Mittari":  ["Keskipiste X (cm)", "Keskipiste Y (cm)",
+                         "Std X (cm)", "Std Y (cm)",
+                         "CEP50 (cm)", "CEP68 (cm)", "CEP95 (cm)",
+                         "Havaintoja"],
+            "Arvo":     [f"{cx:.1f}", f"{cy:.1f}",
+                         f"{std_x:.1f}", f"{std_y:.1f}",
+                         f"{cep50:.1f}", f"{cep68:.1f}", f"{cep95:.1f}",
+                         str(len(df_filtered))],
+        })
+        st.dataframe(summary, use_container_width=True, hide_index=True)
