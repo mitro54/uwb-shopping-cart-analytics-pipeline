@@ -135,5 +135,9 @@ Kun jokin näistä ehdoista täyttyy, koodi merkitsee kyseiselle riville lipun: 
 **Päätös:**
 Raportointiin ja visualisointiin käytetään Apache Superset -alustaa, joka lukee dataa suoraan DuckDB-tietokannasta. Gold-tason taulut käsitellään tavallisina tietokantatauluina, mikä yksinkertaistaa arkkitehtuuria ja mahdollistaa suoran pääsyn valmiiseen liiketoimintadataan.
 
-**Tilanne ja ongelma:**
-Aiemmin tutkitut vaihtoehtoiset vientitavat (kuten Parquet-vienti) todettiin tarpeettoman monimutkaisiksi nykyiseen käyttötarpeeseen nähden. Suora yhteys tietokantaan on riittävä ja tarjoaa parhaan suorituskyvyn analytiikan kehitykseen.
+**Suunnitteluvaiheen poikkeus (Hybridimalli):**
+Aiemmin tutkitut vaihtoehtoiset vientitavat (kuten Parquet-vienti) on otettu osittaiseen käyttöön **suunnitteluvaihetta** varten. Power BI -työkalua käytetään visuaalien ja raporttien nopeaan prototyyppaukseen. Tätä varten dbt on konfiguroitu viemään sekä **Silver- että Gold-tason** taulut `.parquet`-muodossa hakemistoon `data/pbi_prototypes/`. Erityisesti `silver_positions.parquet` mahdollistaa tarkat reittivisualisoinnit suoraan suunnittelutyökalussa. Lopulliset visuaalit toteutetaan kuitenkin koodaamalla tai Supersetillä suoraan DuckDB:tä vasten.
+
+**Miksi valittiin:**
+1. **Nopea prototyyppaus:** Power BI mahdollistaa visuaalien hahmottelun ilman välitöntä koodaustarvetta myös raakapositiodatan (Silver-kerros) osalta.
+2. **Tuotantotason suorituskyky:** Lopullinen yhteys (Superset -> DuckDB) säilyy yksinkertaisena ja tehokkaana, sillä dbt:n "External" materialisaatio luo DuckDB:hen automaattisesti näkymiä (Views), jotka osoittavat Parquet-tiedostoihin, mutta näyttävät tavallisilta tauluilta.

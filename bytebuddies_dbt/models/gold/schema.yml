@@ -21,6 +21,12 @@ models:
         description: "Käynnin aikana kuljettu matka (m)."
       - name: keskinopeus
         description: "Käynnin keskinopeus (m/s)."
+      - name: kaynti_paiva
+        description: "Asioinnin päivämäärä."
+      - name: kaynti_tunti
+        description: "Asioinnin aloitustunti (0-23)."
+      - name: kaynti_viikonpaiva
+        description: "Asioinnin viikonpäivä (1=Ma..7=Su)."
 
   - name: dim_karry
     description: "Kärrydimensio: Yksilölliset kärryt ja niiden elinkaari."
@@ -62,6 +68,35 @@ models:
         description: "Ruudussa mitattu keskimääräinen signaalin laatu (q)."
       - name: low_quality_pct
         description: "Prosenttiosuus heikoista (q<35) signaaleista kyseisessä ruudussa."
+
+  - name: gold_koordinaatit
+    description: >
+      Puhdistettu ja rikastettu koordinaattitaulu lämpökarttatuotantoon.
+      Lähde: silver_pysahdykset. Poistettu: Vyöhyke 9 (Sisääntulo & kärryt, x 0–1200, y 3500–5200).
+      Aggregoitu 100 cm × 100 cm ruudukkoon. Yksi rivi per grid-ruutu.
+    columns:
+      - name: grid_x
+        description: "Ruudukon x-koordinaatti (senttimetreinä, pyöristetty 100 cm:n tarkkuuteen)."
+        tests:
+          - not_null
+      - name: grid_y
+        description: "Ruudukon y-koordinaatti (senttimetreinä, pyöristetty 100 cm:n tarkkuuteen)."
+        tests:
+          - not_null
+      - name: osasto_id
+        description: "Osaston tunniste (NULL, jos ruutu ei osu yhdenkään osaston alueelle)."
+      - name: osasto_nimi
+        description: "Osaston nimi (esim. 'Elintarvikkeet'). NULL jos ei osastoa."
+      - name: kokonaisviipyma_s
+        description: "Kaikkien pysähdysten yhteen laskettu kesto ruudussa (sekunteina). Lämpökartan päämetriikka."
+        tests:
+          - not_null
+      - name: pysahdysten_maara
+        description: "Kuinka monta pysähdystapahtumaa osui tähän ruutuun."
+      - name: uniikkeja_karrya
+        description: "Kuinka monta eri kärryä pysähtyi tässä ruudussa."
+      - name: keskiviipyma_s
+        description: "Pysähdysten keskimääräinen kesto ruudussa (sekunteina)."
 
   - name: f_laite_status
     description: "Päivätason aggregaatti jokaisen laitteen (kärryn) tilasta, virheistä ja heikoista signaaleista verkon toiminnan monitorointiin."

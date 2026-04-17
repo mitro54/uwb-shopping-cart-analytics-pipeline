@@ -228,31 +228,31 @@ Lähdetään toteuttamaan lopullista projektisuunnitelmaa. Saatu arvokasta tieto
 
 #### Sprintin 3 - Tavoitteet:
 
-Lopullisen projektisuunnitelman toteuttaminen
-- EDA notebookkien läpi käynti ja tulosten dokumentointi
-- luodaan data pipeline asiakkaiden segmentointia varten
-- uudelleen nimetään stg (staging) -> bronze, jonka jälkeen jatketaan medallionki arkkitehtuurin nimeämistä (bronze, silver, gold)
-Saadaan Silver taulut valmiiksi
-- datan putsaus (mikä data kuuluu ja mikä ei kuulu)
-- standardointi (yhtenäiset päivämäärä formaatit, yhtenäiset kenttien nimet jne.)
-- session_id määrittely (miten tunnistetaan asiakas)
-Saadaan Gold taulut valmiiksi
-- kärry dimensio - listaus kaikista uniikeista kärryistä
-- osasto dimensio - seed taulu  (`seeds/osastot.csv`)
-- käynti fakta - yksi rivi per kauppareissu
-- osastokäynti fakta - yksi rivi per osastokäynti
-Skeemat ja testit kuntoon `schema.yml`
+Lopullisen projektisuunnitelman toteuttaminen  
+- EDA notebookkien läpi käynti ja tulosten dokumentointi  
+- luodaan data pipeline asiakkaiden segmentointia varten  
+- uudelleen nimetään stg (staging) -> bronze, jonka jälkeen jatketaan medallionki arkkitehtuurin nimeämistä (bronze, silver, gold)  
+Saadaan Silver taulut valmiiksi  
+- datan putsaus (mikä data kuuluu ja mikä ei kuulu)  
+- standardointi (yhtenäiset päivämäärä formaatit, yhtenäiset kenttien nimet jne.)  
+- session_id määrittely (miten tunnistetaan asiakas)  
+Saadaan Gold taulut valmiiksi  
+- kärry dimensio - listaus kaikista uniikeista kärryistä  
+- osasto dimensio - seed taulu  (`seeds/osastot.csv`)  
+- käynti fakta - yksi rivi per kauppareissu  
+- osastokäynti fakta - yksi rivi per osastokäynti  
+Skeemat ja testit kuntoon `schema.yml`  
 
 **Tehtävät:**
 
-EDA notebookkien läpi käynti ja tulosten dokumentointi (Mitro)
-Nimetään uudelleen stg -> bronze (Toni) ja siihen liittyvät probleemat
-Datan putsaus (Tuija päävastuussa; Panu, Mitro ja Toni supporttina)
-Datan standardointi (Panu päävastuussa; Tuija, Mitro ja Toni supporttina)
-Session_id määrittely (Mitro päävastuussa; Panu, Tuija ja Toni supporttina)
-Dimensiotaulujen (seeds), scrum liidinä avainmittareita määrittelemässä Joni
-Kaikki muistaa dokumentaatiopäivitykset (mkdocs, hedgehoc sprintit)
-- erityisesti kaikkiin päätöksiin tarvitaan
+EDA notebookkien läpi käynti ja tulosten dokumentointi (Mitro)  
+Nimetään uudelleen stg -> bronze (Toni) ja siihen liittyvät probleemat  
+Datan putsaus (Tuija päävastuussa; Panu, Mitro ja Toni supporttina)  
+Datan standardointi (Panu päävastuussa; Tuija, Mitro ja Toni supporttina)  
+Session_id määrittely (Mitro päävastuussa; Panu, Tuija ja Toni supporttina)  
+Dimensiotaulujen (seeds), scrum liidinä avainmittareita määrittelemässä Joni  
+Kaikki muistaa dokumentaatiopäivitykset (mkdocs, hedgehoc sprintit)  
+- erityisesti kaikkiin päätöksiin tarvitaan  
 
 **DoD:**
 
@@ -330,6 +330,12 @@ Keskusteltiin seuraavan viikon asioista. Huomioitiin, että projektissa on "läh
 * Agenttipohjainen visualisointi on pystytetty ja hienosäädetty toimivaksi
 * Asiakastarpeet on selkeytetty ja yhteinen suunta on kirkas
 * Dokumentaatio ajan tasalla
+
+### 14.4 Daily
+- Keskusteltiin projektin mahdollisuuksista, vaihdettiin kuulumiset ja näkemykset. Ei havaittu esteitä etenemiselle ja seuraavat askeleet on selvät.
+
+### 15.4 Daily
+- Keskusteltiin kuulumisista ja toteutuneista/toteutettavista asioista, kerrattiin git:n toimintoja, tuli myös ilmi, että luomani taskit eivät olleet soveltuvia sovittuun agile-teemaan, joten loin ne uudelleen issue:ina ja poistin task -versiot.
 
 -------
 ## Product Backlog
