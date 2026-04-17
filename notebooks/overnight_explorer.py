@@ -148,54 +148,70 @@ def _get_connection():
 
 @st.cache_data(show_spinner="📅 Haetaan saatavilla olevat yöt…", ttl=300)
 def fetch_available_dates() -> list[str]:
-    """Fetch the distinct dates that have overnight observations outside
-    charging stations.  Returns ISO date strings – very lightweight query."""
+    """Fetch distinct night-start dates (22:00–06:00 Helsinki) outside charging stations."""
     conn = _get_connection()
     exclusion = _charging_zone_exclusion_sql()
     rows = conn.execute(f"""
-        SELECT CAST(aika AS DATE) AS paiva
-        FROM silver_device_diagnostics
-        WHERE is_night_time = 1
-          AND x IS NOT NULL AND y IS NOT NULL
-          AND x >= 780
-          AND {exclusion}
-        GROUP BY CAST(aika AS DATE)
+        WITH tz AS (
+            SELECT timezone('Europe/Helsinki', aika::TIMESTAMPTZ) AS aika_hki, x, y
+            FROM silver_device_diagnostics
+            WHERE is_night_time = 1
+              AND x IS NOT NULL AND y IS NOT NULL
+              AND x >= 780
+              AND {exclusion}
+        )
+        SELECT
+            CAST(
+                CASE
+                    WHEN EXTRACT('hour' FROM aika_hki) < 7
+                    THEN CAST(aika_hki AS DATE) - INTERVAL '1 day'
+                    ELSE CAST(aika_hki AS DATE)
+                END
+            AS DATE) AS night_date
+        FROM tz
+        GROUP BY night_date
         HAVING COUNT(*) > 500
-        ORDER BY paiva
+        ORDER BY night_date
     """).fetchall()
-    return [str(r[0]) for r in rows]
+    return [str(r[0])[:10] for r in rows]
 
 
 @st.cache_data(show_spinner="🔗 Haetaan valitun yön dataa…", ttl=300)
 def fetch_night_data_for_date(date_str: str) -> pl.DataFrame:
-    """Load overnight pings for a single date, already filtered in SQL.
+    """Load one full night (22:00–06:00 Helsinki) for date_str as the night-start date.
 
-    Returns a Polars DataFrame with down-cast dtypes to save memory:
-    - Int16 for node_id, tunti, q, is_low_quality, is_jitter
-    - Float32 for x, y, speed_mps
+    Returns a Polars DataFrame with down-cast dtypes to save memory.
     """
     conn = _get_connection()
     exclusion = _charging_zone_exclusion_sql()
 
-    # Fetch only one day at a time – dramatic RAM reduction
+    from datetime import date as _date, timedelta
+    next_date_str = str(_date.fromisoformat(str(date_str)[:10]) + timedelta(days=1))
+
     arrow_table = conn.execute(f"""
+        WITH tz AS (
+            SELECT
+                node_id,
+                timezone('Europe/Helsinki', aika::TIMESTAMPTZ) AS aika_hki,
+                x, y, q, speed_mps, is_low_quality, is_jitter
+            FROM silver_device_diagnostics
+            WHERE x IS NOT NULL AND y IS NOT NULL
+              AND x >= 500
+              AND {exclusion}
+        )
         SELECT
             node_id,
-            aika,
-            EXTRACT('hour' FROM aika)    AS tunti,
-            x,
-            y,
-            q,
-            speed_mps,
-            is_low_quality,
-            is_jitter
-        FROM silver_device_diagnostics
-        WHERE is_night_time = 1
-          AND x IS NOT NULL AND y IS NOT NULL
-          AND x >= 500
-          AND CAST(aika AS DATE) = CAST('{date_str}' AS DATE)
-          AND {exclusion}
-        ORDER BY node_id, aika
+            aika_hki                                 AS aika,
+            EXTRACT('hour' FROM aika_hki)::INT       AS tunti,
+            x, y, q, speed_mps, is_low_quality, is_jitter
+        FROM tz
+        WHERE
+            (CAST(aika_hki AS DATE) = CAST('{date_str}' AS DATE)
+             AND EXTRACT('hour' FROM aika_hki) >= 22)
+            OR
+            (CAST(aika_hki AS DATE) = CAST('{next_date_str}' AS DATE)
+             AND EXTRACT('hour' FROM aika_hki) < 7)
+        ORDER BY node_id, aika_hki
     """).to_arrow_table()
 
     # Arrow → Polars (zero-copy) then downcast for minimum footprint
@@ -387,8 +403,11 @@ if df_day.is_empty():
     st.sidebar.warning("Ei havaintoja valitulle päivälle latausasemien suodatuksen jälkeen.")
     st.stop()
 
-# ── Cart picker ─────────────────────────────────────────────────────────────
-carts_on_date = sorted(df_day["node_id"].unique().to_list())
+# ── Cart picker – only nodes with >1000 pings this night ────────────────────
+cart_counts = df_day.group_by("node_id").len()
+carts_on_date = sorted(
+    cart_counts.filter(pl.col("len") > 1000)["node_id"].to_list()
+)
 all_option = "— Kaikki kärryt —"
 
 selected_cart = st.sidebar.select_slider(
@@ -490,7 +509,13 @@ else:
         .group_by("tunti")
         .len()
         .rename({"len": "havaintoja"})
-        .sort("tunti")
+        .with_columns(
+            pl.when(pl.col("tunti") >= 22)
+            .then(pl.col("tunti") - 24)
+            .otherwise(pl.col("tunti"))
+            .alias("_sort")
+        )
+        .sort("_sort")
     )
 
     hour_fig = go.Figure(go.Bar(
