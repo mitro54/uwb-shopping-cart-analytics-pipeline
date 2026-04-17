@@ -391,17 +391,17 @@ if not available_dates:
 st.sidebar.markdown("## 🔍 Suodattimet")
 
 # ── Date picker ─────────────────────────────────────────────────────────────
-selected_date = st.sidebar.select_slider(
-    "📅 Valitse yö (päivämäärä)",
+selected_date = st.sidebar.selectbox(
+    "📅 Valitse yö",
     options=available_dates,
-    value=available_dates[-1] if available_dates else None,
+    index=len(available_dates) - 1,
 )
 
 # ── Load data for the selected date only ────────────────────────────────────
 df_day = fetch_night_data_for_date(selected_date)
 
 if df_day.is_empty():
-    st.sidebar.warning("Ei havaintoja valitulle päivälle latausasemien suodatuksen jälkeen.")
+    st.sidebar.warning("Ei havaintoja valitulle yölle.")
     st.stop()
 
 # ── Cart picker – only nodes with >1000 pings this night ────────────────────
@@ -411,10 +411,10 @@ carts_on_date = sorted(
 )
 all_option = "— Kaikki kärryt —"
 
-selected_cart = st.sidebar.select_slider(
+selected_cart = st.sidebar.selectbox(
     "🛒 Valitse kärry",
     options=[all_option] + list(carts_on_date),
-    value=all_option,
+    index=0,
 )
 
 # ── Visual controls ──────────────────────────────────────────────────────────
@@ -429,20 +429,6 @@ color_mode = st.sidebar.radio(
 
 point_size = st.sidebar.slider("Pisteiden koko", min_value=2, max_value=16, value=6)
 point_opacity = st.sidebar.slider("Läpinäkyvyys", min_value=0.1, max_value=1.0, value=0.75, step=0.05)
-
-# ── Info box ─────────────────────────────────────────────────────────────────
-st.sidebar.markdown("---")
-st.sidebar.markdown("### ℹ️ Suodatetut alueet")
-for cs in CHARGING_STATIONS:
-    st.sidebar.markdown(
-        f'<span class="station-badge">🔌 {cs["name"]}</span>',
-        unsafe_allow_html=True,
-    )
-st.sidebar.markdown(
-    "<div style='font-size:0.75rem;color:#64748b;margin-top:0.5rem;'>"
-    "Latausasemien säde-alueet poistettu analyysista.</div>",
-    unsafe_allow_html=True,
-)
 
 # ---------------------------------------------------------------------------
 # Filter data by selections
@@ -577,24 +563,44 @@ if selected_cart != all_option and not df_filtered.is_empty():
     cy = float(np.mean(y_arr))
     std_x = float(np.std(x_arr))
     std_y = float(np.std(y_arr))
+    rmse_2d = float(np.sqrt(std_x**2 + std_y**2))
 
     dists = np.sqrt((x_arr - cx) ** 2 + (y_arr - cy) ** 2)
     cep50 = float(np.percentile(dists, 50))
     cep68 = float(np.percentile(dists, 68))
     cep95 = float(np.percentile(dists, 95))
 
+    # Step jitter: consecutive sample-to-sample distance
+    step_jitter = np.sqrt(np.diff(x_arr)**2 + np.diff(y_arr)**2)
+    mean_jitter = float(np.mean(step_jitter))
+    p95_jitter  = float(np.percentile(step_jitter, 95))
+
+    # Drift: linear regression slope on index → cm/1000 samples, then to cm/h
+    n = len(x_arr)
+    t_idx = np.arange(n, dtype=float)
+    # samples per hour estimate from actual timestamps
+    aika_series = df_filtered["aika"].cast(pl.Int64).to_numpy().astype(float)
+    duration_h = (aika_series[-1] - aika_series[0]) / 3_600_000_000 if n > 1 else 1.0
+    samples_per_h = n / max(duration_h, 1e-6)
+    drift_x_cmh = float(np.polyfit(t_idx, x_arr - cx, 1)[0] * samples_per_h)
+    drift_y_cmh = float(np.polyfit(t_idx, y_arr - cy, 1)[0] * samples_per_h)
+
+    outlier_rate = float(np.mean(dists > 2 * rmse_2d) * 100)
+    lq_rate = float(df_filtered["is_low_quality"].mean() * 100) if "is_low_quality" in df_filtered.columns else float("nan")
+
     # ── Accuracy metrics row ─────────────────────────────────────────────────
-    m1, m2, m3, m4, m5 = st.columns(5)
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
     for col, label, val, unit in [
-        (m1, "σ X (std)",   std_x,  "cm"),
-        (m2, "σ Y (std)",   std_y,  "cm"),
-        (m3, "CEP50",       cep50,  "cm"),
-        (m4, "CEP68 (1σ)",  cep68,  "cm"),
-        (m5, "CEP95",       cep95,  "cm"),
+        (m1, "RMSE 2D",     rmse_2d,     "cm"),
+        (m2, "CEP50",       cep50,       "cm"),
+        (m3, "CEP95",       cep95,       "cm"),
+        (m4, "Jitter (ka)", mean_jitter, "cm/step"),
+        (m5, "Drift X",     drift_x_cmh, "cm/h"),
+        (m6, "Outlierit",   outlier_rate,"%"),
     ]:
         col.markdown(
             f'<div class="metric-card">'
-            f'<div class="val">{val:.0f}</div>'
+            f'<div class="val">{val:.1f}</div>'
             f'<div class="lbl">{label} ({unit})</div>'
             f'</div>',
             unsafe_allow_html=True,
@@ -694,46 +700,101 @@ if selected_cart != all_option and not df_filtered.is_empty():
         )
         st.plotly_chart(err_fig, use_container_width=True)
 
-    # ── Temporal drift: x and y over time ───────────────────────────────────
+    # ── Drift: position deviation over time with trend lines ─────────────────
     st.markdown(
         "<div style='font-size:0.85rem;font-weight:600;color:#312e81;"
-        "margin:0.8rem 0 0.4rem;'>Sijainnin ajallinen vaihtelu (drift)</div>",
+        "margin:0.8rem 0 0.4rem;'>Drift – systemaattinen sijaintimuutos yön yli</div>",
         unsafe_allow_html=True,
     )
     times = df_filtered["aika"].cast(pl.String).to_list()
+    trend_x = np.polyval(np.polyfit(t_idx, x_arr - cx, 1), t_idx).tolist()
+    trend_y = np.polyval(np.polyfit(t_idx, y_arr - cy, 1), t_idx).tolist()
+
     drift_fig = go.Figure()
     drift_fig.add_trace(go.Scattergl(
         x=times, y=(x_arr - cx).tolist(),
-        mode="markers", marker=dict(size=2, color="#6366f1", opacity=0.4),
+        mode="markers", marker=dict(size=2, color="#6366f1", opacity=0.3),
         name="ΔX",
     ))
     drift_fig.add_trace(go.Scattergl(
         x=times, y=(y_arr - cy).tolist(),
-        mode="markers", marker=dict(size=2, color="#ec4899", opacity=0.4),
+        mode="markers", marker=dict(size=2, color="#ec4899", opacity=0.3),
         name="ΔY",
+    ))
+    drift_fig.add_trace(go.Scatter(
+        x=times, y=trend_x,
+        mode="lines", line=dict(color="#6366f1", width=2),
+        name=f"Trendi X ({drift_x_cmh:+.1f} cm/h)",
+    ))
+    drift_fig.add_trace(go.Scatter(
+        x=times, y=trend_y,
+        mode="lines", line=dict(color="#ec4899", width=2),
+        name=f"Trendi Y ({drift_y_cmh:+.1f} cm/h)",
     ))
     drift_fig.add_hline(y=0, line_color="#94a3b8", line_width=1)
     drift_fig.update_layout(
         xaxis=dict(title="Aika (Helsinki)"),
         yaxis=dict(title="Poikkeama keskipisteestä (cm)"),
+        height=280,
+        margin=dict(l=50, r=20, t=10, b=50),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(248,250,252,1)",
+        legend=dict(orientation="h", y=1.1, font=dict(size=11)),
+    )
+    st.plotly_chart(drift_fig, use_container_width=True)
+
+    # ── Step jitter over time ────────────────────────────────────────────────
+    st.markdown(
+        "<div style='font-size:0.85rem;font-weight:600;color:#312e81;"
+        "margin:0.8rem 0 0.4rem;'>Jitter – peräkkäisten mittausten välinen hyppäys</div>",
+        unsafe_allow_html=True,
+    )
+    jitter_fig = go.Figure()
+    jitter_fig.add_trace(go.Scattergl(
+        x=times[1:], y=step_jitter.tolist(),
+        mode="markers", marker=dict(size=2, color="#0ea5e9", opacity=0.4),
+        name="Askelvirhe",
+    ))
+    jitter_fig.add_hline(
+        y=mean_jitter, line_color="#22c55e", line_width=2, line_dash="dash",
+        annotation_text=f"ka {mean_jitter:.1f} cm", annotation_position="top left",
+    )
+    jitter_fig.add_hline(
+        y=p95_jitter, line_color="#ef4444", line_width=2, line_dash="dash",
+        annotation_text=f"p95 {p95_jitter:.1f} cm", annotation_position="top left",
+    )
+    jitter_fig.update_layout(
+        xaxis=dict(title="Aika (Helsinki)"),
+        yaxis=dict(title="Hyppäys (cm)", type="log"),
         height=260,
         margin=dict(l=50, r=20, t=10, b=50),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(248,250,252,1)",
-        legend=dict(orientation="h", y=1.08),
+        showlegend=False,
     )
-    st.plotly_chart(drift_fig, use_container_width=True)
+    st.plotly_chart(jitter_fig, use_container_width=True)
 
     # ── Summary table ────────────────────────────────────────────────────────
     with st.expander("📊 Tarkkuustaulukko"):
         summary = pl.DataFrame({
-            "Mittari":  ["Keskipiste X (cm)", "Keskipiste Y (cm)",
-                         "Std X (cm)", "Std Y (cm)",
-                         "CEP50 (cm)", "CEP68 (cm)", "CEP95 (cm)",
-                         "Havaintoja"],
-            "Arvo":     [f"{cx:.1f}", f"{cy:.1f}",
-                         f"{std_x:.1f}", f"{std_y:.1f}",
-                         f"{cep50:.1f}", f"{cep68:.1f}", f"{cep95:.1f}",
-                         str(len(df_filtered))],
+            "Mittari": [
+                "Keskipiste X (cm)", "Keskipiste Y (cm)",
+                "σ X (cm)", "σ Y (cm)", "RMSE 2D (cm)",
+                "CEP50 (cm)", "CEP68 (cm)", "CEP95 (cm)",
+                "Jitter ka (cm/step)", "Jitter p95 (cm/step)",
+                "Drift X (cm/h)", "Drift Y (cm/h)",
+                "Outlieriaste (>2σ, %)", "Heikko signaali (%)",
+                "Havaintoja",
+            ],
+            "Arvo": [
+                f"{cx:.1f}", f"{cy:.1f}",
+                f"{std_x:.1f}", f"{std_y:.1f}", f"{rmse_2d:.1f}",
+                f"{cep50:.1f}", f"{cep68:.1f}", f"{cep95:.1f}",
+                f"{mean_jitter:.1f}", f"{p95_jitter:.1f}",
+                f"{drift_x_cmh:+.2f}", f"{drift_y_cmh:+.2f}",
+                f"{outlier_rate:.1f}",
+                f"{lq_rate:.1f}" if not math.isnan(lq_rate) else "–",
+                str(len(df_filtered)),
+            ],
         })
         st.dataframe(summary, use_container_width=True, hide_index=True)
