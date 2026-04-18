@@ -32,8 +32,7 @@ WITH perus_puhdistus AS (
     -- 1. Silver-tason peruspuhdistus: laatu, rajat, aukioloajat ja KASSA-ALUEEN TUNNISTUS
     SELECT DISTINCT
         node_id,
-        -- Määritetään aikavyöhyke heti alkuun
-        timestamp AT TIME ZONE 'Europe/Helsinki' AS aika,
+        timestamp AS aika,
         x,
         y,
         q,
@@ -54,10 +53,9 @@ WITH perus_puhdistus AS (
         -- Ongelmalliset alueet (Latauspisteet 1 ja 2 pythagoraan säteellä pisteestä)
         AND (POWER(x - {{ prob1_x }}, 2) + POWER(y - {{ prob1_y }}, 2)) > POWER({{ prob1_r }}, 2)
         AND (POWER(x - {{ prob2_x }}, 2) + POWER(y - {{ prob2_y }}, 2)) > POWER({{ prob2_r }}, 2)
-        
-        -- Aukioloajat schema.yml vaatimuksen mukaan (huomioidaan Helsingin aikavyöhyke)
-        AND EXTRACT('hour' FROM timestamp AT TIME ZONE 'Europe/Helsinki') >= {{ shop_open }}
-        AND EXTRACT('hour' FROM timestamp AT TIME ZONE 'Europe/Helsinki') <= {{ shop_close }}
+        -- Aukioloajat schema.yml vaatimuksen mukaan
+        AND EXTRACT('hour' FROM timestamp) >= {{ shop_open }}
+        AND EXTRACT('hour' FROM timestamp) <= {{ shop_close }}
 
         -- NEW: Rectangular Exclusions (Removing "outside" areas)
         -- 1. y > 30 and x between 0 and 15
