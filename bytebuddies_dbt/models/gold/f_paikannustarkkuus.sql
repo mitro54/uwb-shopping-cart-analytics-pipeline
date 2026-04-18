@@ -72,10 +72,6 @@ etaisyydet AS (
     SELECT
         p.node_id,
         p.yo_paiva,
-        p.aika_hki,
-        EXTRACT('hour' FROM p.aika_hki)::INT               AS tunti,
-        ROUND(p.x - a.cx, 1)                               AS dx,
-        ROUND(p.y - a.cy, 1)                               AS dy,
         SQRT(POWER(p.x - a.cx, 2) + POWER(p.y - a.cy, 2)) AS dist,
         SQRT(
             POWER(p.x - LAG(p.x) OVER (PARTITION BY p.node_id, p.yo_paiva ORDER BY p.aika_hki), 2) +
@@ -107,13 +103,7 @@ SELECT
         * 100.0 / NULLIF(a.n_pings, 0), 1
     )                                                                           AS outlier_pct,
     ROUND(a.avg_q, 1)                                                           AS avg_q,
-    ROUND(a.low_quality_pct, 1)                                                 AS low_quality_pct,
-    -- Raakadatalistat visualisointia varten (sijaintipilvi + säteisvirhejakauma + drift)
-    list(e.dx      ORDER BY e.aika_hki)                                         AS dx_arr,
-    list(e.dy      ORDER BY e.aika_hki)                                         AS dy_arr,
-    list(e.dist    ORDER BY e.aika_hki)                                         AS dist_arr,
-    list(e.tunti   ORDER BY e.aika_hki)                                         AS tunti_arr,
-    list(e.aika_hki::VARCHAR ORDER BY e.aika_hki)                               AS aika_arr
+    ROUND(a.low_quality_pct, 1)                                                 AS low_quality_pct
 
 FROM etaisyydet e
 JOIN aggregaatti a USING (node_id, yo_paiva)
