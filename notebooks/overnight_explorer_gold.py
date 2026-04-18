@@ -99,26 +99,38 @@ if df_all.is_empty():
     st.stop()
 
 # ---------------------------------------------------------------------------
-# Sidebar – filters
+# Sidebar – filters (node first, then night)
 # ---------------------------------------------------------------------------
 st.sidebar.markdown("## 🔍 Suodattimet")
 
-available_dates = sorted(df_all["yo_paiva"].cast(pl.String).unique().to_list())
-selected_date = st.sidebar.selectbox(
-    "📅 Valitse yö",
-    options=available_dates,
-    index=len(available_dates) - 1,
-)
-
-df_night = df_all.filter(pl.col("yo_paiva").cast(pl.String) == selected_date)
-
-available_nodes = sorted(df_night["node_id"].unique().to_list())
 all_option = "— Kaikki laitteet —"
+available_nodes = sorted(df_all["node_id"].unique().to_list())
 selected_node = st.sidebar.selectbox(
     "📡 Valitse laite",
     options=[all_option] + [str(n) for n in available_nodes],
     index=0,
 )
+
+# Night options depend on selected device
+if selected_node == all_option:
+    nights_for_node = sorted(df_all["yo_paiva"].cast(pl.String).unique().to_list())
+else:
+    nights_for_node = sorted(
+        df_all.filter(pl.col("node_id").cast(pl.String) == selected_node)
+        ["yo_paiva"].cast(pl.String).unique().to_list()
+    )
+
+if len(nights_for_node) == 1:
+    selected_date = nights_for_node[0]
+    st.sidebar.markdown(f"📅 **Yö:** {selected_date}")
+else:
+    selected_date = st.sidebar.selectbox(
+        "📅 Valitse yö",
+        options=nights_for_node,
+        index=0,
+    )
+
+df_night = df_all.filter(pl.col("yo_paiva").cast(pl.String) == selected_date)
 
 # ---------------------------------------------------------------------------
 # Night-level summary metrics
@@ -236,9 +248,12 @@ if selected_node != all_option:
             "margin:0.8rem 0 0.4rem;'>Sijaintipilvi suhteessa keskipisteeseen</div>",
             unsafe_allow_html=True,
         )
+        # Negate dy so the scatter matches the floor plan's y-down convention
+        dy_arr_neg = [-d for d in dy_arr]
+
         scatter_fig = go.Figure()
         scatter_fig.add_trace(go.Scattergl(
-            x=dx_arr, y=dy_arr,
+            x=dx_arr, y=dy_arr_neg,
             mode="markers",
             marker=dict(
                 size=3,
@@ -258,7 +273,7 @@ if selected_node != all_option:
         ]:
             scatter_fig.add_trace(go.Scatter(
                 x=[radius * c for c in cos_a],
-                y=[radius * s for s in sin_a],
+                y=[-radius * s for s in sin_a],
                 mode="lines",
                 line=dict(color=color, width=2),
                 name=label,
@@ -267,7 +282,7 @@ if selected_node != all_option:
         scatter_fig.update_layout(
             xaxis=dict(title="ΔX (cm)", zeroline=True, zerolinewidth=1,
                        zerolinecolor="#cbd5e1", showgrid=True),
-            yaxis=dict(title="ΔY (cm)", zeroline=True, zerolinewidth=1,
+            yaxis=dict(title="ΔY (cm, ↑=pohj.)", zeroline=True, zerolinewidth=1,
                        zerolinecolor="#cbd5e1", showgrid=True,
                        scaleanchor="x", scaleratio=1),
             height=420,
@@ -321,15 +336,16 @@ if selected_node != all_option:
     if IMAGE_PATH.exists():
         img = Image.open(IMAGE_PATH)
         cx, cy = r["centroid_x"], r["centroid_y"]
-        cy_flipped = MAP_MAX_Y - cy
 
         fp_fig = go.Figure()
+        # Image placed at top-left (0, 0) — y-axis is reversed so 0 = top of map
         fp_fig.add_layout_image(dict(
             source=img,
             xref="x", yref="y",
-            x=0, y=MAP_MAX_Y,
+            x=0, y=0,
             sizex=MAP_MAX_X, sizey=MAP_MAX_Y,
             sizing="stretch", opacity=1.0, layer="below",
+            xanchor="left", yanchor="top",
         ))
 
         for radius, color, label in [
@@ -339,21 +355,55 @@ if selected_node != all_option:
         ]:
             fp_fig.add_trace(go.Scatter(
                 x=[cx + radius * c for c in cos_a],
-                y=[cy_flipped + radius * s for s in sin_a],
+                y=[cy + radius * s for s in sin_a],
                 mode="lines",
                 line=dict(color=color, width=2),
                 name=label,
             ))
 
+        # Raw position points in data coordinates (no flip needed with reversed y-axis)
+        if dx_arr:
+            fp_fig.add_trace(go.Scattergl(
+                x=[cx + dx for dx in dx_arr],
+                y=[cy + dy for dy in dy_arr],
+                mode="markers",
+                marker=dict(
+                    size=3,
+                    color=tunti_arr,
+                    colorscale="Viridis",
+                    opacity=0.45,
+                    colorbar=dict(title="Tunti", thickness=10, len=0.6),
+                    line=dict(width=0),
+                ),
+                name="Havainnot",
+            ))
+
         fp_fig.add_trace(go.Scatter(
-            x=[cx], y=[cy_flipped],
+            x=[cx], y=[cy],
             mode="markers",
             marker=dict(size=12, color="#6366f1", symbol="cross"),
             name=f"Keskipiste ({cx:.0f}, {cy:.0f})",
         ))
 
-        fp_fig.update_xaxes(range=[0, MAP_MAX_X], showgrid=False, showticklabels=False)
-        fp_fig.update_yaxes(range=[0, MAP_MAX_Y], showgrid=False, showticklabels=False,
+        # Gentle zoom — 10× CEP95 padding, min 1500 cm
+        zoom_pad = max(r["cep95"] * 10, 1500)
+        if zoom_pad < MAP_MAX_X * 0.4:
+            x_range = [
+                max(cx - zoom_pad, 0),
+                min(cx + zoom_pad, MAP_MAX_X),
+            ]
+            y_range = [
+                max(cy - zoom_pad, 0),
+                min(cy + zoom_pad, MAP_MAX_Y),
+            ]
+        else:
+            x_range = [0, MAP_MAX_X]
+            y_range = [0, MAP_MAX_Y]
+
+        # Reversed y range [max, min] so y=0 is at the top (image coordinates)
+        fp_fig.update_xaxes(range=x_range, showgrid=False, showticklabels=False)
+        fp_fig.update_yaxes(range=[y_range[1], y_range[0]],
+                            showgrid=False, showticklabels=False,
                             scaleanchor="x", scaleratio=1)
         fp_fig.update_layout(
             height=420,
@@ -366,6 +416,55 @@ if selected_node != all_option:
         st.plotly_chart(fp_fig, use_container_width=True)
     else:
         st.info("Pohjapiirros ei löydy (image/kauppa2.png).")
+
+    # ── Drift: position deviation over time ──────────────────────────────────
+    aika_arr = r.get("aika_arr") or []
+    if aika_arr and dx_arr and dy_arr:
+        st.markdown(
+            '<div class="section-title">📉 Drift – systemaattinen sijaintimuutos yön yli</div>',
+            unsafe_allow_html=True,
+        )
+
+        n = len(dx_arr)
+        t_idx = np.arange(n, dtype=float)
+        dx_np = np.array(dx_arr, dtype=float)
+        dy_np = np.array(dy_arr, dtype=float)
+
+        trend_x = np.polyval(np.polyfit(t_idx, dx_np, 1), t_idx).tolist()
+        trend_y = np.polyval(np.polyfit(t_idx, dy_np, 1), t_idx).tolist()
+
+        drift_raw_fig = go.Figure()
+        drift_raw_fig.add_trace(go.Scattergl(
+            x=aika_arr, y=dx_arr,
+            mode="markers", marker=dict(size=2, color="#6366f1", opacity=0.3),
+            name="ΔX",
+        ))
+        drift_raw_fig.add_trace(go.Scattergl(
+            x=aika_arr, y=[-d for d in dy_arr],
+            mode="markers", marker=dict(size=2, color="#ec4899", opacity=0.3),
+            name="ΔY",
+        ))
+        drift_raw_fig.add_trace(go.Scatter(
+            x=aika_arr, y=trend_x,
+            mode="lines", line=dict(color="#6366f1", width=2),
+            name=f"Trendi X ({r['drift_x_cmh']:+.1f} cm/h)",
+        ))
+        drift_raw_fig.add_trace(go.Scatter(
+            x=aika_arr, y=[-v for v in trend_y],
+            mode="lines", line=dict(color="#ec4899", width=2),
+            name=f"Trendi Y ({r['drift_y_cmh']:+.1f} cm/h)",
+        ))
+        drift_raw_fig.add_hline(y=0, line_color="#94a3b8", line_width=1)
+        drift_raw_fig.update_layout(
+            xaxis=dict(title="Aika (Helsinki)"),
+            yaxis=dict(title="Poikkeama keskipisteestä (cm)"),
+            height=280,
+            margin=dict(l=50, r=20, t=10, b=50),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(248,250,252,1)",
+            legend=dict(orientation="h", y=1.1, font=dict(size=11)),
+        )
+        st.plotly_chart(drift_raw_fig, use_container_width=True)
 
     # ── Accuracy trends over multiple nights ──────────────────────────────────
     if len(df_node) > 1:

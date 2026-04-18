@@ -108,11 +108,12 @@ SELECT
     )                                                                           AS outlier_pct,
     ROUND(a.avg_q, 1)                                                           AS avg_q,
     ROUND(a.low_quality_pct, 1)                                                 AS low_quality_pct,
-    -- Raakadatalistat visualisointia varten (sijaintipilvi + säteisvirhejakauma)
+    -- Raakadatalistat visualisointia varten (sijaintipilvi + säteisvirhejakauma + drift)
     list(e.dx      ORDER BY e.aika_hki)                                         AS dx_arr,
     list(e.dy      ORDER BY e.aika_hki)                                         AS dy_arr,
     list(e.dist    ORDER BY e.aika_hki)                                         AS dist_arr,
-    list(e.tunti   ORDER BY e.aika_hki)                                         AS tunti_arr
+    list(e.tunti   ORDER BY e.aika_hki)                                         AS tunti_arr,
+    list(e.aika_hki::VARCHAR ORDER BY e.aika_hki)                               AS aika_arr
 
 FROM etaisyydet e
 JOIN aggregaatti a USING (node_id, yo_paiva)
