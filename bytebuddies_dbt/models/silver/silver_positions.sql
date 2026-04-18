@@ -56,6 +56,17 @@ WITH perus_puhdistus AS (
         -- Aukioloajat schema.yml vaatimuksen mukaan
         AND EXTRACT('hour' FROM timestamp) >= {{ shop_open }}
         AND EXTRACT('hour' FROM timestamp) <= {{ shop_close }}
+
+        -- NEW: Rectangular Exclusions (Removing "outside" areas)
+        -- 1. y > 30 and x between 0 and 15
+        AND NOT (y > 3000 AND x >= 0 AND x <= 1500)
+        
+        -- 2. y between 0 and 6 and x > 84
+        AND NOT (y >= 0 AND y <= 600 AND x > 8400)
+        
+        -- 3. y > 47 and x > 99
+        AND NOT (y > 4700 AND x > 9900)
+
 ),
 liikkeet AS (
     -- 2. Haetaan edellinen sijainti, aika ja kassatieto per kärry
