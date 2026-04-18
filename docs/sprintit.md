@@ -213,7 +213,39 @@ Paikalla kaikki Joni, Toni, Panu, Tuija, Mitro
     
 Keskusteltiin, että tää viikko on aika mellow ja ensi viikolla aletaan tekemään modeleita jolloin saadaan harppauksin eteenpäin.
     
-Paikalla Joni, Toni, Panu, Mitro
+**Paikalla Joni, Toni, Panu, Mitro**
+
+### Sprint retro - ma 6.4.2026 klo 17.00
+
+#### Mikä toimi hyvin:
+Hiljainen viikko työskentelystä, kun tehtiin enemmänkin suunnittelua ja dbt/medallion opiskelua kaikilla. Seurasimme Scrumia tarkemmin.
+
+#### Mikä ei toiminut:
+Vasta puolessa välissä Sprinttiä alettiin käyttämään branchejä. Kommunikaatio oli vähäistä.
+
+#### Parannusehdotukset:
+Aletaan käyttämään kaikki bränchejä. Enemmän keskustelua mitä ajattelee ja miettii, jotta voidaan käyttää päätöksien tukena. Dokumentaatiossa voisi käyttää enemmän kuvia.
+
+#### Tiimin fiilis:
+Asiat alkanut selviintymään kun saatiin selvä suunnitelma ja polku eteenpäin.
+
+##### Yhteenveto
+Selvempi sprint kuin aikaisempi, oli tiedossa mitä pitää tehdä.
+
+**Paikalla: kaikki**
+
+### Sprint review ma 6.4.2026 klo 18:00
+
+Keskustelimme Tuijan tekemästä hyllyjaosta. Kävimme keskustelussa läpi Medallion arkkitehtuuria ja sen etenemistä. Mitron datascience löydöksiä käytiin läpi. Läpikävelijöiden ja tutkiskelijoiden klusterointi nostettiin käyttäjätarinaksi. Kävimme läpi yhdessä tonin agenttijärjestelmää sekä keskusteltiin dbt:n käytöstä.
+
+Scrum poker:
+
+Silver-mallista Gold-malliin
+1, 3, 3, 3, 5 - tulos: 3
+
+Tutustuimme Scrum pokeriin, jolla voi eri töiden vaativuutta yhdessä ryhmän kanssa määritellä.
+
+**Paikalla: kaikki**
 
 ***
 
