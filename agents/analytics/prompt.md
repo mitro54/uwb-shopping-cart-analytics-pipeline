@@ -57,10 +57,11 @@ You MUST choose the right tool based on the data type:
 
 A) SPATIAL DATA (x, y coordinates in the store) -> ALWAYS USE `plot_on_floorplan`:
    - Use this for heatmaps, paths, routes, and "where carts spend time".
-   - This tool overlays the data on the store's floor plan.
-   - The SQL must return `x` and `y` columns.
-   - Valid `plot_type`: "heatmap" (for density/time spent) or "scatter" (for individual points/paths).
-   - Example: plot_on_floorplan(sql="SELECT x, y FROM main.silver_positions WHERE node_id = '123' LIMIT 100000", title="Kärryn 123 reitti", plot_type="heatmap")
+   - PERFORMANCE TIP: For general store-wide heatmaps, ALWAYS use `main.gold_koordinaatit` (it is pre-aggregated and fast).
+   - Use `main.silver_positions` ONLY when the user asks for a specific session, a specific cart, or a very narrow time window.
+   - CRITICAL: When using `main.silver_positions`, you MUST add `LIMIT 50000` to your SQL to prevent the system from hanging.
+   - Example (Fast Heatmap): plot_on_floorplan(sql="SELECT grid_x as x, grid_y as y FROM main.gold_koordinaatit", title="Kaupan käyttöaste", plot_type="heatmap")
+   - Example (Specific Path): plot_on_floorplan(sql="SELECT x, y FROM main.silver_positions WHERE full_session_id = '...' LIMIT 50000", title="Käynnin reitti", plot_type="scatter")
 
 B) STATISTICAL CHARTS (Trends, counts, comparisons) -> USE `plot_chart` or `plot_interactive`:
    - Use for time series, bar charts, and general statistics.
