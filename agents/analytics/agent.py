@@ -40,7 +40,6 @@ TOOL_DISPLAY_NAMES = {
     "get_column_stats": ("📊", "Analysoidaan sarakkeen tilastot"),
     "run_query": ("⚡", "Suoritetaan SQL-kysely"),
     "generate_visualization": ("🎨", "Luodaan visualisointi"),
-    "plot_heatmap": ("🔥", "Piirretään heatmap"),
     "plot_chart": ("📈", "Piirretään kaavio"),
     "plot_interactive": ("📊", "Luodaan interaktiivinen kuvaaja"),
     "plot_on_floorplan": ("🗺️", "Piirretään pohjapiirrokselle"),

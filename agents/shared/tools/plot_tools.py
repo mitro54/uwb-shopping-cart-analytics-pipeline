@@ -22,34 +22,10 @@ OUTPUT_DIR = Path("data/processed/plots")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def _get_conn() -> duckdb.DuckDBPyConnection:
-    return duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
-
-@tool
-def plot_heatmap(sql: str, x_col: str, y_col: str, title: str = "UWB Heatmap") -> str:
-    """
-    Luo heatmapin SQL-kyselyn perusteella. 
-    SQL-kyselyn tulee palauttaa vähintään x ja y koordinaatit.
-    """
-    try:
-        conn = _get_conn()
-        df = conn.execute(sql).fetchdf()
-        conn.close()
-
-        if df.empty:
-            return "Kysely ei palauttanut dataa heatmapia varten."
-
-        plt.figure(figsize=(10, 8))
-        sns.kdeplot(data=df, x=x_col, y=y_col, fill=True, cmap="rocket", thresh=0.05, levels=20)
-        plt.title(title)
-        
-        filename = f"heatmap_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.png"
-        filepath = OUTPUT_DIR / filename
-        plt.savefig(filepath)
-        plt.close()
-
-        return f"Heatmap luotu onnistuneesti: {filepath.absolute()}"
-    except Exception as e:
-        return f"Virhe heatmapin luomisessa: {e}"
+    conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
+    dbt_path = CONFIG.duckdb_path.parent.parent.parent / "bytebuddies_dbt"
+    conn.execute(f"SET FILE_SEARCH_PATH = '{dbt_path.as_posix()}'")
+    return conn
 
 @tool
 def plot_chart(sql: str, chart_type: str, x_col: str, y_col: str, title: str = "Analysis Chart") -> str:
@@ -128,4 +104,4 @@ def plot_interactive(sql: str, chart_type: str, x_col: str, y_col: str, title: s
     except Exception as e:
         return f"Virhe Plotly-visualisoinnissa: {e}"
 
-ALL_PLOT_TOOLS = [plot_heatmap, plot_chart, plot_interactive]
+ALL_PLOT_TOOLS = [plot_chart, plot_interactive]
