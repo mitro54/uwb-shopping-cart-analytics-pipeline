@@ -40,12 +40,13 @@ Agentit eivät vain arvaa vastauksia, vaan ne käyttävät **todellisia työkalu
 
 1.  **Kysymys:** "Missä kärryt liikkuivat eniten eilen klo 12-14?"
 2.  **Orkestraattori:** Pyytää Schema-agentilta UWB-sijaintitaulun rakenteen.
-3.  **Schema-agentti:** Kertoo, että `positions`-taulussa on `x`, `y` ja `timestamp`.
+3.  **Schema-agentti:** Kertoo, että `silver_positions`-taulussa on `x`, `y` ja `aika`.
 4.  **Analytiikka-agentti:**
     *   Suorittaa SQL-haun rajatulla aikavälillä.
     *   Huomaa saaneensa koordinaatteja.
-    *   Kutsuu `plot_heatmap` -työkalua.
-    *   Palauttaa vastauksen ja linkin kuvaan.
+    *   Kutsuu `plot_on_floorplan` -työkalua (`plot_type="heatmap"`).
+    *   Palauttaa vastauksen ja linkin pohjapiirroksen päällä olevaan heatmap-kuvaan.
+
 5.  **Käyttäjä:** Antaa palautteen "Hyvä!".
 6.  **Muisti:** Järjestelmä muistaa tämän onnistuneen analyysipolun tulevaisuutta varten.
 
