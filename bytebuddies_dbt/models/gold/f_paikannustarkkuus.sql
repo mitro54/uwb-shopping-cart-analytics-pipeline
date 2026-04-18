@@ -10,15 +10,15 @@
 WITH yopingit AS (
     SELECT
         node_id,
-        timezone('Europe/Helsinki', aika::TIMESTAMPTZ)          AS aika_hki,
+        aika                                                     AS aika_hki,
         x, y, q, is_low_quality, is_jitter,
         -- Yöpäivä = se ilta jona yö alkoi (22-tunti kuuluu tälle päivälle,
         -- 00-06 kuuluu edelliselle illalle)
         CAST(
             CASE
-                WHEN EXTRACT('hour' FROM timezone('Europe/Helsinki', aika::TIMESTAMPTZ)) < 7
-                THEN CAST(timezone('Europe/Helsinki', aika::TIMESTAMPTZ) AS DATE) - INTERVAL '1 day'
-                ELSE CAST(timezone('Europe/Helsinki', aika::TIMESTAMPTZ) AS DATE)
+                WHEN EXTRACT('hour' FROM aika) < 7
+                THEN CAST(aika AS DATE) - INTERVAL '1 day'
+                ELSE CAST(aika AS DATE)
             END
         AS DATE) AS yo_paiva
     FROM {{ ref('silver_device_diagnostics') }}
@@ -29,8 +29,8 @@ WITH yopingit AS (
       -- Latausasema 2 poissuljettu (x=900, y=3600, r=600)
       AND (POWER(x - 900,  2) + POWER(y - 3600, 2) > 360000)
       AND (
-          EXTRACT('hour' FROM timezone('Europe/Helsinki', aika::TIMESTAMPTZ)) >= 22
-          OR EXTRACT('hour' FROM timezone('Europe/Helsinki', aika::TIMESTAMPTZ)) < 7
+          EXTRACT('hour' FROM aika) >= 22
+          OR EXTRACT('hour' FROM aika) < 7
       )
 ),
 
