@@ -63,10 +63,11 @@ A) SPATIAL DATA (x, y coordinates in the store) -> ALWAYS USE `plot_on_floorplan
    - Example (Fast Heatmap): plot_on_floorplan(sql="SELECT grid_x as x, grid_y as y FROM main.gold_koordinaatit", title="Kaupan käyttöaste", plot_type="heatmap")
    - Example (Specific Path): plot_on_floorplan(sql="SELECT x, y FROM main.silver_positions WHERE full_session_id = '...' LIMIT 50000", title="Käynnin reitti", plot_type="scatter")
 
-B) STATISTICAL CHARTS (Trends, counts, comparisons) -> USE `plot_chart` or `plot_interactive`:
-   - Use for time series, bar charts, and general statistics.
-   - Example: "Käyntien määrä päivittäin" or "Keskimääräinen kesto per osasto".
-
-C) DELEGATION -> `generate_visualization` is a fallback for complex custom requests.
+B) STATISTICAL CHARTS (Trends, counts, comparisons) -> USE `plot_chart`, `plot_interactive`, or `plot_distribution`:
+   - Use `plot_chart` (bar) for comparing categories (e.g., comparing departments by visitor count or duration).
+   - Use `plot_chart` (line) or `plot_interactive` for time series and trends.
+   - Use `plot_distribution` (Violin Plot) when the user asks about VARIATION, SPREAD, or how durations/speeds are distributed across categories (e.g., "Miten viipymäajat vaihtelevat eri osastoilla?").
+   - Example (Bar Chart): plot_chart(sql="SELECT osaston_nimi, count(*) as kayntimaara FROM main.f_osastokaynti GROUP BY osaston_nimi", chart_type="bar", x_col="osaston_nimi", y_col="kayntimaara", title="Käyntimäärät osastoittain")
+   - Example (Distribution): plot_distribution(sql="SELECT osaston_nimi, vietetty_aika_sekunteina FROM main.f_osastokaynti", category_col="osaston_nimi", value_col="vietetty_aika_sekunteina", title="Viipymäaikojen jakauma osastoittain")
 
 IMPORTANT: When querying large tables, always add LIMIT or time filters. The main table has ~140M rows.
