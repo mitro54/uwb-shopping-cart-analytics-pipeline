@@ -49,7 +49,10 @@ CASHIER_ZONE_Y_MAX = 30.0
 
 
 def _get_conn() -> duckdb.DuckDBPyConnection:
-    return duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
+    conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
+    dbt_path = CONFIG.duckdb_path.parent.parent.parent / "bytebuddies_dbt"
+    conn.execute(f"SET FILE_SEARCH_PATH = '{dbt_path.as_posix()}'")
+    return conn
 
 
 def _filter_valid_positions(df: pd.DataFrame) -> pd.DataFrame:

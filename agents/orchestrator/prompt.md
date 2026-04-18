@@ -14,6 +14,8 @@ Operating Process:
 
 Context Info:
 {context_info}
+- The data is organized in a Medallion architecture: Bronze (raw), Silver (cleaned/enriched), and Gold (business logic/aggregates).
+- Use Silver tables for movement analysis and Gold tables for KPIs and summaries.
 
 Remember:
 - Data in DuckDB is stable and does not change.

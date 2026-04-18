@@ -72,7 +72,7 @@ models:
   - name: gold_koordinaatit
     description: >
       Puhdistettu ja rikastettu koordinaattitaulu lämpökarttatuotantoon.
-      Lähde: silver_pysahdykset. Poistettu: Vyöhyke 9 (Sisääntulo & kärryt, x 0–1200, y 3500–5200).
+      Lähde: silver_positions. Poistettu tekninen haamudata myymälän ulkoseiniltä (mm. sisääntulo ja kärryt, oikean reunan yli tursuava data, sekä ylä- ja alanurkkien lovet).
       Aggregoitu 100 cm × 100 cm ruudukkoon. Yksi rivi per grid-ruutu.
     columns:
       - name: grid_x

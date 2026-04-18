@@ -16,7 +16,11 @@ WRITE_PATTERN = re.compile(r"\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|
 
 
 def _connect() -> duckdb.DuckDBPyConnection:
-    return duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
+    conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
+    # dbt on luonut näkymät suhteessa 'bytebuddies_dbt' kansioon (../data/...)
+    dbt_path = CONFIG.duckdb_path.parent.parent.parent / "bytebuddies_dbt"
+    conn.execute(f"SET FILE_SEARCH_PATH = '{dbt_path.as_posix()}'")
+    return conn
 
 
 @tool

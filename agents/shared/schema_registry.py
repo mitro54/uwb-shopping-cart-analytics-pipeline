@@ -34,10 +34,16 @@ class SchemaRegistry:
 
     def _connect(self) -> duckdb.DuckDBPyConnection:
         """
-        Luo yhteyden DuckDB-tietokantaan.
-        
+        Luo yhteyden DuckDB-tietokantaan ja asettaa hakupolut oikein.
         """
-        return duckdb.connect(str(self.duckdb_path), read_only=True)
+        conn = duckdb.connect(str(self.duckdb_path), read_only=True)
+        
+        # dbt on luonut näkymät suhteessa 'bytebuddies_dbt' kansioon (../data/...)
+        # Asetetaan DuckDB:n hakupolku siten, että se löytää nämä tiedostot projektin juuresta käsin.
+        dbt_path = self.duckdb_path.parent.parent.parent / "bytebuddies_dbt"
+        conn.execute(f"SET FILE_SEARCH_PATH = '{dbt_path.as_posix()}'")
+        
+        return conn
 
     def discover(self) -> dict:
         """

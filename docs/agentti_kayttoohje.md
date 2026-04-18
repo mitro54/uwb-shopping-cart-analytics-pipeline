@@ -4,6 +4,9 @@ Tätä järjestelmää voidaan ajaa sekä terminaalissa että Streamlit-sovelluk
 1) Terminaalissa komennolla:
 ```bash
 uv run python -m agents.main [KOMENTO] [ARGUMENTIT]
+
+# Esimerkki
+uv run python -m agents.main ask "Mitä osastoja kaupassa on ja millä osastolla asiakkaat viettävät keskimäärin pisimpään aikaa?"
 ```
 tai
 
@@ -28,7 +31,7 @@ uv run python -m agents.main schema --refresh
 Käytä tätä, kun haluat nopean vastauksen tiettyyn kysymykseen. Orkestraattori koordinoi vastauksen.
 **Esimerkki:**
 ```bash
-uv run python -m agents.main ask "Mitkä ovat 5 nopeinta liikenneasemaa?"
+uv run python -m agents.main ask "Mikä on ollut keskimääräinen kauppakäynnin kesto (f_kaynti) tällä viikolla?"
 ```
 **Käytä säiettä (muistaa aiemman keskustelun tässä säikeessä):**
 ```bash
