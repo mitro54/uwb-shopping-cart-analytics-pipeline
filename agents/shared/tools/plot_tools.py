@@ -146,6 +146,55 @@ def plot_distribution(sql: str, category_col: str, value_col: str, title: str = 
     except Exception as e:
         return f"Virhe jakaumakuvaajan luomisessa: {e}"
 
+@tool
+def plot_grouped_bar(sql: str, x_col: str, y_col: str, hue_col: str, title: str = "Ryhmitelty analyysi") -> str:
+    """
+    Luo ryhmitellyn pylväsdiagrammin (Clustered Bar Chart), jossa on kaksi kategoriaa ja yksi arvo.
+    Esim: x_col='kuukausi', y_col='vietetty_aika', hue_col='osasto'.
+    """
+    try:
+        conn = _get_conn()
+        df = conn.execute(sql).fetchdf()
+        conn.close()
+
+        if df.empty:
+            return "Kysely ei palauttanut dataa ryhmiteltyä kaaviota varten."
+
+        # Asetetaan teema
+        sns.set_theme(style="whitegrid")
+        plt.figure(figsize=(14, 8))
+        
+        # Piirretään kaavio
+        ax = sns.barplot(
+            data=df, 
+            x=x_col, 
+            y=y_col, 
+            hue=hue_col,
+            errorbar=None,
+            palette='tab10'
+        )
+
+        # Lisätään numeroarvot jokaisen pylvään päälle
+        for container in ax.containers:
+            ax.bar_label(container, fmt='%.0f', padding=3, fontsize=8, rotation=90)
+
+        plt.title(title, fontweight='bold', fontsize=14, pad=20)
+        plt.xticks(rotation=45)
+        
+        # Siirretään selite oikealle puolelle ulkopuolelle
+        plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left', title=hue_col)
+        
+        plt.tight_layout()
+
+        filename = f"grouped_bar_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.png"
+        filepath = OUTPUT_DIR / filename
+        plt.savefig(filepath, bbox_inches='tight')
+        plt.close()
+
+        return f"Ryhmitelty pylväskaavio luotu: {filepath.absolute()}"
+    except Exception as e:
+        return f"Virhe ryhmitellyn kaavion luomisessa: {e}"
+
 import plotly.express as px
 import plotly.io as pio
 
@@ -187,4 +236,4 @@ def plot_interactive(sql: str, chart_type: str, x_col: str, y_col: str, title: s
     except Exception as e:
         return f"Virhe Plotly-visualisoinnissa: {e}"
 
-ALL_PLOT_TOOLS = [plot_chart, plot_distribution, plot_interactive]
+ALL_PLOT_TOOLS = [plot_chart, plot_distribution, plot_grouped_bar, plot_interactive]
