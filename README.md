@@ -71,18 +71,12 @@ bytebuddies/
 │   ├── processed/                      # Putsatut ja muokatut väliaikaiset datatiedostot  
 │   └── sample_data.csv                 # Pieni (esim. 100 rivin) näytedata testausta varten  
 │  
-├── dbt/                                # dbt-projekti DuckDB:lle/MariaDB:lle  
+├── bytebuddies_dbt/                    # dbt-projekti DuckDB:lle  
 │   ├── dbt_project.yml                 # dbt-projektin asetukset  
 │   ├── models/  
-│   │   ├── staging/  
-│   │   │   ├── stg_carts.sql  
-│   │   │   ├── stg_positions.sql  
-│   │   │   └── stg_sessions.sql  
-│   │   ├── marts/                      # Avain informaatio asiakkaalle (Voidaan visualisoida)  
-│   │   │   ├── f_cart_paths.sql  
-│   │   │   ├── f_cart_speeds.sql  
-│   │   │   └── f_time_buckets.sql  
-│   │   └── schema.yml                  # testit + dokumentit malleille  
+│   │   ├── bronze/  
+│   │   ├── silver/  
+│   │   └── gold/                       # Avain informaatio asiakkaalle  
 │   ├── seeds/  
 │   │   └── zones.csv                   # esim. vyöhykemäärittelyt (manuaaliset)  
 │   ├── macros/  
