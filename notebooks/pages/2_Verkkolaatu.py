@@ -405,3 +405,121 @@ if IMAGE_PATH.exists():
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
     )
     st.plotly_chart(density_fig, use_container_width=True)
+
+# ---------------------------------------------------------------------------
+# Correlation analysis helper
+# ---------------------------------------------------------------------------
+def _corr_label(r: float) -> tuple[str, str]:
+    abs_r = abs(r)
+    strength = "vahva" if abs_r >= 0.7 else "kohtalainen" if abs_r >= 0.4 else "heikko"
+    direction = "negatiivinen" if r < 0 else "positiivinen"
+    return strength, direction
+
+
+def show_correlation(x_vals, y_vals, weights, x_label: str, y_label: str,
+                     r_label: str, interpretation: str):
+    r = float(np.corrcoef(x_vals, y_vals)[0, 1])
+    coeffs = np.polyfit(x_vals, y_vals, 1)
+    x_line = np.linspace(x_vals.min(), x_vals.max(), 100)
+    y_line = np.polyval(coeffs, x_line)
+    strength, direction = _corr_label(r)
+
+    col_r, col_exp = st.columns([1, 3])
+    col_r.markdown(
+        f'<div class="metric-card"><div class="val">{r:.3f}</div>'
+        f'<div class="lbl">Pearsonin r ({r_label})</div></div>',
+        unsafe_allow_html=True,
+    )
+    col_exp.info(f"Korrelaatio on **{strength} ja {direction}** (r = {r:.3f}). {interpretation}")
+
+    fig = go.Figure()
+    fig.add_trace(go.Scattergl(
+        x=x_vals.tolist(), y=y_vals.tolist(),
+        mode="markers",
+        marker=dict(
+            size=6, color=weights.tolist(), colorscale="Viridis", opacity=0.6,
+            colorbar=dict(title="Pingiä", thickness=12, len=0.5), line=dict(width=0),
+        ),
+        hovertemplate=f"{x_label}=%{{x:.1f}}<br>{y_label}=%{{y:.2f}}<extra></extra>",
+        name="Ruudut",
+    ))
+    fig.add_trace(go.Scatter(
+        x=x_line.tolist(), y=y_line.tolist(),
+        mode="lines", line=dict(color="#ef4444", width=2, dash="dash"),
+        name=f"Trendi (r={r:.3f})",
+    ))
+    fig.update_layout(
+        xaxis=dict(title=x_label), yaxis=dict(title=y_label),
+        height=350, margin=dict(l=50, r=20, t=10, b=50),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
+        legend=dict(font=dict(size=11)),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# ---------------------------------------------------------------------------
+# Correlation analyses
+# ---------------------------------------------------------------------------
+st.markdown('<div class="section-title">🔗 Korrelaatioanalyysit</div>', unsafe_allow_html=True)
+
+corr_df = df_filtered.select(["avg_quality", "jitter_pct", "low_quality_pct", "total_pings"]).drop_nulls()
+
+if len(corr_df) > 1:
+    q      = corr_df["avg_quality"].to_numpy()
+    jitter = corr_df["jitter_pct"].to_numpy()
+    pings  = corr_df["total_pings"].to_numpy()
+
+    tab1, tab2, tab3 = st.tabs([
+        "Jitter vs Q-arvo",
+        "Pingimäärä vs Q-arvo",
+        "Pingimäärä vs Jitter",
+    ])
+
+    with tab1:
+        st.caption("Onko korkea jitter yhteydessä heikkoon signaaliin?")
+        show_correlation(
+            q, jitter, pings,
+            x_label="Avg Q-arvo (suurempi = parempi)",
+            y_label="Jitter (%)",
+            r_label="jitter vs Q",
+            interpretation=(
+                "Korkea Q-arvo liittyy matalaan jitteriin — signaalilaatu ja "
+                "paikannusstabiliteetti kulkevat käsi kädessä."
+                if np.corrcoef(q, jitter)[0, 1] < -0.3
+                else "Q-arvon ja jitterin välillä ei ole selkeää lineaarista yhteyttä."
+            ),
+        )
+
+    with tab2:
+        st.caption("Onko vilkkailla alueilla parempi vai heikompi signaali?")
+        show_correlation(
+            pings, q, pings,
+            x_label="Pingejä per ruutu (liikennemäärä)",
+            y_label="Avg Q-arvo",
+            r_label="pingimäärä vs Q",
+            interpretation=(
+                "Vilkkaammilla alueilla signaali on parempi — ankkuriverkko on "
+                "optimoitu pääkäytäville."
+                if np.corrcoef(pings, q)[0, 1] > 0.3
+                else "Liikennemäärällä ja signaalin laadulla ei ole selkeää yhteyttä — "
+                     "verkko toimii tasaisesti riippumatta alueen vilkkaudesta."
+            ),
+        )
+
+    with tab3:
+        st.caption("Aiheuttaako suuri tagitiheys enemmän jitteriä? (UWB-interferenssi)")
+        show_correlation(
+            pings, jitter, pings,
+            x_label="Pingejä per ruutu (liikennemäärä)",
+            y_label="Jitter (%)",
+            r_label="pingimäärä vs jitter",
+            interpretation=(
+                "Vilkkaammilla alueilla esiintyy enemmän jitteriä — viittaa UWB-kanavien "
+                "ruuhkautumiseen kun useita tageja on samanaikaisesti aktiivisena."
+                if np.corrcoef(pings, jitter)[0, 1] > 0.3
+                else "Liikennemäärä ei selitä jitteriä — interferenssi ei ole "
+                     "merkittävä ongelma tässä verkossa."
+            ),
+        )
+else:
+    st.info("Ei tarpeeksi dataa korrelaatioanalyysiin.")
