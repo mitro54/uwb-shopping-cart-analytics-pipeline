@@ -101,28 +101,45 @@ opacity = st.sidebar.slider("Kartan läpinäkyvyys", 0.3, 1.0, 0.75, 0.05)
 df_filtered = df.filter(pl.col("total_pings") >= min_pings)
 
 metric_col, colorscale, zmin, zmax, low_is_bad = {
-    "Heikkolaatuiset pingit (%)": ("low_quality_pct", "RdYlGn_r", 0, 50,  True),
-    "Jitter (%)":                 ("jitter_pct",      "RdYlGn_r", 0, 10,  True),
-    "Avg Q-arvo":                 ("avg_quality",     "RdYlGn_r", 0, 50,  True),
+    "Heikkolaatuiset pingit (%)": ("low_quality_pct", "RdYlGn_r", 0,   50,  True),
+    "Jitter (%)":                 ("jitter_pct",      "RdYlGn_r", 0,   10,  True),
+    "Avg Q-arvo":                 ("avg_quality",     "RdYlGn",   0,  150,  False),
 }[metric_label]
+
+# ---------------------------------------------------------------------------
+# Dead zones – grid cells inside the floor bounds with zero pings ever
+# ---------------------------------------------------------------------------
+all_grid_cells = pl.DataFrame({
+    "grid_x": pl.Series([x for x in range(0, MAP_MAX_X, CELL_SIZE) for _ in range(0, MAP_MAX_Y, CELL_SIZE)], dtype=pl.Float64),
+    "grid_y": pl.Series([y for _ in range(0, MAP_MAX_X, CELL_SIZE) for y in range(0, MAP_MAX_Y, CELL_SIZE)], dtype=pl.Float64),
+})
+dead_zones = all_grid_cells.join(
+    df.select(["grid_x", "grid_y"]),
+    on=["grid_x", "grid_y"],
+    how="anti",
+)
 
 # ---------------------------------------------------------------------------
 # KPI cards
 # ---------------------------------------------------------------------------
-total_cells   = len(df_filtered)
-good_coverage = df_filtered.filter(pl.col("low_quality_pct") < 20)
-problem_cells = df_filtered.filter(pl.col("low_quality_pct") >= 50)
-avg_lq        = df_filtered["low_quality_pct"].mean()
-avg_jitter    = df_filtered["jitter_pct"].mean()
+total_cells      = len(df_filtered)
+good_coverage    = df_filtered.filter(pl.col("low_quality_pct") < 20)
+problem_cells    = df_filtered.filter(pl.col("low_quality_pct") >= 50)
+avg_lq           = df_filtered["low_quality_pct"].mean()
+avg_jitter       = df_filtered["jitter_pct"].mean()
+n_dead           = len(dead_zones)
+total_floor_cells = len(all_grid_cells)
+dead_pct         = n_dead / total_floor_cells * 100
 
 st.markdown('<div class="section-title">📊 Verkon tila – yhteenveto</div>', unsafe_allow_html=True)
-c1, c2, c3, c4, c5 = st.columns(5)
+c1, c2, c3, c4, c5, c6 = st.columns(6)
 metrics = [
-    (c1, "Aktiivisia ruutuja",        f"{total_cells:,}",                         ""),
-    (c2, "Hyvä kattavuus (<20% heikko)", f"{len(good_coverage)/total_cells*100:.0f}%", ""),
-    (c3, "Ongelmaruutuja (≥50% heikko)", f"{len(problem_cells)}",                 "bad" if len(problem_cells) > 50 else "warn"),
-    (c4, "Heikko signaali ka",         f"{avg_lq:.1f}%",                          "bad" if avg_lq > 20 else "warn" if avg_lq > 10 else ""),
-    (c5, "Jitter ka",                  f"{avg_jitter:.1f}%",                      "bad" if avg_jitter > 5 else ""),
+    (c1, "Aktiivisia ruutuja",           f"{total_cells:,}",                         ""),
+    (c2, "Katvealueet (0 pingiä)",       f"{n_dead:,}",                              "bad" if dead_pct > 30 else "warn" if dead_pct > 15 else ""),
+    (c3, "Hyvä kattavuus (<20% heikko)", f"{len(good_coverage)/total_cells*100:.0f}%", ""),
+    (c4, "Ongelmaruutuja (≥50% heikko)", f"{len(problem_cells)}",                    "bad" if len(problem_cells) > 50 else "warn"),
+    (c5, "Heikko signaali ka",           f"{avg_lq:.1f}%",                           "bad" if avg_lq > 20 else "warn" if avg_lq > 10 else ""),
+    (c6, "Jitter ka",                    f"{avg_jitter:.1f}%",                       "bad" if avg_jitter > 5 else ""),
 ]
 for col, label, val, cls in metrics:
     col.markdown(
@@ -138,7 +155,8 @@ for col, label, val, cls in metrics:
 # ---------------------------------------------------------------------------
 def build_heatmap(df_plot: pl.DataFrame, z_col: str, cs: str,
                   z0: float, z1: float, title: str, img: Image.Image,
-                  cell_opacity: float) -> go.Figure:
+                  cell_opacity: float,
+                  dz: pl.DataFrame | None = None) -> go.Figure:
     """Overlay a signal-quality heatmap on the floor plan."""
     all_x = sorted(df_plot["grid_x"].unique().to_list())
     all_y = sorted(df_plot["grid_y"].unique().to_list())
@@ -156,6 +174,25 @@ def build_heatmap(df_plot: pl.DataFrame, z_col: str, cs: str,
         sizex=MAP_MAX_X, sizey=MAP_MAX_Y, sizing="stretch",
         opacity=1.0, layer="below", xanchor="left", yanchor="top",
     ))
+
+    # Dead zones: grey squares for cells with zero pings ever
+    if dz is not None and not dz.is_empty():
+        dz_x = sorted(dz["grid_x"].unique().to_list())
+        dz_y = sorted(dz["grid_y"].unique().to_list())
+        dz_x_idx = {x: i for i, x in enumerate(dz_x)}
+        dz_y_idx = {y: i for i, y in enumerate(dz_y)}
+        z_dead = np.full((len(dz_y), len(dz_x)), np.nan)
+        for row in dz.iter_rows(named=True):
+            z_dead[dz_y_idx[row["grid_y"]], dz_x_idx[row["grid_x"]]] = 1.0
+        fig.add_trace(go.Heatmap(
+            x=dz_x, y=dz_y, z=z_dead,
+            colorscale=[[0, "rgba(50,50,50,0.55)"], [1, "rgba(50,50,50,0.55)"]],
+            showscale=False,
+            xgap=1, ygap=1,
+            name="Katvealue",
+            hovertemplate="x=%{x} cm<br>y=%{y} cm<br>Katvealue – ei yhtään pingiä<extra></extra>",
+        ))
+
     fig.add_trace(go.Heatmap(
         x=all_x, y=all_y, z=z,
         colorscale=cs,
@@ -184,7 +221,7 @@ st.markdown(f'<div class="section-title">🗺️ Kattavuuskartta – {metric_lab
 if IMAGE_PATH.exists():
     img = load_image(IMAGE_PATH)
     fig = build_heatmap(df_filtered, metric_col, colorscale, zmin, zmax,
-                        metric_label, img, opacity)
+                        metric_label, img, opacity, dz=dead_zones)
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.warning("Pohjapiirros ei löydy (image/kauppa2.png).")
