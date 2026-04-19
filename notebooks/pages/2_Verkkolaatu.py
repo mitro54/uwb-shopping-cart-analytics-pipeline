@@ -87,6 +87,18 @@ def fetch_date_range() -> tuple:
     return row[0], row[1]
 
 
+# Mirrors silver_positions filters: daytime, q threshold, charging stations, rectangular exclusions
+_CORR_WHERE = """
+    is_out_of_bounds = 0
+    AND is_night_time = 0
+    AND (POWER(x - 100, 2) + POWER(y - 2500, 2)) > POWER(400, 2)
+    AND (POWER(x - 900, 2) + POWER(y - 3600, 2)) > POWER(600, 2)
+    AND NOT (y > 3000 AND x >= 0 AND x <= 1500)
+    AND NOT (y >= 0  AND y <= 600  AND x > 8400)
+    AND NOT (y > 4700 AND x > 9900)
+"""
+
+
 @st.cache_data(show_spinner="📡 Haetaan verkkolaatu-data…", ttl=300)
 def fetch_verkko(date_start: str, date_end: str) -> pl.DataFrame:
     conn = _get_conn()
@@ -110,6 +122,71 @@ def fetch_verkko(date_start: str, date_end: str) -> pl.DataFrame:
     return df.with_columns(
         (pl.col("jitter_pings") * 100.0 / pl.col("total_pings")).alias("jitter_pct")
     )
+
+
+@st.cache_data(show_spinner="🔗 Haetaan korrelaatiodata…", ttl=300)
+def fetch_verkko_corr(date_start: str, date_end: str) -> pl.DataFrame:
+    """Grid aggregation with silver_positions filters for correlation analysis."""
+    conn = _get_conn()
+    arrow = conn.execute(f"""
+        SELECT
+            FLOOR(x / 100.0) * 100                                      AS grid_x,
+            FLOOR(y / 100.0) * 100                                      AS grid_y,
+            COUNT(*)                                                     AS total_pings,
+            ROUND(AVG(q), 1)                                             AS avg_quality,
+            ROUND(SUM(is_jitter) * 100.0 / NULLIF(COUNT(*), 0), 2)     AS jitter_pct,
+            ROUND(SUM(is_low_quality) * 100.0 / NULLIF(COUNT(*), 0), 2) AS low_quality_pct
+        FROM silver_device_diagnostics
+        WHERE {_CORR_WHERE}
+          AND dt >= '{date_start}'
+          AND dt <= '{date_end}'
+        GROUP BY grid_x, grid_y
+    """).fetch_arrow_table()
+    return pl.from_arrow(arrow)
+
+
+@st.cache_data(show_spinner="⏱️ Lasketaan samanaikainen tiheys…", ttl=300)
+def fetch_concurrent_density(date_start: str, date_end: str) -> pl.DataFrame:
+    """Q statistics grouped by concurrent cart count — aggregated fully in SQL."""
+    conn = _get_conn()
+    arrow = conn.execute(f"""
+        WITH bucketed AS (
+            SELECT
+                DATE_TRUNC('minute', aika)  AS minuutti,
+                FLOOR(x / 100.0) * 100      AS grid_x,
+                FLOOR(y / 100.0) * 100      AS grid_y,
+                COUNT(DISTINCT node_id)     AS concurrent_carts,
+                AVG(q)                      AS avg_q
+            FROM silver_device_diagnostics
+            WHERE {_CORR_WHERE}
+              AND dt >= '{date_start}'
+              AND dt <= '{date_end}'
+            GROUP BY minuutti, grid_x, grid_y
+        ),
+        corr_val AS (
+            SELECT CORR(CAST(concurrent_carts AS DOUBLE), avg_q) AS pearson_r
+            FROM bucketed
+            WHERE concurrent_carts >= 1
+        ),
+        aggregated AS (
+            SELECT
+                concurrent_carts,
+                COUNT(*)                                                        AS n_observations,
+                AVG(avg_q)                                                      AS mean_q,
+                PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY avg_q)            AS q25,
+                PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY avg_q)            AS median_q,
+                PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY avg_q)            AS q75,
+                PERCENTILE_CONT(0.05) WITHIN GROUP (ORDER BY avg_q)            AS q05,
+                PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY avg_q)            AS q95
+            FROM bucketed
+            WHERE concurrent_carts >= 1
+            GROUP BY concurrent_carts
+        )
+        SELECT a.*, c.pearson_r
+        FROM aggregated a, corr_val c
+        ORDER BY concurrent_carts
+    """).fetch_arrow_table()
+    return pl.from_arrow(arrow)
 
 
 @st.cache_resource(show_spinner=False)
@@ -462,17 +539,20 @@ def show_correlation(x_vals, y_vals, weights, x_label: str, y_label: str,
 # ---------------------------------------------------------------------------
 st.markdown('<div class="section-title">🔗 Korrelaatioanalyysit</div>', unsafe_allow_html=True)
 
-corr_df = df_filtered.select(["avg_quality", "jitter_pct", "low_quality_pct", "total_pings"]).drop_nulls()
+corr_df = fetch_verkko_corr(date_start, date_end).select(
+    ["avg_quality", "jitter_pct", "low_quality_pct", "total_pings"]
+).drop_nulls()
 
 if len(corr_df) > 1:
     q      = corr_df["avg_quality"].to_numpy()
     jitter = corr_df["jitter_pct"].to_numpy()
     pings  = corr_df["total_pings"].to_numpy()
 
-    tab1, tab2, tab3 = st.tabs([
+    tab1, tab2, tab3, tab4 = st.tabs([
         "Jitter vs Q-arvo",
         "Pingimäärä vs Q-arvo",
         "Pingimäärä vs Jitter",
+        "Samanaikaiset kärryt vs Q-arvo",
     ])
 
     with tab1:
@@ -521,5 +601,57 @@ if len(corr_df) > 1:
                      "merkittävä ongelma tässä verkossa."
             ),
         )
+    with tab4:
+        st.caption(
+            "Jokaisessa 1 minuutin aikaikkunassa lasketaan kuinka monta eri kärryä "
+            "on samassa ruudussa yhtä aikaa — laskeeko Q kun kärryjä on enemmän?"
+        )
+        cd = fetch_concurrent_density(date_start, date_end)
+        if len(cd) > 1:
+            # r computed in SQL on all raw bucketed rows — not on group means
+            r_cd = float(cd["pearson_r"][0])
+            strength_cd, direction_cd = _corr_label(r_cd)
+
+            col_r2, col_exp2 = st.columns([1, 3])
+            col_r2.markdown(
+                f'<div class="metric-card"><div class="val">{r_cd:.3f}</div>'
+                f'<div class="lbl">Pearsonin r (samanaikaiset kärryt vs Q)</div></div>',
+                unsafe_allow_html=True,
+            )
+            col_exp2.info(
+                f"Korrelaatio on **{strength_cd} ja {direction_cd}** (r = {r_cd:.3f}). "
+                + (
+                    "Mitä enemmän kärryjä samassa ruudussa samanaikaisesti, sitä heikompi signaali — "
+                    "viittaa UWB-kanavien ruuhkautumiseen."
+                    if r_cd < -0.2
+                    else "Samanaikaisella kärrytiheydellä ei ole selkeää vaikutusta signaalin laatuun — "
+                         "heikot alueet johtuvat todennäköisesti rakenteellisista tekijöistä kuten hyllyistä."
+                )
+            )
+
+            # Box plot built from pre-aggregated percentiles — no raw data to browser
+            cd_plot = cd.filter(pl.col("concurrent_carts") <= 10)
+            box_fig = go.Figure()
+            for row in cd_plot.iter_rows(named=True):
+                n = int(row["concurrent_carts"])
+                box_fig.add_trace(go.Box(
+                    name=f"{n} kärryä",
+                    q1=[row["q25"]], median=[row["median_q"]],
+                    q3=[row["q75"]], mean=[row["mean_q"]],
+                    lowerfence=[row["q05"]], upperfence=[row["q95"]],
+                    marker_color=f"hsl({200 - n * 15}, 70%, 50%)",
+                    boxmean=True,
+                ))
+            box_fig.update_layout(
+                xaxis=dict(title="Samanaikaisia kärryjä samassa ruudussa (1 min ikkuna)"),
+                yaxis=dict(title="Q-arvo (mediaani ± kvartiilit)"),
+                height=380, margin=dict(l=50, r=20, t=10, b=50),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
+                showlegend=False,
+            )
+            st.plotly_chart(box_fig, use_container_width=True)
+        else:
+            st.info("Ei tarpeeksi dataa.")
+
 else:
     st.info("Ei tarpeeksi dataa korrelaatioanalyysiin.")
