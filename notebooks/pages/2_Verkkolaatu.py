@@ -6,6 +6,7 @@ UWB-toimittajan näkymä: missä verkko toimii hyvin, missä on ongelmia.
 
 from pathlib import Path
 
+import duckdb
 import numpy as np
 import plotly.graph_objects as go
 import polars as pl
@@ -18,7 +19,7 @@ st.set_page_config(page_title="Verkon laatu", page_icon="📶", layout="wide")
 # Paths & constants
 # ---------------------------------------------------------------------------
 PROJECT_ROOT  = Path(__file__).resolve().parents[2]
-PARQUET_PATH  = PROJECT_ROOT / "data" / "pbi_prototypes" / "f_verkko_laatu.parquet"
+DUCKDB_PATH   = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
 IMAGE_PATH    = PROJECT_ROOT / "image" / "kauppa2.png"
 MAP_MAX_X, MAP_MAX_Y = 10406, 5220
 CELL_SIZE = 100  # cm
@@ -61,12 +62,51 @@ st.markdown("""
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
+SILVER_PARQUET = PROJECT_ROOT / "data" / "pbi_prototypes" / "silver_device_diagnostics.parquet"
+
+
+@st.cache_resource(show_spinner=False)
+def _get_conn():
+    if SILVER_PARQUET.exists():
+        conn = duckdb.connect()
+        conn.execute(
+            f"CREATE VIEW silver_device_diagnostics AS "
+            f"SELECT * FROM read_parquet('{SILVER_PARQUET}')"
+        )
+        return conn
+    if DUCKDB_PATH.exists():
+        return duckdb.connect(str(DUCKDB_PATH), read_only=True)
+    st.error("silver_device_diagnostics.parquet eikä dev.duckdb löydy.")
+    st.stop()
+
+
+@st.cache_data(show_spinner=False)
+def fetch_date_range() -> tuple:
+    conn = _get_conn()
+    row = conn.execute("SELECT MIN(dt), MAX(dt) FROM silver_device_diagnostics").fetchone()
+    return row[0], row[1]
+
+
 @st.cache_data(show_spinner="📡 Haetaan verkkolaatu-data…", ttl=300)
-def fetch_verkko() -> pl.DataFrame:
-    if not PARQUET_PATH.exists():
-        st.error(f"Parquet ei löydy: {PARQUET_PATH}")
-        st.stop()
-    df = pl.read_parquet(PARQUET_PATH)
+def fetch_verkko(date_start: str, date_end: str) -> pl.DataFrame:
+    conn = _get_conn()
+    arrow = conn.execute(f"""
+        SELECT
+            FLOOR(x / 100.0) * 100                                          AS grid_x,
+            FLOOR(y / 100.0) * 100                                          AS grid_y,
+            COUNT(*)                                                         AS total_pings,
+            ROUND(AVG(q), 1)                                                 AS avg_quality,
+            MIN(q)                                                           AS min_quality,
+            SUM(is_low_quality)                                              AS low_quality_pings,
+            SUM(is_jitter)                                                   AS jitter_pings,
+            ROUND(SUM(is_low_quality) * 100.0 / NULLIF(COUNT(*), 0), 2)     AS low_quality_pct
+        FROM silver_device_diagnostics
+        WHERE is_out_of_bounds = 0
+          AND dt >= '{date_start}'
+          AND dt <= '{date_end}'
+        GROUP BY grid_x, grid_y
+    """).fetch_arrow_table()
+    df = pl.from_arrow(arrow)
     return df.with_columns(
         (pl.col("jitter_pings") * 100.0 / pl.col("total_pings")).alias("jitter_pct")
     )
@@ -77,12 +117,25 @@ def load_image(path: Path) -> Image.Image:
     return Image.open(path)
 
 
-df = fetch_verkko()
-
 # ---------------------------------------------------------------------------
 # Sidebar
 # ---------------------------------------------------------------------------
 st.sidebar.markdown("## ⚙️ Suodattimet")
+
+dt_min, dt_max = fetch_date_range()
+
+date_range = st.sidebar.date_input(
+    "Aikaväli",
+    value=(dt_min, dt_max),
+    min_value=dt_min,
+    max_value=dt_max,
+)
+if len(date_range) != 2:
+    st.sidebar.info("Valitse alku- ja loppupäivä.")
+    st.stop()
+date_start, date_end = str(date_range[0]), str(date_range[1])
+
+st.sidebar.markdown("---")
 
 min_pings = st.sidebar.slider(
     "Minimi pingejä per ruutu",
@@ -98,6 +151,7 @@ metric_label = st.sidebar.radio(
 
 opacity = st.sidebar.slider("Kartan läpinäkyvyys", 0.3, 1.0, 0.75, 0.05)
 
+df = fetch_verkko(date_start, date_end)
 df_filtered = df.filter(pl.col("total_pings") >= min_pings)
 
 metric_col, colorscale, zmin, zmax, low_is_bad = {
@@ -312,3 +366,42 @@ zone_fig.update_layout(
     showlegend=False,
 )
 st.plotly_chart(zone_fig, use_container_width=True)
+
+# ---------------------------------------------------------------------------
+# Ping density map – all pings, no quality filter
+# ---------------------------------------------------------------------------
+st.markdown('<div class="section-title">📍 Pingien levinneisyys – kaikki havainnot</div>',
+            unsafe_allow_html=True)
+st.caption("Kaikki pingit valitulla aikavälillä ilman laatu- tai pingimääräsuodatusta.")
+
+if IMAGE_PATH.exists():
+    all_x = sorted(df["grid_x"].unique().to_list())
+    all_y = sorted(df["grid_y"].unique().to_list())
+    x_idx = {x: i for i, x in enumerate(all_x)}
+    y_idx = {y: i for i, y in enumerate(all_y)}
+    z_density = np.full((len(all_y), len(all_x)), np.nan)
+    for row in df.iter_rows(named=True):
+        z_density[y_idx[row["grid_y"]], x_idx[row["grid_x"]]] = row["total_pings"]
+
+    density_fig = go.Figure()
+    density_fig.add_layout_image(dict(
+        source=load_image(IMAGE_PATH), xref="x", yref="y", x=0, y=0,
+        sizex=MAP_MAX_X, sizey=MAP_MAX_Y, sizing="stretch",
+        opacity=1.0, layer="below", xanchor="left", yanchor="top",
+    ))
+    density_fig.add_trace(go.Heatmap(
+        x=all_x, y=all_y, z=z_density,
+        colorscale="Plasma",
+        opacity=opacity,
+        xgap=1, ygap=1,
+        colorbar=dict(title="Pingiä", thickness=14, len=0.6),
+        hovertemplate="x=%{x} cm<br>y=%{y} cm<br>Pingiä=%{z:,.0f}<extra></extra>",
+    ))
+    density_fig.update_xaxes(range=[0, MAP_MAX_X], showgrid=False, showticklabels=False)
+    density_fig.update_yaxes(range=[MAP_MAX_Y, 0], showgrid=False, showticklabels=False,
+                              scaleanchor="x", scaleratio=1)
+    density_fig.update_layout(
+        height=500, margin=dict(l=0, r=60, t=0, b=0),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+    )
+    st.plotly_chart(density_fig, use_container_width=True)
