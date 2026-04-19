@@ -21,7 +21,7 @@ SELECT
     osaston_nimi,
     MIN(aika) AS osasto_sisaantulo,
     MAX(aika) AS osasto_poistuminen,
-    DATE_DIFF('second', MIN(aika), MAX(aika)) AS vietetty_aika_sekunteina,
+    COALESCE(SUM(sekuntia_edellisesta), 0) AS vietetty_aika_sekunteina,
     COALESCE(SUM(dist_m), 0) AS matka_osastolla_m,
     COUNT(*) AS havainnot_osastolla
 FROM vierailut

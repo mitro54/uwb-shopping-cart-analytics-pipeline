@@ -5,13 +5,17 @@ WITH aggregoidut_sessiot AS (
         node_id,
         MIN(aika) AS alku,
         MAX(aika) AS loppu,
-        MIN(dt) AS kaynti_paiva,
-        MIN(hour) AS kaynti_tunti,
-        MIN(weekday) AS kaynti_viikonpaiva,
+        
+        -- Puretaan aika suoraan MIN(aika) -arvosta, jotta vältetään MIN(hour) -virheet.
+        
+        CAST(MIN(aika) AS DATE) AS kaynti_paiva,
+        EXTRACT('hour' FROM MIN(aika)) AS kaynti_tunti,
+        EXTRACT('isodow' FROM MIN(aika)) AS kaynti_viikonpaiva,
+        
         DATE_DIFF('second', MIN(aika), MAX(aika)) AS kesto_sekunteina,
         COALESCE(SUM(dist_m), 0) AS matka,
-        COUNT(*) AS pisteita,
         -- Haetaan session ensimmäisen datapisteen alku_x ja alku_y tarkistaaksemme sisääntuloalueen (REQUIRE_START_ZONE)
+        COUNT(*) AS pisteita,
         MIN_BY(x, aika) AS aloitus_x,
         MIN_BY(y, aika) AS aloitus_y,
         -- Spatiaalisen hajonnan eli levittäytyvyyden (MIN_SPATIAL_SPREAD) mittaaminen senttimetreistä metreihih

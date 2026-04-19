@@ -23,7 +23,7 @@ from agents.shared.tools.plot_tools import ALL_PLOT_TOOLS
 from agents.shared.tools.floorplan_tools import ALL_FLOORPLAN_TOOLS
 from agents.shared.tools.delegation_tools import generate_visualization
 
-ALL_AGENT_TOOLS = DB_TOOLS + ALL_PLOT_TOOLS + ALL_FLOORPLAN_TOOLS + [generate_visualization]
+ALL_AGENT_TOOLS = DB_TOOLS + ALL_PLOT_TOOLS + ALL_FLOORPLAN_TOOLS
 
 AGENT_ROOT = AGENTS_ROOT / "analytics"
 IDENTITY_PATH = AGENT_ROOT / "identity.yml"
@@ -40,8 +40,9 @@ TOOL_DISPLAY_NAMES = {
     "get_column_stats": ("📊", "Analysoidaan sarakkeen tilastot"),
     "run_query": ("⚡", "Suoritetaan SQL-kysely"),
     "generate_visualization": ("🎨", "Luodaan visualisointi"),
-    "plot_heatmap": ("🔥", "Piirretään heatmap"),
     "plot_chart": ("📈", "Piirretään kaavio"),
+    "plot_distribution": ("🎻", "Analysoidaan jakaumaa"),
+    "plot_grouped_bar": ("📊", "Tehdään ryhmitelty pylväskaavio"),
     "plot_interactive": ("📊", "Luodaan interaktiivinen kuvaaja"),
     "plot_on_floorplan": ("🗺️", "Piirretään pohjapiirrokselle"),
     "refresh_schema": ("🌀", "Päivitetään tietokannan muistikuvaa"),

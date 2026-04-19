@@ -1,16 +1,16 @@
 osasto_id,nimi,alku_x,alku_y,loppu_x,loppu_y
-1,Kausituotteet ja Miny,649,2350,2935,3560
-2,Naisten vaatteet,1519,3560,3050,5220
-3,Sisustus ja elektroniikka,2935,2350,6865,3560
-5,Astiat ja säilytys,3050,3560,4350,5220
-6,Miesten vaatteet ja asusteet,4350,3560,6865,5220
+1,kausituotteet ja miny,649,2350,2935,3560
+2,naisten vaatteet,1519,3560,3050,5220
+3,sisustus ja elektroniikka,2935,2350,6865,3560
+5,astiat ja säilytys,3050,3560,4350,5220
+6,miesten vaatteet ja asusteet,4350,3560,6865,5220
 7,rakennus ja urheilu,6865,2350,10406,5220
-8,Ruokaosasto,6247,0,10406,2350
-9,Siivous,4954,0,6247,1190
+8,ruokaosasto,6247,0,10406,2350
+9,siivous,4954,0,6247,1190
 10,leivonta,5525,1190,6247,2350
-11,Lapset ja lelut,4293,1190,5525,2350
-12,Tarvikkeet ja puutarha,751,1190,4293,2350
+11,lapset ja lelut,4293,1190,5525,2350
+12,tarvikkeet ja puutarha,751,1190,4293,2350
 13,lemmikkiruoat,4293,0,4954,1190
 14,kosmetiikka,2875,0,4293,1190
-15,Snacks ja pakasteet,751,0,2875,1190
+15,snacks ja pakasteet,751,0,2875,1190
 16,kassat,0,0,751,2350
