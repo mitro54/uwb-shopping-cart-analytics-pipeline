@@ -124,17 +124,22 @@ def render():
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Sidebar filters --------------------------------------------------
-    st.sidebar.markdown("## ⚙️ Aikarajaus")
+    # --- Filters ----------------------------------------------------------
+    st.markdown("### ⚙️ Aikarajaus")
     dt_min, dt_max = _date_range()
-    date_range = st.sidebar.date_input(
-        "Aikaväli", value=(dt_min, dt_max),
-        min_value=dt_min, max_value=dt_max,
-    )
+    
+    col_filter, _ = st.columns([1, 2])
+    with col_filter:
+        date_range = st.date_input(
+            "Valitse tarkasteluväli", value=(dt_min, dt_max),
+            min_value=dt_min, max_value=dt_max,
+        )
+    
     if len(date_range) != 2:
-        st.sidebar.info("Valitse alku- ja loppupäivä.")
+        st.info("Valitse alku- ja loppupäivä kalenterista.")
         st.stop()
     d0, d1 = str(date_range[0]), str(date_range[1])
+
 
     # --- Load data ---------------------------------------------------------
     df = _kaynti(d0, d1)
