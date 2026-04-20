@@ -87,7 +87,7 @@ def fetch_date_range() -> tuple:
 @st.cache_data(show_spinner="📅 Haetaan käyntidata…", ttl=300)
 def fetch_kaynti(date_start: str, date_end: str) -> pl.DataFrame:
     conn = _get_conn()
-    arrow = conn.execute(f"""
+    df = conn.execute(f"""
         SELECT
             kaynti_id,
             node_id,
@@ -100,14 +100,14 @@ def fetch_kaynti(date_start: str, date_end: str) -> pl.DataFrame:
         FROM f_kaynti
         WHERE kaynti_paiva >= '{date_start}'
           AND kaynti_paiva <= '{date_end}'
-    """).fetch_arrow_table()
-    return pl.from_arrow(arrow)
+    """).pl()
+    return df
 
 
 @st.cache_data(show_spinner="🏬 Haetaan osastodata…", ttl=300)
 def fetch_osastokaynti(date_start: str, date_end: str) -> pl.DataFrame:
     conn = _get_conn()
-    arrow = conn.execute(f"""
+    df = conn.execute(f"""
         SELECT
             ok.kaynti_id,
             ok.osasto_id,
@@ -119,8 +119,8 @@ def fetch_osastokaynti(date_start: str, date_end: str) -> pl.DataFrame:
         INNER JOIN f_kaynti k ON ok.kaynti_id = k.kaynti_id
         WHERE k.kaynti_paiva >= '{date_start}'
           AND k.kaynti_paiva <= '{date_end}'
-    """).fetch_arrow_table()
-    return pl.from_arrow(arrow)
+    """).pl()
+    return df
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +262,7 @@ trend_fig.update_layout(
     showlegend=True,
     legend=dict(orientation="h", y=1.12, font=dict(size=11)),
 )
-st.plotly_chart(trend_fig, use_container_width=True)
+st.plotly_chart(trend_fig, width='stretch')
 
 # ---------------------------------------------------------------------------
 # 2. Käynnit tunneittain & viikonpäivittäin (rinnakkain)
@@ -297,7 +297,7 @@ with col_hour:
         xaxis=dict(title="Tunti"), yaxis=dict(title="Käyntejä"),
         showlegend=False,
     )
-    st.plotly_chart(hour_fig, use_container_width=True)
+    st.plotly_chart(hour_fig, width='stretch')
 
 with col_wd:
     st.markdown('<div class="section-title">📆 Käynnit viikonpäivittäin</div>', unsafe_allow_html=True)
@@ -330,7 +330,7 @@ with col_wd:
         xaxis=dict(title="Viikonpäivä"), yaxis=dict(title="Käyntejä"),
         showlegend=False,
     )
-    st.plotly_chart(wd_fig, use_container_width=True)
+    st.plotly_chart(wd_fig, width='stretch')
 
 # ---------------------------------------------------------------------------
 # 3. Osastoanalytiikka
@@ -379,7 +379,7 @@ if not df_osasto.is_empty():
             yaxis=dict(tickfont=dict(size=11)),
             showlegend=False,
         )
-        st.plotly_chart(pop_fig, use_container_width=True)
+        st.plotly_chart(pop_fig, width='stretch')
 
     with col_dwell:
         st.markdown("**Keskim. viipymäaika osastoittain**")
@@ -407,7 +407,7 @@ if not df_osasto.is_empty():
             yaxis=dict(tickfont=dict(size=11)),
             showlegend=False,
         )
-        st.plotly_chart(dwell_fig, use_container_width=True)
+        st.plotly_chart(dwell_fig, width='stretch')
 
 # ---------------------------------------------------------------------------
 # 4. Käyntiajan jakauma
@@ -453,7 +453,7 @@ dur_fig.update_layout(
     yaxis=dict(title="Käyntien lukumäärä"),
     showlegend=False,
 )
-st.plotly_chart(dur_fig, use_container_width=True)
+st.plotly_chart(dur_fig, width='stretch')
 
 # ---------------------------------------------------------------------------
 # 5. Kävelymatkan jakauma
@@ -491,4 +491,4 @@ dist_fig.update_layout(
     yaxis=dict(title="Käyntien lukumäärä"),
     showlegend=False,
 )
-st.plotly_chart(dist_fig, use_container_width=True)
+st.plotly_chart(dist_fig, width='stretch')
