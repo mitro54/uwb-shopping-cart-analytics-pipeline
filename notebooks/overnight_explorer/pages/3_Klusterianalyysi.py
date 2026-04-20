@@ -132,7 +132,7 @@ date_start, date_end = str(date_range[0]), str(date_range[1])
 
 st.sidebar.markdown("---")
 
-n_clusters = st.sidebar.slider("Klustereiden määrä", min_value=2, max_value=15, value=6)
+n_clusters = st.sidebar.slider("Klustereiden määrä", min_value=2, max_value=30, value=6)
 
 only_daytime = st.sidebar.checkbox("Vain aukioloaika (07–22)", value=True)
 
