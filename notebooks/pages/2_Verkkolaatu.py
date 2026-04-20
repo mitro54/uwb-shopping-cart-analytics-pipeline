@@ -107,7 +107,7 @@ def fetch_verkko(date_start: str, date_end: str) -> pl.DataFrame:
             FLOOR(x / 100.0) * 100                                          AS grid_x,
             FLOOR(y / 100.0) * 100                                          AS grid_y,
             COUNT(*)                                                         AS total_pings,
-            ROUND(AVG(q), 1)                                                 AS avg_quality,
+            ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY q), 1)          AS median_quality,
             MIN(q)                                                           AS min_quality,
             SUM(is_low_quality)                                              AS low_quality_pings,
             SUM(is_jitter)                                                   AS jitter_pings,
@@ -133,7 +133,7 @@ def fetch_verkko_corr(date_start: str, date_end: str) -> pl.DataFrame:
             FLOOR(x / 100.0) * 100                                      AS grid_x,
             FLOOR(y / 100.0) * 100                                      AS grid_y,
             COUNT(*)                                                     AS total_pings,
-            ROUND(AVG(q), 1)                                             AS avg_quality,
+            ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY q), 1)     AS median_quality,
             ROUND(SUM(is_jitter) * 100.0 / NULLIF(COUNT(*), 0), 2)     AS jitter_pct,
             ROUND(SUM(is_low_quality) * 100.0 / NULLIF(COUNT(*), 0), 2) AS low_quality_pct
         FROM silver_device_diagnostics
@@ -191,7 +191,8 @@ def fetch_concurrent_density(date_start: str, date_end: str, grid_cm: int = 300)
                 PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY jitter_pct)           AS median_jitter,
                 PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY jitter_pct)           AS j75,
                 PERCENTILE_CONT(0.05) WITHIN GROUP (ORDER BY jitter_pct)           AS j05,
-                PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY jitter_pct)           AS j95
+                PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY jitter_pct)           AS j95,
+                ROUND(SUM(CASE WHEN jitter_pct > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS pct_buckets_with_jitter
             FROM bucketed
             WHERE concurrent_carts >= 1
             GROUP BY concurrent_carts
@@ -237,7 +238,7 @@ min_pings = st.sidebar.slider(
 
 metric_label = st.sidebar.radio(
     "Näytettävä mittari",
-    options=["Heikkolaatuiset pingit (%)", "Jitter (%)", "Avg Q-arvo"],
+    options=["Heikkolaatuiset pingit (%)", "Jitter (%)", "Mediaani Q-arvo"],
     index=0,
 )
 
@@ -259,7 +260,7 @@ df_filtered = df.filter(pl.col("total_pings") >= min_pings)
 metric_col, colorscale, zmin, zmax, low_is_bad = {
     "Heikkolaatuiset pingit (%)": ("low_quality_pct", "RdYlGn_r", 0,   50,  True),
     "Jitter (%)":                 ("jitter_pct",      "RdYlGn_r", 0,   10,  True),
-    "Avg Q-arvo":                 ("avg_quality",     "RdYlGn",   0,  150,  False),
+    "Mediaani Q-arvo":            ("median_quality",  "RdYlGn",   0,  255,  False),
 }[metric_label]
 
 # ---------------------------------------------------------------------------
@@ -392,7 +393,7 @@ worst = (
     df_filtered
     .sort("low_quality_pct", descending=True)
     .head(20)
-    .select(["grid_x", "grid_y", "total_pings", "avg_quality",
+    .select(["grid_x", "grid_y", "total_pings", "median_quality",
              "low_quality_pct", "jitter_pct"])
 )
 st.dataframe(worst.to_arrow(), use_container_width=True, hide_index=True)
@@ -565,11 +566,11 @@ def show_correlation(x_vals, y_vals, weights, x_label: str, y_label: str,
 st.markdown('<div class="section-title">🔗 Korrelaatioanalyysit</div>', unsafe_allow_html=True)
 
 corr_df = fetch_verkko_corr(date_start, date_end).select(
-    ["avg_quality", "jitter_pct", "low_quality_pct", "total_pings"]
+    ["median_quality", "jitter_pct", "low_quality_pct", "total_pings"]
 ).drop_nulls()
 
 if len(corr_df) > 1:
-    q      = corr_df["avg_quality"].to_numpy()
+    q      = corr_df["median_quality"].to_numpy()
     jitter = corr_df["jitter_pct"].to_numpy()
     pings  = corr_df["total_pings"].to_numpy()
 
@@ -585,7 +586,7 @@ if len(corr_df) > 1:
         st.caption("Onko korkea jitter yhteydessä heikkoon signaaliin?")
         show_correlation(
             q, jitter, pings,
-            x_label="Avg Q-arvo (suurempi = parempi)",
+            x_label="Mediaani Q-arvo (suurempi = parempi)",
             y_label="Jitter (%)",
             r_label="jitter vs Q",
             interpretation=(
@@ -601,7 +602,7 @@ if len(corr_df) > 1:
         show_correlation(
             pings, q, pings,
             x_label="Pingejä per ruutu (liikennemäärä)",
-            y_label="Avg Q-arvo",
+            y_label="Mediaani Q-arvo",
             r_label="pingimäärä vs Q",
             interpretation=(
                 "Vilkkaammilla alueilla signaali on parempi — ankkuriverkko on "
@@ -655,25 +656,32 @@ if len(corr_df) > 1:
                 )
             )
 
-            # Box plot built from pre-aggregated percentiles — no raw data to browser
             cd_plot = cd.filter(pl.col("concurrent_carts") <= 10)
+            xs      = cd_plot["concurrent_carts"].to_list()
             box_fig = go.Figure()
-            for row in cd_plot.iter_rows(named=True):
-                n = int(row["concurrent_carts"])
-                box_fig.add_trace(go.Box(
-                    name=f"{n} kärryä",
-                    q1=[row["q25"]], median=[row["median_q"]],
-                    q3=[row["q75"]], mean=[row["mean_q"]],
-                    lowerfence=[row["q05"]], upperfence=[row["q95"]],
-                    marker_color=f"hsl({200 - n * 15}, 70%, 50%)",
-                    boxmean=True,
-                ))
+            box_fig.add_trace(go.Scatter(
+                x=xs + xs[::-1], y=cd_plot["q95"].to_list() + cd_plot["q05"].to_list()[::-1],
+                fill="toself", fillcolor="rgba(99,102,241,0.12)", line=dict(width=0),
+                hoverinfo="skip", showlegend=False,
+            ))
+            box_fig.add_trace(go.Scatter(
+                x=xs + xs[::-1], y=cd_plot["q75"].to_list() + cd_plot["q25"].to_list()[::-1],
+                fill="toself", fillcolor="rgba(99,102,241,0.25)", line=dict(width=0),
+                hoverinfo="skip", name="IQR (Q25–Q75)",
+            ))
+            box_fig.add_trace(go.Scatter(
+                x=xs, y=cd_plot["median_q"].to_list(),
+                mode="lines+markers", line=dict(color="#6366f1", width=3),
+                marker=dict(size=8), name="Mediaani Q",
+                hovertemplate="%{x} kärryä<br>Mediaani Q: %{y:.1f}<extra></extra>",
+            ))
             box_fig.update_layout(
-                xaxis=dict(title="Samanaikaisia kärryjä samassa ruudussa (1 min ikkuna)"),
-                yaxis=dict(title="Q-arvo (mediaani ± kvartiilit)"),
+                xaxis=dict(title="Samanaikaisia kärryjä samassa ruudussa (1 min ikkuna)",
+                           tickmode="array", tickvals=xs),
+                yaxis=dict(title="Q-arvo"),
                 height=380, margin=dict(l=50, r=20, t=10, b=50),
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
-                showlegend=False,
+                legend=dict(orientation="h", y=1.1, font=dict(size=11)),
             )
             st.plotly_chart(box_fig, use_container_width=True)
         else:
@@ -724,21 +732,19 @@ if len(corr_df) > 1:
             )
 
             cd5_plot = cd5.filter(pl.col("concurrent_carts") <= 10)
+            xs5      = cd5_plot["concurrent_carts"].to_list()
             jitter_fig = go.Figure()
-            for row in cd5_plot.iter_rows(named=True):
-                n = int(row["concurrent_carts"])
-                jitter_fig.add_trace(go.Box(
-                    name=f"{n} kärryä",
-                    q1=[row["j25"]], median=[row["median_jitter"]],
-                    q3=[row["j75"]], mean=[row["mean_jitter"]],
-                    lowerfence=[row["j05"]], upperfence=[row["j95"]],
-                    marker_color=f"hsl({30 + n * 15}, 70%, 50%)",
-                    boxmean=True,
-                ))
+            jitter_fig.add_trace(go.Scatter(
+                x=xs5, y=cd5_plot["pct_buckets_with_jitter"].to_list(),
+                mode="lines+markers", line=dict(color="#f97316", width=3),
+                marker=dict(size=8), name="% aikaikkunoista joissa jitteriä",
+                hovertemplate="%{x} kärryä<br>%{y:.1f}% aikaikkunoista sisälsi jitteriä<extra></extra>",
+            ))
             jitter_fig.update_layout(
-                xaxis=dict(title="Samanaikaisia kärryjä samassa ruudussa (1 min ikkuna)"),
-                yaxis=dict(title="Jitter-% (mediaani ± kvartiilit)"),
-                height=380, margin=dict(l=50, r=20, t=10, b=50),
+                xaxis=dict(title="Samanaikaisia kärryjä samassa ruudussa (1 min ikkuna)",
+                           tickmode="array", tickvals=xs5),
+                yaxis=dict(title="% aikaikkunoista joissa jitteriä", range=[0, 100]),
+                height=340, margin=dict(l=50, r=20, t=10, b=50),
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
                 showlegend=False,
             )

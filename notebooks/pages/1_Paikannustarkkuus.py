@@ -198,23 +198,6 @@ st.markdown('<div class="section-title">📋 Kaikki laitteet – valittu yö</di
 st.dataframe(df_night.select(display_cols).sort("node_id").to_arrow(),
              use_container_width=True, hide_index=True)
 
-st.markdown('<div class="section-title">📏 RMSE 2D per laite</div>', unsafe_allow_html=True)
-df_sorted = df_night.sort("rmse_2d")
-bar_fig = go.Figure(go.Bar(
-    x=[str(n) for n in df_sorted["node_id"].to_list()],
-    y=df_sorted["rmse_2d"].to_list(),
-    marker_color="#6366f1",
-    text=[f"{v:.1f}" for v in df_sorted["rmse_2d"].to_list()],
-    textposition="outside",
-))
-bar_fig.update_layout(
-    xaxis=dict(title="node_id", type="category"),
-    yaxis=dict(title="RMSE 2D (cm)"),
-    height=300, margin=dict(l=40, r=20, t=10, b=40),
-    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
-)
-st.plotly_chart(bar_fig, use_container_width=True)
-
 # ---------------------------------------------------------------------------
 # Single-device view
 # ---------------------------------------------------------------------------
@@ -300,6 +283,8 @@ with right:
     dist_np = np.array(dist_arr)
     hist_vals, bin_edges = np.histogram(dist_np, bins=50)
     bin_centers = ((bin_edges[:-1] + bin_edges[1:]) / 2).tolist()
+    nz = hist_vals[hist_vals > 0]
+    y_cap = float(np.percentile(nz, 90) * 2.5) if len(nz) > 1 else float(hist_vals.max())
     err_fig = go.Figure()
     err_fig.add_trace(go.Bar(x=bin_centers, y=hist_vals.tolist(),
                              marker_color="#6366f1", opacity=0.8, name="Havainnot"))
@@ -311,7 +296,8 @@ with right:
                           annotation_text=label, annotation_position="top right",
                           annotation_font_size=11)
     err_fig.update_layout(
-        xaxis=dict(title="Säteisvirhe (cm)"), yaxis=dict(title="Havaintojen määrä"),
+        xaxis=dict(title="Säteisvirhe (cm)"),
+        yaxis=dict(title="Havaintojen määrä", range=[0, y_cap]),
         height=420, margin=dict(l=50, r=20, t=10, b=50),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)", showlegend=False,
     )
