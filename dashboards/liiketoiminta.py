@@ -73,18 +73,19 @@ def _date_range() -> tuple:
 
 
 @st.cache_data(show_spinner="📅 Haetaan käyntidata…", ttl=300)
-def _kaynti(d0: str, d1: str) -> pl.DataFrame:
+def _kaynti(d0: str, d1: str, h0: int, h1: int) -> pl.DataFrame:
     conn = _get_conn()
     return conn.execute(f"""
         SELECT kaynti_id, node_id, kaynti_paiva, kaynti_tunti,
                kaynti_viikonpaiva, kesto_sekunteina, matka, keskinopeus
         FROM f_kaynti
         WHERE kaynti_paiva >= '{d0}' AND kaynti_paiva <= '{d1}'
+          AND kaynti_tunti >= {h0} AND kaynti_tunti <= {h1}
     """).pl()
 
 
 @st.cache_data(show_spinner="🏬 Haetaan osastodata…", ttl=300)
-def _osasto(d0: str, d1: str) -> pl.DataFrame:
+def _osasto(d0: str, d1: str, h0: int, h1: int) -> pl.DataFrame:
     conn = _get_conn()
     return conn.execute(f"""
         SELECT ok.kaynti_id, ok.osasto_id, ok.osaston_nimi,
@@ -93,6 +94,7 @@ def _osasto(d0: str, d1: str) -> pl.DataFrame:
         FROM f_osastokaynti ok
         INNER JOIN f_kaynti k ON ok.kaynti_id = k.kaynti_id
         WHERE k.kaynti_paiva >= '{d0}' AND k.kaynti_paiva <= '{d1}'
+          AND k.kaynti_tunti >= {h0} AND k.kaynti_tunti <= {h1}
     """).pl()
 
 
@@ -128,22 +130,27 @@ def render():
     st.markdown("### ⚙️ Aikarajaus")
     dt_min, dt_max = _date_range()
     
-    col_filter, _ = st.columns([1, 2])
-    with col_filter:
+    col_filter1, col_filter2 = st.columns([1, 1])
+    with col_filter1:
         date_range = st.date_input(
-            "Valitse tarkasteluväli", value=(dt_min, dt_max),
+            "Valitse päivämäärät", value=(dt_min, dt_max),
             min_value=dt_min, max_value=dt_max,
+        )
+    with col_filter2:
+        hour_range = st.slider(
+            "Valitse kellonajat", min_value=0, max_value=23,
+            value=(0, 23), step=1, format="%d:00"
         )
     
     if len(date_range) != 2:
         st.info("Valitse alku- ja loppupäivä kalenterista.")
         st.stop()
     d0, d1 = str(date_range[0]), str(date_range[1])
-
+    h0, h1 = hour_range
 
     # --- Load data ---------------------------------------------------------
-    df = _kaynti(d0, d1)
-    df_o = _osasto(d0, d1)
+    df = _kaynti(d0, d1, h0, h1)
+    df_o = _osasto(d0, d1, h0, h1)
     if df.is_empty():
         st.warning("Ei käyntejä valitulla aikavälillä.")
         st.stop()
