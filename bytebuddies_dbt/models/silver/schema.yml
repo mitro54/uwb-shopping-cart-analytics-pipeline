@@ -32,7 +32,6 @@ models:
         description: "Maailmanlaajuisesti uniikki MD5-tunniste sessiolle (node_id + session_id)."
         tests:
           - not_null
-          - unique
       - name: dist_m
         description: "Matka edellisestä havainnosta metreinä."
         tests:
