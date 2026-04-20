@@ -23,7 +23,6 @@ st.set_page_config(page_title="Klusterianalyysi", page_icon="🗂️", layout="w
 # ---------------------------------------------------------------------------
 PROJECT_ROOT   = Path(__file__).resolve().parents[3]
 DUCKDB_PATH    = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
-SILVER_PARQUET = PROJECT_ROOT / "data" / "pbi_prototypes" / "silver_device_diagnostics.parquet"
 IMAGE_PATH     = PROJECT_ROOT / "image" / "kauppa2.png"
 MAP_MAX_X, MAP_MAX_Y = 10406, 5220
 CELL_SIZE = 100
@@ -72,16 +71,9 @@ st.markdown("""
 # ---------------------------------------------------------------------------
 @st.cache_resource(show_spinner=False)
 def _get_conn():
-    if SILVER_PARQUET.exists():
-        conn = duckdb.connect()
-        conn.execute(
-            f"CREATE VIEW silver_device_diagnostics AS "
-            f"SELECT * FROM read_parquet('{SILVER_PARQUET}')"
-        )
-        return conn
     if DUCKDB_PATH.exists():
         return duckdb.connect(str(DUCKDB_PATH), read_only=True)
-    st.error("silver_device_diagnostics.parquet eikä dev.duckdb löydy.")
+    st.error("dev.duckdb-tiedostoa ei löydy.")
     st.stop()
 
 
