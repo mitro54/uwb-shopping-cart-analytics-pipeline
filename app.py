@@ -153,6 +153,19 @@ page = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
+st.sidebar.markdown('<div class="section-header">📊 Dashboardit</div>', unsafe_allow_html=True)
+
+dashboard_page = st.sidebar.radio(
+    "Dashboard",
+    ["—", "📈 Liiketoiminta"],
+    label_visibility="collapsed",
+)
+
+# Jos dashboard valittu, se ohittaa päänavigaation
+if dashboard_page != "—":
+    page = dashboard_page
+
+st.sidebar.markdown("---")
 
 # --- Mallivalikot sivupalkissa ---
 st.sidebar.markdown('<div class="section-header">🤖 LLM-mallit</div>', unsafe_allow_html=True)
@@ -624,3 +637,11 @@ elif page == "🖼️ Visualisoinnit":
                     st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.info("📁 Visualisointikansiota (`data/processed/plots/`) ei vielä löydy.")
+
+
+# ═══════════════════════════════════════════════════════════════
+# 5. DASHBOARDIT
+# ═══════════════════════════════════════════════════════════════
+elif page == "📈 Liiketoiminta":
+    from dashboards.liiketoiminta import render as render_liiketoiminta
+    render_liiketoiminta()
