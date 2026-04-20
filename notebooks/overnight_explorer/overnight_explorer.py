@@ -30,7 +30,7 @@ from PIL import Image
 # Paths – resolve relative to project root (parent of /scripts)
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
+PROJECT_ROOT = SCRIPT_DIR.parents[1]
 
 DUCKDB_PATH = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
 SILVER_PARQUET = PROJECT_ROOT / "data" / "pbi_prototypes" / "silver_device_diagnostics.parquet"

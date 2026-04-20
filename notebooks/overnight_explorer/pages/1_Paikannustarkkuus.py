@@ -18,7 +18,7 @@ st.set_page_config(page_title="Paikannustarkkuus", page_icon="🎯", layout="wid
 # ---------------------------------------------------------------------------
 # Paths & constants
 # ---------------------------------------------------------------------------
-PROJECT_ROOT   = Path(__file__).resolve().parents[2]
+PROJECT_ROOT   = Path(__file__).resolve().parents[3]
 GOLD_PARQUET   = PROJECT_ROOT / "data" / "pbi_prototypes" / "f_paikannustarkkuus.parquet"
 SILVER_PARQUET = PROJECT_ROOT / "data" / "pbi_prototypes" / "silver_device_diagnostics.parquet"
 IMAGE_PATH     = PROJECT_ROOT / "image" / "kauppa2.png"

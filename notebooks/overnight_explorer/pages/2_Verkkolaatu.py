@@ -18,7 +18,7 @@ st.set_page_config(page_title="Verkon laatu", page_icon="📶", layout="wide")
 # ---------------------------------------------------------------------------
 # Paths & constants
 # ---------------------------------------------------------------------------
-PROJECT_ROOT  = Path(__file__).resolve().parents[2]
+PROJECT_ROOT  = Path(__file__).resolve().parents[3]
 DUCKDB_PATH   = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
 IMAGE_PATH    = PROJECT_ROOT / "image" / "kauppa2.png"
 MAP_MAX_X, MAP_MAX_Y = 10406, 5220

@@ -21,7 +21,7 @@ st.set_page_config(page_title="Klusterianalyysi", page_icon="🗂️", layout="w
 # ---------------------------------------------------------------------------
 # Paths & constants
 # ---------------------------------------------------------------------------
-PROJECT_ROOT   = Path(__file__).resolve().parents[2]
+PROJECT_ROOT   = Path(__file__).resolve().parents[3]
 DUCKDB_PATH    = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
 SILVER_PARQUET = PROJECT_ROOT / "data" / "pbi_prototypes" / "silver_device_diagnostics.parquet"
 IMAGE_PATH     = PROJECT_ROOT / "image" / "kauppa2.png"
