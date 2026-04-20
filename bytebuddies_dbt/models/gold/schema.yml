@@ -107,3 +107,50 @@ models:
         description: "Pisteiden päivämäärä."
       - name: error_rate_pct
         description: "Kuinka monta prosenttia laitteen pingauksista päivän aikana sisälsi jotain vikaa (heikko signaali, jitter tai ulkona kaupasta)."
+
+  - name: f_paikannustarkkuus
+    description: >
+      Yöaikainen paikannustarkkuusanalyysi paikallaan olleille laitteille.
+      Grain: yksi rivi per laite (node_id) per yö (yo_paiva).
+      Käytetään UWB-paikannusjärjestelmän tarkkuuden arviointiin sijaintihajonnan perusteella.
+    columns:
+      - name: yo_paiva
+        description: "Yön aloituspäivä (se ilta jona yö alkoi)."
+        tests:
+          - not_null
+      - name: node_id
+        description: "Kärryn tunniste."
+        tests:
+          - not_null
+      - name: n_pings
+        description: "Havaintojen lukumäärä yön aikana."
+      - name: centroid_x
+        description: "Laitteen sijaintipilven keskipisteen x-koordinaatti (cm)."
+      - name: centroid_y
+        description: "Laitteen sijaintipilven keskipisteen y-koordinaatti (cm)."
+      - name: std_x
+        description: "Sijaintihajonnan keskihajonta x-akselilla (cm)."
+      - name: std_y
+        description: "Sijaintihajonnan keskihajonta y-akselilla (cm)."
+      - name: rmse_2d
+        description: "2D RMSE-tarkkuus — yhdistetty sijaintihajonta x- ja y-akseleilla (cm)."
+      - name: cep50
+        description: "CEP50 — säde jonka sisällä 50% havainnoista sijaitsee (cm)."
+      - name: cep68
+        description: "CEP68 — säde jonka sisällä 68% havainnoista sijaitsee (cm)."
+      - name: cep95
+        description: "CEP95 — säde jonka sisällä 95% havainnoista sijaitsee (cm)."
+      - name: jitter_ka_cm
+        description: "Jitterin keskiarvo — peräkkäisten havaintojen välinen keskietäisyys (cm)."
+      - name: jitter_p95_cm
+        description: "Jitterin 95. persentiili (cm)."
+      - name: drift_x_cmh
+        description: "Systemaattinen sijaintimuutos x-akselilla yön yli (cm/h). Positiivinen = liikkuu oikealle."
+      - name: drift_y_cmh
+        description: "Systemaattinen sijaintimuutos y-akselilla yön yli (cm/h). Positiivinen = liikkuu ylöspäin."
+      - name: outlier_pct
+        description: "Osuus havainnoista jotka poikkeavat yli 2×RMSE keskipisteestä (%)."
+      - name: avg_q
+        description: "Signaalin laadun keskiarvo yön aikana (0–255)."
+      - name: low_quality_pct
+        description: "Heikkolaatuisten havaintojen osuus yön aikana (%, q < 35)."
