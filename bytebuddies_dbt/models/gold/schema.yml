@@ -64,8 +64,8 @@ models:
         description: "Koordinaattiruudun x-arvo (aloitus x)."
       - name: grid_y
         description: "Koordinaattiruudun y-arvo (aloitus y)."
-      - name: avg_quality
-        description: "Ruudussa mitattu keskimääräinen signaalin laatu (q)."
+      - name: median_quality
+        description: "Ruudussa mitattu signaalin laadun mediaani (q, 0–255)."
       - name: low_quality_pct
         description: "Prosenttiosuus heikoista (q<35) signaaleista kyseisessä ruudussa."
 

@@ -22,7 +22,7 @@ SELECT
     grid_x,
     grid_y,
     COUNT(*) AS total_pings,
-    ROUND(AVG(q), 1) AS avg_quality,
+    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY q), 1) AS median_quality,
     MIN(q) AS min_quality,
     SUM(is_low_quality) AS low_quality_pings,
     SUM(is_jitter) AS jitter_pings,
