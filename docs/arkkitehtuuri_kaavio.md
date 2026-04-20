@@ -46,12 +46,18 @@ graph TD
     %% Raportointi ja Analyysi
     subgraph Analytics["Loppukäyttö ja analytiikka"]
         BI["<span style='color:#000 !important'>Apache Superset / analytiikkatyökalut<br>Suora DuckDB-yhteys</span>"]:::bi
+        DASH["<span style='color:#000 !important'>Streamlit Dashboardit<br>dashboards/ (liiketoiminta ym.)</span>"]:::bi
+        AGENT["<span style='color:#000 !important'>Agenttichat (app.py)<br>LLM-pohjainen data-analyysi</span>"]:::bi
     end
 
     CSV -.->|ingestio / lataus| stg
     gold_f -->|Direct Read| BI
     gold_d -->|Direct Read| BI
     gold_iot -->|Direct Read| BI
+    gold_f -->|Direct Read| DASH
+    gold_d -->|Direct Read| DASH
+    gold_f -->|Direct Read| AGENT
+
 ```
 
 ## Arkkitehtuurin vaiheet:
