@@ -62,21 +62,13 @@ st.markdown("""
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
-SILVER_PARQUET = PROJECT_ROOT / "data" / "pbi_prototypes" / "silver_device_diagnostics.parquet"
 
 
 @st.cache_resource(show_spinner=False)
 def _get_conn():
-    if SILVER_PARQUET.exists():
-        conn = duckdb.connect()
-        conn.execute(
-            f"CREATE VIEW silver_device_diagnostics AS "
-            f"SELECT * FROM read_parquet('{SILVER_PARQUET}')"
-        )
-        return conn
     if DUCKDB_PATH.exists():
         return duckdb.connect(str(DUCKDB_PATH), read_only=True)
-    st.error("silver_device_diagnostics.parquet eikä dev.duckdb löydy.")
+    st.error("dev.duckdb-tiedostoa ei löydy.")
     st.stop()
 
 
