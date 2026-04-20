@@ -322,31 +322,36 @@ elif page == "💬 Agenttichat":
 
     # --- Pikavalinnat (kiinteä yläpalkki) ---
     st.markdown('<div class="quick-actions-label">💡 Pikavalinnat</div>', unsafe_allow_html=True)
-    qa1, qa2, qa3, qa4, qa5 = st.columns(5)
-
+    
+    # Rivi 1
+    qa_col1 = st.columns(4)
     button_query = None
-    if qa1.button("📊 Mitä dataa on?", key="qa_data", width='stretch'):
-        button_query = (
-            "Tutki mitä tauluja ja dataa tietokannassa on saatavilla "
-            "ja esittele ne lyhyesti. Kerro myös, mitä analyyseja voisit tehdä tällä datalla."
-        )
-    if qa2.button("🗺️ Kärryliike kartalla", key="qa_vis", width='stretch'):
-        button_query = (
-            "Visualisoi ostoskärryjen liikkeet kaupan pohjapiirrokselle heatmappina. "
-            "Valitse mielenkiintoinen ajanjakso datasta ja käytä plot_on_floorplan-työkalua. "
-            "Lisää SQL-kyselyyn sopiva aikarajaus ja LIMIT 500000."
-        )
-    if qa3.button("📈 Data-analyysi", key="qa_analysis", width='stretch'):
-        button_query = (
-            "Tee lyhyt yhteenveto datan sisällöstä: kuinka paljon rivejä on, "
-            "miltä ajanjaksolta data on, kuinka monta eri ostoskärryä (node_id) "
-            "ja mitä ovat tärkeimmät havainnot."
-        )
-    if qa4.button("🌀 Päivitä taulut", key="qa_refresh", width='stretch'):
-        button_query = ("Päivitä tietokannan muistisi. "
-        "Tein muutoksia kantaan, tarkista uudet taulut"
-        )
-    if qa5.button("🗑️ Nollaa keskustelu", key="qa_reset", width='stretch'):
+
+    if qa_col1[0].button("📊 Mitä dataa on?", key="qa_data", width='stretch'):
+        button_query = "Tutki mitä tauluja ja dataa tietokannassa on saatavilla ja esittele ne lyhyesti."
+    
+    if qa_col1[1].button("🗺️ Kärryliike (Heatmap)", key="qa_vis", width='stretch'):
+        button_query = "Visualisoi ostoskärryjen liikkeet kaupan pohjapiirrokselle  heatmappina 2019-12-24 päivän osalta."
+    
+    if qa_col1[2].button("🎻 Viipymäjakauma", key="qa_violin", width='stretch'):
+        button_query = "Piirrä violin plot osastojen viipymäajoista taulusta. Näytä tilastolaatikot."
+
+    if qa_col1[3].button("📈 Aikasarja-analyysi", key="qa_grouped", width='stretch'):
+        button_query = "Piirrä ryhmitelty pylväskaavio osastojen vietetystä ajasta kuukausittain."
+
+    # Rivi 2
+    qa_col2 = st.columns(4)
+    
+    if qa_col2[0].button("📋 Osastovertailu", key="qa_bar", width='stretch'):
+        button_query = "Vertaile osastoja niiden kokonaiskäyntimäärien perusteella pylväskaaviolla."
+
+    if qa_col2[1].button("📈 Yleinen yhteenveto", key="qa_analysis", width='stretch'):
+        button_query = "Tee lyhyt yhteenveto datan sisällöstä: rivimäärät, aikaväli ja tärkeimmät havainnot."
+
+    if qa_col2[2].button("🌀 Päivitä muisti", key="qa_refresh", width='stretch'):
+        button_query = "Päivitä tietokannan muistisi, tarkista uudet taulut."
+
+    if qa_col2[3].button("🗑️ Nollaa chat", key="qa_reset", width='stretch'):
         st.session_state.messages = []
         import uuid
         st.session_state.thread_id = str(uuid.uuid4())

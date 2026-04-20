@@ -42,6 +42,7 @@ TOOL_DISPLAY_NAMES = {
     "generate_visualization": ("🎨", "Luodaan visualisointi"),
     "plot_chart": ("📈", "Piirretään kaavio"),
     "plot_distribution": ("🎻", "Analysoidaan jakaumaa"),
+    "plot_grouped_bar": ("📊", "Tehdään ryhmitelty pylväskaavio"),
     "plot_interactive": ("📊", "Luodaan interaktiivinen kuvaaja"),
     "plot_on_floorplan": ("🗺️", "Piirretään pohjapiirrokselle"),
     "refresh_schema": ("🌀", "Päivitetään tietokannan muistikuvaa"),
