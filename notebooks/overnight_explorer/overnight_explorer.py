@@ -33,7 +33,6 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[1]
 
 DUCKDB_PATH = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
-SILVER_PARQUET = PROJECT_ROOT / "data" / "pbi_prototypes" / "silver_device_diagnostics.parquet"
 IMAGE_PATH = PROJECT_ROOT / "image" / "kauppa2.png"
 
 # ---------------------------------------------------------------------------
@@ -141,17 +140,10 @@ def load_image(path: Path) -> Image.Image:
 
 @st.cache_resource(show_spinner=False)
 def _get_connection():
-    """Return a DuckDB connection with silver_device_diagnostics registered from parquet."""
-    if SILVER_PARQUET.exists():
-        conn = duckdb.connect()
-        conn.execute(
-            f"CREATE VIEW silver_device_diagnostics AS "
-            f"SELECT * FROM read_parquet('{SILVER_PARQUET}')"
-        )
-        return conn
+    """Return a DuckDB connection."""
     if DUCKDB_PATH.exists():
         return duckdb.connect(str(DUCKDB_PATH), read_only=True)
-    st.error("silver_device_diagnostics.parquet eikä dev.duckdb löydy. Aja ensin dbt run.")
+    st.error("dev.duckdb-tiedostoa ei löydy. Aja ensin dbt run.")
     st.stop()
 
 
