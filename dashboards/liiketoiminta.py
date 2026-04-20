@@ -47,7 +47,7 @@ _CSS = """
 .biz-metric .lbl { font-size: 0.78rem; color: #94a3b8; margin-top: 0.3rem; font-weight: 500; }
 .biz-metric .sub { font-size: 0.7rem; color: #64748b; margin-top: 0.15rem; }
 .biz-section {
-    font-size: 1.1rem; font-weight: 600; color: #1e3a5f;
+    font-size: 1.1rem; font-weight: 600; color: var(--text-color, #e2e8f0);
     margin: 1.5rem 0 0.6rem 0; border-left: 4px solid #3b82f6; padding-left: 0.6rem;
 }
 </style>
