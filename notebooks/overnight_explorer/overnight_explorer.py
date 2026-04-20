@@ -30,9 +30,10 @@ from PIL import Image
 # Paths – resolve relative to project root (parent of /scripts)
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
+PROJECT_ROOT = SCRIPT_DIR.parents[1]
 
 DUCKDB_PATH = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
+SILVER_PARQUET = PROJECT_ROOT / "data" / "pbi_prototypes" / "silver_device_diagnostics.parquet"
 IMAGE_PATH = PROJECT_ROOT / "image" / "kauppa2.png"
 
 # ---------------------------------------------------------------------------
@@ -140,11 +141,18 @@ def load_image(path: Path) -> Image.Image:
 
 @st.cache_resource(show_spinner=False)
 def _get_connection():
-    """Return a read-only DuckDB connection (singleton across the session)."""
-    if not DUCKDB_PATH.exists():
-        st.error(f"DuckDB-tietokantaa ei löydy: {DUCKDB_PATH}\n\nAja ensin `dbt run`.")
-        st.stop()
-    return duckdb.connect(str(DUCKDB_PATH), read_only=True)
+    """Return a DuckDB connection with silver_device_diagnostics registered from parquet."""
+    if SILVER_PARQUET.exists():
+        conn = duckdb.connect()
+        conn.execute(
+            f"CREATE VIEW silver_device_diagnostics AS "
+            f"SELECT * FROM read_parquet('{SILVER_PARQUET}')"
+        )
+        return conn
+    if DUCKDB_PATH.exists():
+        return duckdb.connect(str(DUCKDB_PATH), read_only=True)
+    st.error("silver_device_diagnostics.parquet eikä dev.duckdb löydy. Aja ensin dbt run.")
+    st.stop()
 
 
 @st.cache_data(show_spinner="📅 Haetaan saatavilla olevat yöt…", ttl=300)

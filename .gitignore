@@ -37,6 +37,9 @@ dbt/logs/
 *.db
 *.parquet
 
+# PBI-prototyypit (generoitu data)
+data/pbi_prototypes/*.parquet
+
 # Lokit ja tilapäiset tiedostot
 *.log
 *.tmp

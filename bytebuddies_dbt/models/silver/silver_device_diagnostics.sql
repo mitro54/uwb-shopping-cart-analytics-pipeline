@@ -22,7 +22,7 @@
 WITH liikkeet AS (
     SELECT
         node_id,
-        timestamp AS aika,
+        timezone('Europe/Helsinki', timestamp::TIMESTAMPTZ) AS aika,
         x,
         y,
         q,
