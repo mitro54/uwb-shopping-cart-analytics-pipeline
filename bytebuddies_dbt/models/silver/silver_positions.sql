@@ -131,6 +131,8 @@ SELECT
     session_id,
     -- Luodaan MD5-hash full_session_id:ksi schema.yml vaatimuksen mukaan
     MD5(node_id || '_' || CAST(session_id AS VARCHAR)) AS full_session_id,
+    EXTRACT('hour' FROM aika) AS hour,
+    EXTRACT('isodow' FROM aika) AS weekday,
     dist_m,
     sekuntia_edellisesta,
     -- Nopeus (m/s)
