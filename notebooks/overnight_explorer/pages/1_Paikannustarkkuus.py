@@ -19,8 +19,7 @@ st.set_page_config(page_title="Paikannustarkkuus", page_icon="🎯", layout="wid
 # Paths & constants
 # ---------------------------------------------------------------------------
 PROJECT_ROOT   = Path(__file__).resolve().parents[3]
-GOLD_PARQUET   = PROJECT_ROOT / "data" / "pbi_prototypes" / "f_paikannustarkkuus.parquet"
-SILVER_PARQUET = PROJECT_ROOT / "data" / "pbi_prototypes" / "silver_device_diagnostics.parquet"
+DUCKDB_PATH    = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
 IMAGE_PATH     = PROJECT_ROOT / "image" / "kauppa2.png"
 MAP_MAX_X, MAP_MAX_Y = 10406, 5220
 CHARGING_STATIONS = [
@@ -66,23 +65,20 @@ st.markdown("""
 # ---------------------------------------------------------------------------
 @st.cache_data(show_spinner="📅 Haetaan gold-data…", ttl=300)
 def fetch_gold() -> pl.DataFrame:
-    if not GOLD_PARQUET.exists():
-        st.error(f"Gold-parquet ei löydy: {GOLD_PARQUET}")
+    if not DUCKDB_PATH.exists():
+        st.error(f"DuckDB ei löydy: {DUCKDB_PATH}")
         st.stop()
-    return pl.read_parquet(GOLD_PARQUET).sort(["yo_paiva", "node_id"])
+    conn = duckdb.connect(str(DUCKDB_PATH), read_only=True)
+    df = conn.execute("SELECT * FROM f_paikannustarkkuus").pl()
+    return df.sort(["yo_paiva", "node_id"])
 
 
 @st.cache_resource(show_spinner=False)
 def _silver_conn() -> duckdb.DuckDBPyConnection:
-    if not SILVER_PARQUET.exists():
-        st.error(f"Silver-parquet ei löydy: {SILVER_PARQUET}")
+    if not DUCKDB_PATH.exists():
+        st.error(f"DuckDB ei löydy: {DUCKDB_PATH}")
         st.stop()
-    conn = duckdb.connect()
-    conn.execute(
-        f"CREATE VIEW silver_device_diagnostics AS "
-        f"SELECT * FROM read_parquet('{SILVER_PARQUET}')"
-    )
-    return conn
+    return duckdb.connect(str(DUCKDB_PATH), read_only=True)
 
 
 def _charging_exclusion() -> str:
