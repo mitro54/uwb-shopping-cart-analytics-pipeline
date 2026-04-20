@@ -12,6 +12,10 @@ tai
 
 2) Streamlit-sovelluksena komennolla:
 ```bash
+uv run python main.py
+```
+Tai vaihtoehtoisesti:
+```bash
 uv run streamlit run app.py
 ```
 
@@ -74,8 +78,13 @@ Streamlit-sovelluksessa on graafinen käyttöliittymä, jossa voit keskustella a
 Agenttien ajo vaatii Ollama-palvelimen käynnistämisen taustalla, joitakin malleja (testattu qwen malleilla).  
 Varajärjestelmänä toimii Google GenAI, jos Ollama ei ole käytettävissä. Tällöin tarvitaan Google GenAI API-avain, joka täytyy lisätä `.env.example` tiedostoon, jonka jälkeen tiedosto täytyy nimetä `.env` tiedostoksi. Tämän jälkeen voit käynnistää sovelluksen komennolla:
 ```bash
+uv run python main.py
+```
+Tai vaihtoehtoisesti:
+```bash
 uv run streamlit run app.py
 ```
+
 
 ### 2.1 Etusivu
 
@@ -99,3 +108,10 @@ Tässä osiossa voit selata tietokannan tauluja ja niiden sisältöä. Lisäksi 
 
 Tässä osiossa voit tarkastella agenttien luomia visualisointeja.
 
+### 2.6 Dashboardit
+
+Sivupalkin "Dashboardit"-osiosta löytyvät analytiikkanäkymät, jotka on rakennettu suoraan Gold-kerroksen datasta:
+
+- **📈 Liiketoiminta:** Asiakaskäyttäytymisen tunnusluvut (käyntimäärät, viipymät, osastojen suosio) aikarajauksella.
+
+Dashboard-moduulit sijaitsevat `dashboards/`-kansiossa. Uudet dashboardit lisätään samaan kansioon `render()`-rajapinnalla.
