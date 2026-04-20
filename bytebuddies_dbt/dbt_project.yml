@@ -33,7 +33,7 @@ models:
     bronze:
       +materialized: table
     silver:
-      +materialized: external
+      +materialized: table
     gold:
-      +materialized: external
+      +materialized: table
 

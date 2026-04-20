@@ -89,8 +89,8 @@ rikastettu AS (
     SELECT
         *,
         -- Matka (Pythagoraan lause), muunnos senttimetreistä -> metreiksi
-        SQRT(POWER(x - edellinen_x, 2) + POWER(y - edellinen_y, 2)) / 100.0 AS dist_m,
-        DATE_DIFF('second', edellinen_aika, aika) AS sekuntia_edellisesta
+        COALESCE(SQRT(POWER(x - edellinen_x, 2) + POWER(y - edellinen_y, 2)) / 100.0, 0) AS dist_m,
+        COALESCE(DATE_DIFF('second', edellinen_aika, aika), 0) AS sekuntia_edellisesta
     FROM liikkeet
 ),
 jitter_suodatus AS (
