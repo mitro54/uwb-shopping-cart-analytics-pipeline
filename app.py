@@ -35,19 +35,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# --- Teeman oletustila ---
-if "ui_theme" not in st.session_state:
-    st.session_state.ui_theme = "🌙 Tumma"
-
 # --- Premium CSS-tyylittely ---
 def load_css(file_name):
     with open(file_name, "r", encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-if st.session_state.ui_theme == "☀️ Vaalea":
-    load_css("light_style.css")
-else:
-    load_css("dark_style.css")
+load_css("style.css")
+
 
 # --- Ollama-mallien haku ---
 @st.cache_data(ttl=120, show_spinner=False)
@@ -150,14 +144,6 @@ st.sidebar.markdown("""
     <div style="font-size: 0.75rem; color: #64748B; font-weight: 500;">UWB Analytiikka</div>
 </div>
 """, unsafe_allow_html=True)
-
-st.sidebar.radio(
-    "Teema",
-    ["🌙 Tumma", "☀️ Vaalea"],
-    key="ui_theme",
-    horizontal=True,
-    label_visibility="collapsed"
-)
 
 st.sidebar.markdown("---")
 
