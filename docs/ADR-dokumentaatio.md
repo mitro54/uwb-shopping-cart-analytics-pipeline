@@ -130,7 +130,7 @@ Kun jokin näistä ehdoista täyttyy, koodi merkitsee kyseiselle riville lipun: 
 * **Suorituskyky:** Kumulatiivinen summa on ns. vektorisoitu operaatio. Sen ajaminen kymmenille miljoonille riveille on tuhansia kertoja nopeampaa kuin datan läpikäynti rivi riviltä (for-looppaaminen).
 * **MD5 Full Session ID:** Lopuksi laitteen ID ja tämä juokseva numero yhdistetään (esim. `kärryA_2`) ja niistä luodaan MD5-tiiviste. Tämä siksi, että tietokannan Gold-kerros saa tasapitkän ja uniikin pääavaimen (Primary Key), joka nopeuttaa taulujen yhdistämistä (JOIN).
 
-## Tekninen Arkkitehtuuri: Visualisointi Apache Supersetillä
+## Tekninen Arkkitehtuuri: Visualisointi Streamlit-dashboardeilla
 
 **Päätös:**
-Raportointiin ja visualisointiin käytetään Apache Superset -alustaa, joka lukee dataa suoraan DuckDB-tietokannasta. Gold-tason taulut käsitellään tavallisina tietokantatauluina, mikä yksinkertaistaa arkkitehtuuria ja mahdollistaa suoran pääsyn valmiiseen liiketoimintadataan.
+Raportointiin ja visualisointiin käytetään Streamlit-alustaa, joka lukee dataa suoraan DuckDB-tietokannasta (`app.py` / `dashboards/`). Gold-tason taulut käsitellään tavallisina tietokantatauluina, mikä yksinkertaistaa arkkitehtuuria ja mahdollistaa suoran pääsyn valmiiseen liiketoimintadataan. Tällä korvattiin aiemmin suunniteltu Apache Superset -ratkaisu, koska se tarjoaa riittävän visualisointikyvyn ja tiiviimmän integraation muun Python-koodin ja agenttien kanssa.

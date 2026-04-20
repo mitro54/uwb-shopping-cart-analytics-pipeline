@@ -45,15 +45,11 @@ graph TD
 
     %% Raportointi ja Analyysi
     subgraph Analytics["Loppukäyttö ja analytiikka"]
-        BI["<span style='color:#000 !important'>Apache Superset / analytiikkatyökalut<br>Suora DuckDB-yhteys</span>"]:::bi
         DASH["<span style='color:#000 !important'>Streamlit Dashboardit<br>dashboards/ (liiketoiminta ym.)</span>"]:::bi
         AGENT["<span style='color:#000 !important'>Agenttichat (app.py)<br>LLM-pohjainen data-analyysi</span>"]:::bi
     end
 
     CSV -.->|ingestio / lataus| stg
-    gold_f -->|Direct Read| BI
-    gold_d -->|Direct Read| BI
-    gold_iot -->|Direct Read| BI
     gold_f -->|Direct Read| DASH
     gold_d -->|Direct Read| DASH
     gold_f -->|Direct Read| AGENT
@@ -69,4 +65,5 @@ graph TD
 4. **Gold (liiketoimintadata):** Viedään data tasolle, jossa se vastaa suoraan liiketoiminnan kysymyksiin: 
    - **Myymäläanalytiikka:** `f_kaynti`, `f_osastokaynti`, `dim_osastot` muodostavat tähtimallin myymälän läpäisyn ja tuottojen analysointiin.
    - **Laitteistoanalytiikka:** `f_verkko_laatu` ja `f_laite_status` luovat 1x1m tarkkuuden kuumuuskarttoja katvealueista sekä päivätason laitekohtaisia virheprosentteja (esim. signaalien laatu ja hypyt).
-5. **Loppukäyttö:** Tietokantataulut ovat suoraan analytiikkatyökalujen (esim. Apache Superset) käytettävissä DuckDB-tietokannan kautta. Tämä mahdollistaa nopean ja suoran pääsyn valmiiseen liiketoimintadataan ilman erillisiä vientivaiheita.
+5. **Loppukäyttö:** Tietokantataulut ovat suoraan analytiikkatyökalujen (Streamlit-dashboardit ja Agenttichat) käytettävissä DuckDB-tietokannan kautta. Tämä mahdollistaa nopean ja suoran pääsyn valmiiseen liiketoimintadataan ilman erillisiä vientivaiheita.
+

@@ -335,7 +335,7 @@ Retrossa käytiin läpi kulunutta sprinttiä Liked, Learnt ja Lacked -teemojen k
 
 **Paikalla: Kaikki**
 
-Keskusteltiin seuraavan viikon asioista. Huomioitiin, että projektissa on "lähdetty laukalle", mutta positiivisella tavalla, sillä siitä oppii enemmän asioita. Mietittiin Apachen roolia ja mitä tehdään keskikäytävän haasteille. Pidetyssä ajatusriihessä pohdittiin ominaisuuksia ja sitä, mitä asiakas todella haluaa ja tarvitsee.
+Keskusteltiin seuraavan viikon asioista. Huomioitiin, että projektissa on "lähdetty laukalle", mutta positiivisella tavalla, sillä siitä oppii enemmän asioita. Mietittiin raportoinnin roolia ja mitä tehdään keskikäytävän haasteille. Pidetyssä ajatusriihessä pohdittiin ominaisuuksia ja sitä, mitä asiakas todella haluaa ja tarvitsee.
 
 #### Sprintin 4 - Tavoitteet:
 
@@ -347,10 +347,10 @@ Keskusteltiin seuraavan viikon asioista. Huomioitiin, että projektissa on "läh
 
 * Datan riittävyyden ja rikkauden arviointi Gold-tauluja varten
 * Keskikäytävän haasteiden suunnittelu ja datan ongelmakohtien perkaaminen
-* Asiakastarpeiden ja ominaisuuksien määrittely ajatusriihen pohjalta sekä Apachen roolin suunnittelu
+* Asiakastarpeiden ja ominaisuuksien määrittely ajatusriihen pohjalta sekä raportointiympäristön roolin suunnittelu
 * Koordinaattien hienosäätö Gold-tauluihin
 * Aukioloaikojen ulkopuolisen datan käsittely ja määrittely paikannusyrityksille relevanttiin muotoon
-* Visualisointien ja osastojen tutkiminen, toteutus ja korjaus Supersetillä
+* Visualisointien ja osastojen tutkiminen, toteutus ja korjaus Streamlitillä
 * Agenttipohjaisen visualisoinnin tutkiminen, toteutus ja säätö
 * Sprintin edistymisen ja tehtyjen ratkaisujen dokumentointi
 
@@ -358,7 +358,7 @@ Keskusteltiin seuraavan viikon asioista. Huomioitiin, että projektissa on "läh
 
 * Gold-taulujen koordinaatit on hienosäädetty ja datan laatu/riittävyys todennettu
 * Aukioloaikojen ulkopuolinen data on huomioitu ja tuotu osaksi datakokonaisuutta
-* Superset-visualisoinnit ja osastotutkinta on toteutettu ja korjattu
+* Streamlit-dashboardit ja osastotutkinta on toteutettu ja korjattu
 * Agenttipohjainen visualisointi on pystytetty ja hienosäädetty toimivaksi
 * Asiakastarpeet on selkeytetty ja yhteinen suunta on kirkas
 * Dokumentaatio ajan tasalla
@@ -522,25 +522,18 @@ jotta ymmärrän dynaamisesti ja konkreettisesti, miten massat ja yksilöt liikk
 - Visualisointi esittää kärryjen liikkeet kaupan pohjakartalla
 - Käyttöliittymä mahdollistaa ajan kelaamisen ja nopeuden säätämisen
 
-#### User Story: Osastokohtainen analytiikka Supersetissä [TODO]
+#### User Story: Osastokohtainen analytiikka Streamlit-dashboardeilla [TODO]
 Kuten kauppias
-haluan nähdä Superset-dashboardilta osastokohtaiset tunnusluvut (esim. kävijämäärät, viipymät)
+haluan nähdä Streamlit-dashboardilta osastokohtaiset tunnusluvut (esim. kävijämäärät, viipymät)
 jotta voin arvioida eri tuoteosastojen houkuttelevuutta ja tehokkuutta.
 
 **Hyväksymiskriteerit:**
-- Superset on kytketty osastotason Gold-dataan (`osastokäynti fakta`)
+- Streamlit-sovellus on kytketty osastotason Gold-dataan (`osastokäynti fakta`)
 - Dashboardilla on visualisoinnit osastojen väliselle vertailulle (esim. bar chart tai heatmap osastoittain)
 - Data on suodatettavissa ajan ja osaston mukaan
 
-#### Tekninen backlog-item: Apachen roolin määrittely ja käyttöönotto [TODO]
-Kehittäjänä
-haluan määritellä ja ottaa käyttöön Apache-työkalun (esim. Airflow dataputkien orkestrointiin tai Kafka datastriimaukseen)
-jotta dataputken ajot ja skaalautuvuus on hallittavissa tuotantomaisessa ympäristössä.
-
-**Hyväksymiskriteerit:**
-- Työkalun käyttötarkoitus osana arkkitehtuuria on dokumentoitu
-- Proof of Concept (PoC) tai lokaali kehitysympäristö on pystytetty
-- Integroituvuus nykyiseen dbt/DuckDB-putkeen on todennettu
+#### Tekninen backlog-item: Apachen tai ulkoisten orkestrointityökalujen käyttö [PERUTTU]
+*Päätös: Apachen työkalut (kuten Superset ja Airflow) on rajattu pois ja unohdettu. Kehitys jatkuu puhtaasti Streamlitillä Python-ympäristössä (main.py).*
 
 ***
 
