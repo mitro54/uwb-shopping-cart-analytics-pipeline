@@ -158,21 +158,6 @@ def render():
 
     df_night = df_all.filter(pl.col("yo_paiva").cast(pl.Utf8) == selected_date)
 
-    # --- Night summary ---
-    st.markdown('<div class="pt-section">📊 Yön yhteenveto – kaikki laitteet</div>', unsafe_allow_html=True)
-    c1, c2, c3, c4, c5 = st.columns(5)
-    _metric(c1, str(len(df_night)), "Laitteita")
-    _metric(c2, f"{df_night['rmse_2d'].median():.1f} cm", "Mediaani RMSE 2D")
-    _metric(c3, f"{df_night['cep50'].median():.1f} cm", "Mediaani CEP50")
-    _metric(c4, f"{df_night['cep95'].median():.1f} cm", "Mediaani CEP95")
-    _metric(c5, f"{df_night['jitter_ka_cm'].median():.1f} cm", "Mediaani Jitter")
-
-    st.markdown('<div class="pt-section">📋 Kaikki laitteet – valittu yö</div>', unsafe_allow_html=True)
-    st.dataframe(
-        df_night.select(DISPLAY_COLS).sort("node_id").to_arrow(),
-        use_container_width=True, hide_index=True,
-    )
-
     # --- Single-device detail ---
     st.markdown(f'<div class="pt-section">🔍 Laite {selected_node} – yksityiskohtainen analyysi</div>',
                 unsafe_allow_html=True)
