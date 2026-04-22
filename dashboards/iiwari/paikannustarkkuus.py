@@ -89,7 +89,7 @@ def _fetch_night(node_id: str, yo_paiva: str, cx: float, cy: float) -> pl.DataFr
         WITH tz AS (
             SELECT node_id,
                    timezone('Europe/Helsinki', aika::TIMESTAMPTZ) AS aika_hki,
-                   x, y, q, is_low_quality, is_jitter
+                   x, y, "q", is_low_quality, is_jitter
             FROM silver_device_diagnostics
             WHERE node_id = '{node_id}'
               AND x IS NOT NULL AND y IS NOT NULL
@@ -99,10 +99,10 @@ def _fetch_night(node_id: str, yo_paiva: str, cx: float, cy: float) -> pl.DataFr
         SELECT aika_hki,
                EXTRACT('hour' FROM aika_hki)::INT              AS tunti,
                x, y,
-               ROUND(x - {cx}, 1)                              AS dx,
-               ROUND(y - {cy}, 1)                              AS dy,
-               ROUND(SQRT(POWER(x-{cx},2)+POWER(y-{cy},2)),1) AS dist,
-               q, is_low_quality, is_jitter
+               ROUND(x - ({cx}), 1)                              AS dx,
+               ROUND(y - ({cy}), 1)                              AS dy,
+               ROUND(SQRT(POWER(x-({cx}),2)+POWER(y-({cy}),2)),1) AS dist,
+               "q", is_low_quality, is_jitter
         FROM tz
         WHERE (CAST(aika_hki AS DATE) = CAST('{yo_paiva}' AS DATE)
                AND EXTRACT('hour' FROM aika_hki) >= 22)
