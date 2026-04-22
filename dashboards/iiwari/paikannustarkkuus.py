@@ -1,296 +1,378 @@
 """
-Paikannustarkkuus – UWB-järjestelmän tarkkuusanalyysi
-======================================================
-Yöaikaisiin paikallaan oleviin laitteisiin perustuva
-CEP50/CEP95, jitter ja drift -seuranta.
+Paikannustarkkuus laitteittain – yöaikaiset tarkkuusmittarit
+=============================================================
+Laitekohtainen näkymä: sijaintipilvi, CEP-ympyrät, drift ja
+tarkkuustrendi useamman yön yli.
 
 Kutsutaan iiwari.py:stä: dashboards.iiwari.paikannustarkkuus.render()
 """
 
+import math
+from datetime import date as _date, timedelta
 from pathlib import Path
 
 import duckdb
+import numpy as np
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
+from PIL import Image
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DUCKDB_PATH = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
+DUCKDB_PATH  = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
+IMAGE_PATH   = PROJECT_ROOT / "image" / "kauppa2.png"
+MAP_MAX_X, MAP_MAX_Y = 10406, 5220
+CHARGING_STATIONS = [
+    {"x": 100,  "y": 2500, "radius": 400},
+    {"x": 900,  "y": 3600, "radius": 600},
+]
 
 _CSS = """
 <style>
-.iiwari-hero {
-    background: linear-gradient(135deg, #0a1628, #1a2f4e, #0f3460);
+.pt-hero {
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
     border-radius: 16px; padding: 2rem 2.5rem; margin-bottom: 1.5rem; color: white;
 }
-.iiwari-hero h1 { font-size: 2rem; font-weight: 700; margin: 0 0 0.4rem 0; }
-.iiwari-hero p  { font-size: 1rem; color: #7dd3fc; margin: 0; }
-.iiwari-metric {
-    background: linear-gradient(135deg, #0f172a, #1e293b);
-    border: 1px solid #334155; border-radius: 14px;
-    padding: 1.2rem 1.4rem; text-align: center; color: white;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+.pt-hero h1 { font-size: 2rem; font-weight: 700; margin: 0 0 0.4rem 0; }
+.pt-hero p  { font-size: 1rem; color: #a5b4fc; margin: 0; }
+.pt-metric {
+    background: #1e1b4b; border: 1px solid #3730a3; border-radius: 12px;
+    padding: 1rem 1.2rem; text-align: center; color: white;
 }
-.iiwari-metric:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(14, 165, 233, 0.15);
-}
-.iiwari-metric .val { font-size: 2.2rem; font-weight: 700; color: #38bdf8; }
-.iiwari-metric .lbl { font-size: 0.78rem; color: #94a3b8; margin-top: 0.3rem; font-weight: 500; }
-.iiwari-metric .sub { font-size: 0.7rem; color: #64748b; margin-top: 0.15rem; }
-.iiwari-section {
+.pt-metric .val { font-size: 2rem; font-weight: 700; color: #818cf8; }
+.pt-metric .lbl { font-size: 0.8rem; color: #94a3b8; margin-top: 0.2rem; }
+.pt-section {
     font-size: 1.1rem; font-weight: 600; color: var(--text-color, #e2e8f0);
-    margin: 1.5rem 0 0.6rem 0; border-left: 4px solid #0ea5e9; padding-left: 0.6rem;
+    margin: 1.2rem 0 0.6rem 0; border-left: 4px solid #6366f1; padding-left: 0.6rem;
 }
 </style>
 """
 
+DISPLAY_COLS = [
+    "yo_paiva", "node_id", "n_pings", "rmse_2d", "cep50", "cep68", "cep95",
+    "jitter_ka_cm", "jitter_p95_cm", "drift_x_cmh", "drift_y_cmh",
+    "outlier_pct", "avg_q", "low_quality_pct",
+]
 
+
+# ---------------------------------------------------------------------------
+# DB helpers
+# ---------------------------------------------------------------------------
 @st.cache_resource(show_spinner=False)
-def _get_conn():
+def _get_conn() -> duckdb.DuckDBPyConnection:
     if DUCKDB_PATH.exists():
         return duckdb.connect(str(DUCKDB_PATH), read_only=True)
     st.error("dev.duckdb ei löydy. Aja ensin `dbt run`.")
     st.stop()
 
 
-@st.cache_data(show_spinner=False, ttl=300)
-def _date_range() -> tuple:
+@st.cache_data(show_spinner="📅 Haetaan gold-data…", ttl=300)
+def _fetch_gold() -> pl.DataFrame:
     conn = _get_conn()
-    row = conn.execute("SELECT MIN(yo_paiva), MAX(yo_paiva) FROM f_paikannustarkkuus").fetchone()
-    return row[0], row[1]
+    return conn.execute("SELECT * FROM f_paikannustarkkuus").pl().sort(["yo_paiva", "node_id"])
 
 
-@st.cache_data(show_spinner="🎯 Haetaan tarkkuusdata…", ttl=300)
-def _load(d0: str, d1: str, nodes: list[str]) -> pl.DataFrame:
-    conn = _get_conn()
-    node_filter = ""
-    if nodes:
-        ids = ", ".join(f"'{n}'" for n in nodes)
-        node_filter = f"AND node_id IN ({ids})"
-    return conn.execute(f"""
-        SELECT yo_paiva, node_id, n_pings,
-               centroid_x, centroid_y,
-               std_x, std_y, rmse_2d,
-               cep50, cep68, cep95,
-               jitter_ka_cm, jitter_p95_cm,
-               drift_x_cmh, drift_y_cmh,
-               outlier_pct, avg_q, low_quality_pct
-        FROM f_paikannustarkkuus
-        WHERE yo_paiva >= '{d0}' AND yo_paiva <= '{d1}'
-        {node_filter}
-        ORDER BY yo_paiva, node_id
-    """).pl()
+def _charging_exclusion() -> str:
+    parts = []
+    for cs in CHARGING_STATIONS:
+        r_sq = cs["radius"] ** 2
+        parts.append(f"(POWER(x - {cs['x']}, 2) + POWER(y - {cs['y']}, 2) > {r_sq})")
+    return " AND ".join(parts)
 
 
-def _kpi(col, val, label, sub=""):
-    sub_html = f'<div class="sub">{sub}</div>' if sub else ""
+@st.cache_data(show_spinner="🔗 Haetaan yön raakadata…", ttl=300)
+def _fetch_night(node_id: str, yo_paiva: str, cx: float, cy: float) -> pl.DataFrame:
+    conn      = _get_conn()
+    excl      = _charging_exclusion()
+    next_date = str(_date.fromisoformat(yo_paiva) + timedelta(days=1))
+    arrow = conn.execute(f"""
+        WITH tz AS (
+            SELECT node_id,
+                   timezone('Europe/Helsinki', aika::TIMESTAMPTZ) AS aika_hki,
+                   x, y, q, is_low_quality, is_jitter
+            FROM silver_device_diagnostics
+            WHERE node_id = '{node_id}'
+              AND x IS NOT NULL AND y IS NOT NULL
+              AND x >= 500
+              AND {excl}
+        )
+        SELECT aika_hki,
+               EXTRACT('hour' FROM aika_hki)::INT              AS tunti,
+               x, y,
+               ROUND(x - {cx}, 1)                              AS dx,
+               ROUND(y - {cy}, 1)                              AS dy,
+               ROUND(SQRT(POWER(x-{cx},2)+POWER(y-{cy},2)),1) AS dist,
+               q, is_low_quality, is_jitter
+        FROM tz
+        WHERE (CAST(aika_hki AS DATE) = CAST('{yo_paiva}' AS DATE)
+               AND EXTRACT('hour' FROM aika_hki) >= 22)
+           OR (CAST(aika_hki AS DATE) = CAST('{next_date}' AS DATE)
+               AND EXTRACT('hour' FROM aika_hki) < 7)
+        ORDER BY aika_hki
+    """).to_arrow_table()
+    return pl.from_arrow(arrow)
+
+
+@st.cache_resource(show_spinner=False)
+def _load_image(path: Path) -> Image.Image:
+    return Image.open(path)
+
+
+def _metric(col, val, label):
     col.markdown(
-        f'<div class="iiwari-metric">'
-        f'<div class="val">{val}</div>'
-        f'<div class="lbl">{label}</div>'
-        f'{sub_html}</div>',
+        f'<div class="pt-metric"><div class="val">{val}</div>'
+        f'<div class="lbl">{label}</div></div>',
         unsafe_allow_html=True,
     )
 
 
+# ---------------------------------------------------------------------------
+# Render
+# ---------------------------------------------------------------------------
 def render():
     st.markdown(_CSS, unsafe_allow_html=True)
     st.markdown("""
-    <div class="iiwari-hero">
-        <h1>🎯 Paikannustarkkuus</h1>
-        <p>UWB-järjestelmän tarkkuusanalyysi — CEP50/CEP95, jitter ja drift yöaikaisista paikallaan olevista laitteista</p>
+    <div class="pt-hero">
+        <h1>🎯 Paikannustarkkuus laitteittain</h1>
+        <p>Laitekohtainen yöanalyysi — sijaintipilvi, CEP-ympyrät, drift ja tarkkuustrendi</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Filters ---
-    st.markdown("### ⚙️ Suodattimet")
-    dt_min, dt_max = _date_range()
-
-    all_nodes = _get_conn().execute(
-        "SELECT DISTINCT node_id FROM f_paikannustarkkuus ORDER BY node_id"
-    ).fetchdf()["node_id"].tolist()
-
-    col_f1, col_f2 = st.columns([1, 1])
-    with col_f1:
-        date_range = st.date_input(
-            "Päivämääräväli", value=(dt_min, dt_max),
-            min_value=dt_min, max_value=dt_max,
-        )
-    with col_f2:
-        selected_nodes = st.multiselect(
-            "Laitteet (node_id)", options=all_nodes, default=[],
-            placeholder="Kaikki laitteet",
-        )
-
-    if len(date_range) != 2:
-        st.info("Valitse alku- ja loppupäivä.")
+    df_all = _fetch_gold()
+    if df_all.is_empty():
+        st.warning("Gold-taulussa ei ole dataa. Aja ensin `dbt run`.")
         st.stop()
 
-    d0, d1 = str(date_range[0]), str(date_range[1])
-    df = _load(d0, d1, selected_nodes)
+    # --- Filters in sidebar ---
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🔍 Suodattimet")
 
-    if df.is_empty():
-        st.warning("Ei dataa valituilla suodattimilla.")
+    all_nodes     = sorted(df_all["node_id"].unique().to_list())
+    selected_node = st.sidebar.selectbox("📡 Laite (node_id)", options=all_nodes)
+
+    nights = sorted(
+        df_all.filter(pl.col("node_id") == selected_node)
+        ["yo_paiva"].cast(pl.Utf8).unique().to_list()
+    )
+    selected_date = st.sidebar.selectbox("📅 Yö", options=nights, index=0)
+
+    df_night = df_all.filter(pl.col("yo_paiva").cast(pl.Utf8) == selected_date)
+
+    # --- Night summary ---
+    st.markdown('<div class="pt-section">📊 Yön yhteenveto – kaikki laitteet</div>', unsafe_allow_html=True)
+    c1, c2, c3, c4, c5 = st.columns(5)
+    _metric(c1, str(len(df_night)), "Laitteita")
+    _metric(c2, f"{df_night['rmse_2d'].median():.1f} cm", "Mediaani RMSE 2D")
+    _metric(c3, f"{df_night['cep50'].median():.1f} cm", "Mediaani CEP50")
+    _metric(c4, f"{df_night['cep95'].median():.1f} cm", "Mediaani CEP95")
+    _metric(c5, f"{df_night['jitter_ka_cm'].median():.1f} cm", "Mediaani Jitter")
+
+    st.markdown('<div class="pt-section">📋 Kaikki laitteet – valittu yö</div>', unsafe_allow_html=True)
+    st.dataframe(
+        df_night.select(DISPLAY_COLS).sort("node_id").to_arrow(),
+        use_container_width=True, hide_index=True,
+    )
+
+    # --- Single-device detail ---
+    st.markdown(f'<div class="pt-section">🔍 Laite {selected_node} – yksityiskohtainen analyysi</div>',
+                unsafe_allow_html=True)
+
+    row = df_night.filter(pl.col("node_id") == selected_node)
+    if row.is_empty():
+        st.info("Laitteella ei ole dataa valitulle yölle.")
         st.stop()
 
-    # --- KPIs ---
-    st.markdown('<div class="iiwari-section">📊 Yhteenveto</div>', unsafe_allow_html=True)
+    r  = row.row(0, named=True)
+    cx = r["centroid_x"]
+    cy = r["centroid_y"]
 
-    med_cep50 = df["cep50"].median()
-    med_cep95 = df["cep95"].median()
-    med_jitter = df["jitter_ka_cm"].median()
-    med_lq = df["low_quality_pct"].median()
-    n_nights = df["yo_paiva"].n_unique()
-    n_devices = df["node_id"].n_unique()
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    _metric(m1, f"{r['rmse_2d']:.1f}", "RMSE 2D (cm)")
+    _metric(m2, f"{r['cep50']:.1f}", "CEP50 (cm)")
+    _metric(m3, f"{r['cep95']:.1f}", "CEP95 (cm)")
+    _metric(m4, f"{r['jitter_ka_cm']:.1f}", "Jitter ka (cm/step)")
+    _metric(m5, f"{r['drift_x_cmh']:+.1f}", "Drift X (cm/h)")
+    _metric(m6, f"{r['outlier_pct']:.1f}", "Outlierit (%)")
 
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    _kpi(c1, f"{med_cep50:.1f} cm", "Mediaani CEP50", "50 % pisteistä")
-    _kpi(c2, f"{med_cep95:.1f} cm", "Mediaani CEP95", "95 % pisteistä")
-    _kpi(c3, f"{med_jitter:.1f} cm", "Mediaani jitter")
-    _kpi(c4, f"{med_lq:.1f} %", "Mediaani heikkolaatuisia")
-    _kpi(c5, str(n_devices), "Laitteita")
-    _kpi(c6, str(n_nights), "Yötä analysoitu")
+    with st.spinner("Haetaan yön raakadata silveristä…"):
+        df_raw = _fetch_night(selected_node, selected_date, cx, cy)
 
-    # --- CEP over time ---
-    st.markdown('<div class="iiwari-section">📅 CEP50 & CEP95 ajan yli</div>', unsafe_allow_html=True)
+    if df_raw.is_empty():
+        st.info("Ei raakadataa tälle laite/yö-kombinaatiolle.")
+        st.stop()
 
-    daily = (
-        df.group_by("yo_paiva")
-        .agg([
-            pl.col("cep50").median().alias("cep50_med"),
-            pl.col("cep95").median().alias("cep95_med"),
-        ])
-        .sort("yo_paiva")
-    )
+    angles   = np.linspace(0, 2 * math.pi, 361)
+    cos_a    = np.cos(angles).tolist()
+    sin_a    = np.sin(angles).tolist()
+    dx_arr   = df_raw["dx"].to_list()
+    dy_arr   = df_raw["dy"].to_list()
+    dist_arr = df_raw["dist"].to_list()
+    tunti_arr = df_raw["tunti"].to_list()
+    aika_arr  = df_raw["aika_hki"].cast(pl.Utf8).to_list()
 
-    fig_cep = go.Figure()
-    fig_cep.add_trace(go.Scatter(
-        x=daily["yo_paiva"].to_list(), y=daily["cep50_med"].to_list(),
-        name="CEP50 (mediaani)", mode="lines+markers",
-        line=dict(color="#38bdf8", width=2.5),
-        marker=dict(size=5),
-        hovertemplate="<b>%{x}</b><br>CEP50: %{y:.1f} cm<extra></extra>",
-    ))
-    fig_cep.add_trace(go.Scatter(
-        x=daily["yo_paiva"].to_list(), y=daily["cep95_med"].to_list(),
-        name="CEP95 (mediaani)", mode="lines+markers",
-        line=dict(color="#f97316", width=2.5, dash="dash"),
-        marker=dict(size=5),
-        hovertemplate="<b>%{x}</b><br>CEP95: %{y:.1f} cm<extra></extra>",
-    ))
-    fig_cep.update_layout(
-        height=320, margin=dict(l=50, r=20, t=10, b=50),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
-        xaxis=dict(title="Yöpäivä"), yaxis=dict(title="CEP (cm)"),
-        legend=dict(orientation="h", y=1.12, font=dict(size=11)),
-    )
-    st.plotly_chart(fig_cep, use_container_width=True)
+    # --- Scatter + error histogram ---
+    st.markdown('<div class="pt-section">🎯 Sijaintipilvi ja säteisvirhejakauma</div>', unsafe_allow_html=True)
+    left, right = st.columns([3, 2])
 
-    # --- Per-device bar chart ---
-    st.markdown('<div class="iiwari-section">📦 Mediaani CEP50 laitteittain</div>', unsafe_allow_html=True)
-
-    per_dev = (
-        df.group_by("node_id")
-        .agg(pl.col("cep50").median().alias("cep50_med"))
-        .sort("cep50_med")
-    )
-    fig_bar = go.Figure(go.Bar(
-        x=per_dev["node_id"].cast(pl.Utf8).to_list(),
-        y=per_dev["cep50_med"].to_list(),
-        marker_color="#38bdf8",
-        text=[f"{v:.1f}" for v in per_dev["cep50_med"].to_list()],
-        textposition="outside",
-        hovertemplate="<b>%{x}</b><br>CEP50 med: %{y:.1f} cm<extra></extra>",
-    ))
-    fig_bar.update_layout(
-        height=360, margin=dict(l=50, r=20, t=10, b=60),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
-        xaxis=dict(title="Laite (node_id)", type="category"),
-        yaxis=dict(title="Mediaani CEP50 (cm)"),
-        showlegend=False,
-    )
-    st.plotly_chart(fig_bar, use_container_width=True)
-
-    # --- Jitter & drift ---
-    col_j, col_d = st.columns(2)
-
-    with col_j:
-        st.markdown('<div class="iiwari-section">⚡ Jitter laitteittain</div>', unsafe_allow_html=True)
-        jit = (
-            df.group_by("node_id")
-            .agg(pl.col("jitter_ka_cm").median().alias("jitter_med"))
-            .sort("jitter_med")
-        )
-        fig_j = go.Figure(go.Bar(
-            x=jit["node_id"].cast(pl.Utf8).to_list(),
-            y=jit["jitter_med"].to_list(),
-            marker_color="#38bdf8",
-            text=[f"{v:.1f}" for v in jit["jitter_med"].to_list()],
-            textposition="outside",
-            hovertemplate="<b>%{x}</b><br>Jitter: %{y:.1f} cm<extra></extra>",
+    with left:
+        st.markdown("<small><b>Sijaintipilvi suhteessa keskipisteeseen</b></small>", unsafe_allow_html=True)
+        scatter_fig = go.Figure()
+        scatter_fig.add_trace(go.Scattergl(
+            x=dx_arr, y=[-d for d in dy_arr], mode="markers",
+            marker=dict(size=3, color=tunti_arr, colorscale="Viridis", opacity=0.45,
+                        colorbar=dict(title="Tunti", thickness=10, len=0.6), line=dict(width=0)),
+            name="Havainnot",
         ))
-        fig_j.update_layout(
-            height=300, margin=dict(l=50, r=20, t=10, b=60),
+        for radius, color, label in [
+            (r["cep50"], "#22c55e", f"CEP50 {r['cep50']:.0f} cm"),
+            (r["cep68"], "#f59e0b", f"CEP68 {r['cep68']:.0f} cm"),
+            (r["cep95"], "#ef4444", f"CEP95 {r['cep95']:.0f} cm"),
+        ]:
+            scatter_fig.add_trace(go.Scatter(
+                x=[radius * c for c in cos_a], y=[-radius * s for s in sin_a],
+                mode="lines", line=dict(color=color, width=2), name=label,
+            ))
+        scatter_fig.update_layout(
+            xaxis=dict(title="ΔX (cm)", zeroline=True, zerolinewidth=1, zerolinecolor="#cbd5e1"),
+            yaxis=dict(title="ΔY (cm, ↑=pohj.)", zeroline=True, zerolinewidth=1,
+                       zerolinecolor="#cbd5e1", scaleanchor="x", scaleratio=1),
+            height=420, margin=dict(l=50, r=20, t=10, b=50),
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
-            xaxis=dict(title="Laite (node_id)", type="category"),
-            yaxis=dict(title="Mediaani jitter (cm)"),
-            showlegend=False,
+            legend=dict(font=dict(size=11)),
         )
-        st.plotly_chart(fig_j, use_container_width=True)
+        st.plotly_chart(scatter_fig, use_container_width=True)
 
-    with col_d:
-        st.markdown('<div class="iiwari-section">🧭 Drift laitteittain</div>', unsafe_allow_html=True)
-        drift = (
-            df.group_by("node_id")
-            .agg([
-                pl.col("drift_x_cmh").mean().alias("dx"),
-                pl.col("drift_y_cmh").mean().alias("dy"),
-            ])
+    with right:
+        st.markdown("<small><b>Säteisvirheen jakauma</b></small>", unsafe_allow_html=True)
+        dist_np = np.array(dist_arr)
+        hist_vals, bin_edges = np.histogram(dist_np, bins=50)
+        bin_centers = ((bin_edges[:-1] + bin_edges[1:]) / 2).tolist()
+        nz   = hist_vals[hist_vals > 0]
+        y_cap = float(np.percentile(nz, 90) * 2.5) if len(nz) > 1 else float(hist_vals.max())
+        err_fig = go.Figure()
+        err_fig.add_trace(go.Bar(x=bin_centers, y=hist_vals.tolist(),
+                                  marker_color="#6366f1", opacity=0.8))
+        for radius, color, label in [
+            (r["cep50"], "#22c55e", "CEP50"),
+            (r["cep95"], "#ef4444", "CEP95"),
+        ]:
+            err_fig.add_vline(x=radius, line_color=color, line_width=2, line_dash="dash",
+                              annotation_text=label, annotation_position="top right",
+                              annotation_font_size=11)
+        err_fig.update_layout(
+            xaxis=dict(title="Säteisvirhe (cm)"),
+            yaxis=dict(title="Havaintojen määrä", range=[0, y_cap]),
+            height=420, margin=dict(l=50, r=20, t=10, b=50),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)", showlegend=False,
         )
-        drift = drift.with_columns(
-            (pl.col("dx").pow(2) + pl.col("dy").pow(2)).sqrt().alias("drift_tot")
-        ).sort("drift_tot")
-        fig_dr = go.Figure(go.Bar(
-            x=drift["node_id"].cast(pl.Utf8).to_list(),
-            y=drift["drift_tot"].to_list(),
-            marker_color="#f59e0b",
-            text=[f"{v:.2f}" for v in drift["drift_tot"].to_list()],
-            textposition="outside",
-            hovertemplate="<b>%{x}</b><br>Drift: %{y:.2f} cm/h<extra></extra>",
+        st.plotly_chart(err_fig, use_container_width=True)
+
+    # --- Floor plan ---
+    st.markdown('<div class="pt-section">🗺️ Laitteen sijainti pohjapiirustuksessa</div>', unsafe_allow_html=True)
+    if IMAGE_PATH.exists():
+        img    = _load_image(IMAGE_PATH)
+        fp_fig = go.Figure()
+        fp_fig.add_layout_image(dict(
+            source=img, xref="x", yref="y", x=0, y=0,
+            sizex=MAP_MAX_X, sizey=MAP_MAX_Y, sizing="stretch", opacity=1.0, layer="below",
+            xanchor="left", yanchor="top",
         ))
-        fig_dr.update_layout(
-            height=300, margin=dict(l=50, r=20, t=10, b=60),
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
-            xaxis=dict(title="Laite (node_id)", type="category"),
-            yaxis=dict(title="Drift kokonaismagnitude (cm/h)"),
-            showlegend=False,
+        for radius, color, label in [
+            (r["cep50"], "#22c55e", "CEP50"),
+            (r["cep68"], "#f59e0b", "CEP68"),
+            (r["cep95"], "#ef4444", "CEP95"),
+        ]:
+            fp_fig.add_trace(go.Scatter(
+                x=[cx + radius * c for c in cos_a], y=[cy + radius * s for s in sin_a],
+                mode="lines", line=dict(color=color, width=2), name=label,
+            ))
+        fp_fig.add_trace(go.Scattergl(
+            x=df_raw["x"].to_list(), y=df_raw["y"].to_list(), mode="markers",
+            marker=dict(size=3, color=tunti_arr, colorscale="Viridis", opacity=0.45,
+                        colorbar=dict(title="Tunti", thickness=10, len=0.6), line=dict(width=0)),
+            name="Havainnot",
+        ))
+        fp_fig.add_trace(go.Scatter(
+            x=[cx], y=[cy], mode="markers",
+            marker=dict(size=12, color="#6366f1", symbol="cross"),
+            name=f"Keskipiste ({cx:.0f}, {cy:.0f})",
+        ))
+        zoom_pad = max(r["cep95"] * 10, 1500)
+        if zoom_pad < MAP_MAX_X * 0.4:
+            x_range = [max(cx - zoom_pad, 0), min(cx + zoom_pad, MAP_MAX_X)]
+            y_range = [max(cy - zoom_pad, 0), min(cy + zoom_pad, MAP_MAX_Y)]
+        else:
+            x_range, y_range = [0, MAP_MAX_X], [0, MAP_MAX_Y]
+
+        fp_fig.update_xaxes(range=x_range, showgrid=False, showticklabels=False)
+        fp_fig.update_yaxes(range=[y_range[1], y_range[0]], showgrid=False, showticklabels=False,
+                            scaleanchor="x", scaleratio=1)
+        fp_fig.update_layout(
+            height=420, margin=dict(l=0, r=0, t=0, b=0),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            legend=dict(orientation="h", yanchor="top", y=-0.02, xanchor="left", x=0,
+                        font=dict(size=11)),
         )
-        st.plotly_chart(fig_dr, use_container_width=True)
+        st.plotly_chart(fp_fig, use_container_width=True)
+    else:
+        st.info("Pohjapiirros ei löydy (image/kauppa2.png).")
 
-    # --- Low quality % over time ---
-    st.markdown('<div class="iiwari-section">⚠️ Heikkolaatuisten pingausten osuus (%)</div>', unsafe_allow_html=True)
+    # --- Drift ---
+    st.markdown('<div class="pt-section">📉 Drift – systemaattinen sijaintimuutos yön yli</div>',
+                unsafe_allow_html=True)
+    n      = len(dx_arr)
+    t_idx  = np.arange(n, dtype=float)
+    dx_np  = np.array(dx_arr, dtype=float)
+    dy_np  = np.array(dy_arr, dtype=float)
+    trend_x = np.polyval(np.polyfit(t_idx, dx_np, 1), t_idx).tolist()
+    trend_y = np.polyval(np.polyfit(t_idx, dy_np, 1), t_idx).tolist()
 
-    lq_daily = (
-        df.group_by("yo_paiva")
-        .agg(pl.col("low_quality_pct").median().alias("lq_med"))
-        .sort("yo_paiva")
-    )
-    fig_lq = go.Figure(go.Scatter(
-        x=lq_daily["yo_paiva"].to_list(), y=lq_daily["lq_med"].to_list(),
-        mode="lines+markers", fill="tozeroy",
-        line=dict(color="#ef4444", width=2),
-        fillcolor="rgba(239,68,68,0.10)",
-        hovertemplate="<b>%{x}</b><br>Heikkolaatuisia: %{y:.1f}%<extra></extra>",
-    ))
-    fig_lq.update_layout(
-        height=260, margin=dict(l=50, r=20, t=10, b=50),
+    drift_fig = go.Figure()
+    drift_fig.add_trace(go.Scattergl(x=aika_arr, y=dx_arr, mode="markers",
+                                      marker=dict(size=2, color="#6366f1", opacity=0.3), name="ΔX"))
+    drift_fig.add_trace(go.Scattergl(x=aika_arr, y=[-d for d in dy_arr], mode="markers",
+                                      marker=dict(size=2, color="#ec4899", opacity=0.3), name="ΔY"))
+    drift_fig.add_trace(go.Scatter(x=aika_arr, y=trend_x, mode="lines",
+                                    line=dict(color="#6366f1", width=2),
+                                    name=f"Trendi X ({r['drift_x_cmh']:+.1f} cm/h)"))
+    drift_fig.add_trace(go.Scatter(x=aika_arr, y=[-v for v in trend_y], mode="lines",
+                                    line=dict(color="#ec4899", width=2),
+                                    name=f"Trendi Y ({r['drift_y_cmh']:+.1f} cm/h)"))
+    drift_fig.add_hline(y=0, line_color="#94a3b8", line_width=1)
+    drift_fig.update_layout(
+        xaxis=dict(title="Aika (Helsinki)"), yaxis=dict(title="Poikkeama keskipisteestä (cm)"),
+        height=280, margin=dict(l=50, r=20, t=10, b=50),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
-        xaxis=dict(title="Yöpäivä"), yaxis=dict(title="Heikkolaatuisia (%)"),
-        showlegend=False,
+        legend=dict(orientation="h", y=1.1, font=dict(size=11)),
     )
-    st.plotly_chart(fig_lq, use_container_width=True)
+    st.plotly_chart(drift_fig, use_container_width=True)
 
-    # --- Raw data table ---
-    with st.expander("📋 Raakadata"):
-        st.dataframe(df.to_pandas(), use_container_width=True)
+    # --- Multi-night trend ---
+    df_node = df_all.filter(pl.col("node_id") == selected_node).sort("yo_paiva")
+    if len(df_node) > 1:
+        dates = df_node["yo_paiva"].cast(pl.Utf8).to_list()
+        st.markdown('<div class="pt-section">📈 Tarkkuustrendi – useamman yön vertailu</div>',
+                    unsafe_allow_html=True)
+        cep_fig = go.Figure()
+        for col_name, color, label in [
+            ("cep50",   "#22c55e", "CEP50"),
+            ("cep68",   "#f59e0b", "CEP68"),
+            ("cep95",   "#ef4444", "CEP95"),
+            ("rmse_2d", "#6366f1", "RMSE 2D"),
+        ]:
+            cep_fig.add_trace(go.Scatter(
+                x=dates, y=df_node[col_name].to_list(),
+                mode="lines+markers", line=dict(color=color, width=2),
+                marker=dict(size=6), name=label,
+            ))
+        cep_fig.update_layout(
+            xaxis=dict(title="Yöpäivä"), yaxis=dict(title="cm"), height=300,
+            margin=dict(l=50, r=20, t=10, b=50),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
+            legend=dict(orientation="h", y=1.12, font=dict(size=11)),
+        )
+        st.plotly_chart(cep_fig, use_container_width=True)
+
+    with st.expander("📊 Kaikki mittarit taulukossa"):
+        st.dataframe(df_node.select(DISPLAY_COLS).sort("yo_paiva").to_arrow(),
+                     use_container_width=True, hide_index=True)

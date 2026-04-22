@@ -28,14 +28,18 @@ st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigointi",
-    ["🎯 Paikannustarkkuus", "📡 Verkkolaatu"],
+    ["🏠 Etusivu", "🎯 Paikannustarkkuus", "📡 Verkkolaatu"],
     label_visibility="collapsed",
 )
 
 st.sidebar.markdown("---")
 st.sidebar.caption("ByteBuddies · Iiwari UWB")
 
-if page == "🎯 Paikannustarkkuus":
+if page == "🏠 Etusivu":
+    from dashboards.iiwari.etusivu import render
+    render()
+
+elif page == "🎯 Paikannustarkkuus":
     from dashboards.iiwari.paikannustarkkuus import render
     render()
 
