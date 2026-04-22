@@ -87,7 +87,7 @@ uv run mkdocs serve
 #### 1.4 Streamlit Dashboardin käynnistys
 
 ```bash
-uv run streamlit run app.py
+uv run python main.py
 ```
 
 ### 2. Täytä ympäristömuuttujat
