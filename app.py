@@ -340,6 +340,7 @@ if page == "🏠 Etusivu":
 
 
 # --- Agentchatti ---
+elif page == "💬 Agenttichat":
     st.markdown("## 💬 Keskustele Agentin kanssa")
 
     # --- Pikavalinnat (kiinteä yläpalkki) ---
