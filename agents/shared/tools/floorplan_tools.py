@@ -25,28 +25,30 @@ from langchain_core.tools import tool
 
 from agents.shared.config import CONFIG
 
+import json
+
 # ── Polut ──
-FLOORPLAN_PATH = Path(__file__).resolve().parents[3] / "image" / "kauppa2.png"
+FLOORPLAN_PATH = Path(__file__).resolve().parents[3] / CONFIG.floorplan_image_path
 ZONES_PATH = Path(__file__).resolve().parents[3] / "bytebuddies_dbt" / "seeds" / "osastot.csv"
 OUTPUT_DIR = Path("data/processed/plots")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Kaupan mitat (metreissä) ──
-X_MAX_M = 104.06
-Y_MAX_M = 52.20
+X_MAX_M = CONFIG.store_width_m
+Y_MAX_M = CONFIG.store_height_m
 
-# ── Latausasemat (ei asiakasliikennettä) ──
-CHARGING_STATION_1 = (0, 5, 21.5, 30.0)     # (x_min, x_max, y_min, y_max)
-CHARGING_STATION_2 = (8.5, 9.5, 35.5, 36.5)
-
-# ── Poistettavat alueet ──
-EXCLUDE_ZONE_1 = {"y_gt": 30.0, "x_lt": 15.0}  # Varastoalue vasen yläkulma
-EXCLUDE_ZONE_2 = {"y_lt": 5.0, "x_gt": 85.0}   # Lastauslaituri oikea alakulma
+# ── Latausasemat / Suodatetut alueet ──
+def _get_excluded_zones():
+    try:
+        return json.loads(CONFIG.excluded_zones_json)
+    except Exception:
+        return []
 
 # ── Kassavyöhyke ──
-CASHIER_ZONE_X_MAX = 8.0
-CASHIER_ZONE_Y_MIN = 5.0
-CASHIER_ZONE_Y_MAX = 30.0
+CASHIER_ZONE_X_MIN = CONFIG.checkout_x_min
+CASHIER_ZONE_X_MAX = CONFIG.checkout_x_max
+CASHIER_ZONE_Y_MIN = CONFIG.checkout_y_min
+CASHIER_ZONE_Y_MAX = CONFIG.checkout_y_max
 
 
 def _get_conn() -> duckdb.DuckDBPyConnection:
@@ -107,17 +109,15 @@ def _filter_valid_positions(df: pd.DataFrame) -> pd.DataFrame:
         (df["y_m"] >= 0) & (df["y_m"] <= Y_MAX_M)
     )
 
-    # Poista latausasemat
-    for cs in [CHARGING_STATION_1, CHARGING_STATION_2]:
-        x_min, x_max, y_min, y_max = cs
+    # Poista suodatetut alueet (latausasemat, varastot jne.)
+    excluded = _get_excluded_zones()
+    for zone in excluded:
+        x_min, x_max = zone.get("x_min", 0), zone.get("x_max", 0)
+        y_min, y_max = zone.get("y_min", 0), zone.get("y_max", 0)
         mask &= ~(
             (df["x_m"] >= x_min) & (df["x_m"] <= x_max) &
             (df["y_m"] >= y_min) & (df["y_m"] <= y_max)
         )
-
-    # Poista exclude-vyöhykkeet
-    mask &= ~((df["y_m"] > EXCLUDE_ZONE_1["y_gt"]) & (df["x_m"] < EXCLUDE_ZONE_1["x_lt"]))
-    mask &= ~((df["y_m"] < EXCLUDE_ZONE_2["y_lt"]) & (df["x_m"] > EXCLUDE_ZONE_2["x_gt"]))
 
     return df[mask]
 

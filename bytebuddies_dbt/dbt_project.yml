@@ -25,9 +25,29 @@ clean-targets:         # directories to be removed by `dbt clean`
 # Configuring models
 # Full documentation: https://docs.getdbt.com/docs/configuring-models
 
-# In this example config, we tell dbt to build all models in the example/
-# directory as views. These settings can be overridden in the individual model
-# files using the `{{ config(...) }}` macro.
+vars:
+  timezone: "{{ env_var('APP_TIMEZONE', 'Europe/Helsinki') }}"
+  shop_open: "{{ env_var('SHOP_OPEN_HOUR', '7') | as_number }}"
+  shop_close: "{{ env_var('SHOP_CLOSE_HOUR', '22') | as_number }}"
+  max_x_cm: "{{ env_var('STORE_WIDTH_M', '104.06') | as_number * 100 }}"
+  max_y_cm: "{{ env_var('STORE_HEIGHT_M', '52.20') | as_number * 100 }}"
+  checkout_x_min: "{{ env_var('CHECKOUT_X_MIN', '0.0') | as_number * 100 }}"
+  checkout_x_max: "{{ env_var('CHECKOUT_X_MAX', '20.0') | as_number * 100 }}"
+  checkout_y_min: "{{ env_var('CHECKOUT_Y_MIN', '40.0') | as_number * 100 }}"
+  checkout_y_max: "{{ env_var('CHECKOUT_Y_MAX', '52.20') | as_number * 100 }}"
+  
+  # Problemaattiset ympyräalueet (cm)
+  prob1_x: "{{ env_var('PROB1_X', '100') | as_number }}"
+  prob1_y: "{{ env_var('PROB1_Y', '2500') | as_number }}"
+  prob1_r: "{{ env_var('PROB1_R', '400') | as_number }}"
+  prob2_x: "{{ env_var('PROB2_X', '900') | as_number }}"
+  prob2_y: "{{ env_var('PROB2_Y', '3600') | as_number }}"
+  prob2_r: "{{ env_var('PROB2_R', '600') | as_number }}"
+  
+  # Kynnysarvot
+  session_gap_threshold: "{{ env_var('SESSION_GAP_SECONDS', '900') | as_number }}"
+  max_jump_speed: "{{ env_var('MAX_JUMP_SPEED_MPS', '3.5') | as_number }}"
+
 models:
   bytebuddies_dbt:
     bronze:

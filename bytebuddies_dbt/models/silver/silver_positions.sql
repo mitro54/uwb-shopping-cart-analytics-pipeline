@@ -1,28 +1,8 @@
-
 -- =========================================================================
 -- ⚙️ TUOTANTOTASON DATAN SIIVOUS -ASETUKSET (Jinja Config)
 -- =========================================================================
 
--- Laatu ja rajat
-{% set q_threshold = 35 %}
-{% set max_x = 10406 %}
-{% set max_y = 5220 %}
-
--- Aukioloajat (tunnit)
-{% set shop_open = 7 %}
-{% set shop_close = 22 %}
-
--- Ongelmalliset alueet (x, y, säde senttimetreinä)
-{% set prob1_x = 100 %}{% set prob1_y = 2500 %}{% set prob1_r = 400 %}  -- Turvaportit
-{% set prob2_x = 900 %}{% set prob2_y = 3600 %}{% set prob2_r = 600 %}  -- Liukuportaat
-
--- Alue-määritykset (Geofencing / Kassa-alue)
-{% set checkout_x_min = 0 %}{% set checkout_x_max = 2000 %}
-{% set checkout_y_min = 4000 %}{% set checkout_y_max = 5220 %}
-
--- Sessiologiikka ja fysiologiset rajat
-{% set session_gap_threshold = 900 %}  -- Signaalikatkos sekunteina (15 min)
-{% set max_jump_speed = 3.5 %}         -- Maksiminopeus m/s (Jitter-suodatus)
+-- (Konfiguraatio luetaan dbt_project.yml:n vars-osiosta)
 
 -- =========================================================================
 -- 🛠️ SQL-LOGIIKKA
@@ -38,24 +18,24 @@ WITH perus_puhdistus AS (
         q,
         -- Määritetään, onko piste kassa-alueella
         CASE 
-            WHEN x >= {{ checkout_x_min }} AND x <= {{ checkout_x_max }} 
-             AND y >= {{ checkout_y_min }} AND y <= {{ checkout_y_max }} THEN 1 
+            WHEN x >= {{ var('checkout_x_min') }} AND x <= {{ var('checkout_x_max') }} 
+             AND y >= {{ var('checkout_y_min') }} AND y <= {{ var('checkout_y_max') }} THEN 1 
             ELSE 0 
         END AS in_checkout
     FROM {{ ref('bronze_csv_data') }}
     WHERE 
-        q > {{ q_threshold }} 
+        q > {{ var('q_threshold', 35) }} 
         AND x IS NOT NULL 
         AND y IS NOT NULL
         -- Geofencing: Kaupan rajat
-        AND x >= 0 AND x <= {{ max_x }}
-        AND y >= 0 AND y <= {{ max_y }}
+        AND x >= 0 AND x <= {{ var('max_x_cm') }}
+        AND y >= 0 AND y <= {{ var('max_y_cm') }}
         -- Ongelmalliset alueet (Latauspisteet 1 ja 2 pythagoraan säteellä pisteestä)
-        AND (POWER(x - {{ prob1_x }}, 2) + POWER(y - {{ prob1_y }}, 2)) > POWER({{ prob1_r }}, 2)
-        AND (POWER(x - {{ prob2_x }}, 2) + POWER(y - {{ prob2_y }}, 2)) > POWER({{ prob2_r }}, 2)
+        AND (POWER(x - {{ var('prob1_x') }}, 2) + POWER(y - {{ var('prob1_y') }}, 2)) > POWER({{ var('prob1_r') }}, 2)
+        AND (POWER(x - {{ var('prob2_x') }}, 2) + POWER(y - {{ var('prob2_y') }}, 2)) > POWER({{ var('prob2_r') }}, 2)
         -- Aukioloajat schema.yml vaatimuksen mukaan
-        AND EXTRACT('hour' FROM timestamp) >= {{ shop_open }}
-        AND EXTRACT('hour' FROM timestamp) <= {{ shop_close }}
+        AND EXTRACT('hour' FROM timestamp) >= {{ var('shop_open') }}
+        AND EXTRACT('hour' FROM timestamp) <= {{ var('shop_close') }}
 
         -- NEW: Rectangular Exclusions (Removing "outside" areas)
         -- 1. y > 30 and x between 0 and 15
@@ -99,7 +79,7 @@ jitter_suodatus AS (
     FROM rikastettu
     WHERE sekuntia_edellisesta IS NULL 
        OR sekuntia_edellisesta = 0
-       OR (dist_m / sekuntia_edellisesta) <= {{ max_jump_speed }}
+       OR (dist_m / sekuntia_edellisesta) <= {{ var('max_jump_speed', 3.5) }}
 ),
 sessiomerkinta AS (
     -- 5. Tunnistetaan uusi sessio: pitkä viipymä TAI kassoilta poistuminen
@@ -107,7 +87,7 @@ sessiomerkinta AS (
         *,
         CASE 
             -- Aikaero ylittää kynnyksen tai ensimmäinen rivi
-            WHEN edellinen_aika IS NULL OR sekuntia_edellisesta > {{ session_gap_threshold }} THEN 1 
+            WHEN edellinen_aika IS NULL OR sekuntia_edellisesta > {{ var('session_gap_threshold', 900) }} THEN 1 
             -- Kärry poistui kassa-alueelta (edellinen piste kassalla, uusi ei ole)
             WHEN in_checkout = 0 AND edellinen_in_checkout = 1 THEN 1
             ELSE 0 

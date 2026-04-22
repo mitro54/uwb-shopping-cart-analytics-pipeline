@@ -15,11 +15,8 @@ import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DUCKDB_PATH = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
+from agents.shared.config import CONFIG
+DUCKDB_PATH = CONFIG.duckdb_path
 WEEKDAY_LABELS = ["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"]
 
 # ---------------------------------------------------------------------------
@@ -119,9 +116,9 @@ def render():
     """Piirtää liiketoiminta-dashboardin. Kutsutaan app.py:stä."""
 
     st.markdown(_CSS, unsafe_allow_html=True)
-    st.markdown("""
+    st.markdown(f"""
     <div class="biz-hero">
-        <h1>📈 Liiketoiminnan tunnusluvut</h1>
+        <h1>📈 {CONFIG.store_name}: Liiketoiminnan tunnusluvut</h1>
         <p>Asiakaskäyttäytymisen analyysi — käynnit, viipymät ja osastojen suosio</p>
     </div>
     """, unsafe_allow_html=True)

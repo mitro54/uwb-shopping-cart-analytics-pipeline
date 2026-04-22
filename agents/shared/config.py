@@ -20,14 +20,14 @@ DATA_ROOT = PROJECT_ROOT / "data"
 
 @dataclass(frozen=False)
 class AppConfig:
-    """Sovelluksen laajuiset asetusarvot ja riippuvuudet. Muutettu 'frozen=False', jotta varajärjestelmän lennossa asettamat arvot (kuten Gemini API-avain) siirtyvät kaikkiin agentteihin."""
+    """Sovelluksen laajuiset asetusarvot ja riippuvuudet."""
     duckdb_path: Path
     ollama_base_url: str
     
     # --- Pilvipalvelun varajärjestelmä (Fallback) ---
-    # Syötetään Streamlitin kautta tai .env -tiedostosta, jos lokaali Ollama kaatuu
     gemini_api_key: str | None
     
+    # --- Mallit ---
     orchestrator_model: str
     analytics_model: str
     plotter_model: str
@@ -36,15 +36,34 @@ class AppConfig:
     max_iterations: int
     verbose: bool
 
+    # --- Lokalisointi & Identiteetti ---
+    store_name: str
+    timezone: str
+    locale: str
+
+    # --- Kaupan Layout (metreinä) ---
+    store_width_m: float
+    store_height_m: float
+    floorplan_image_path: str
+
+    # --- Operatiiviset asetukset ---
+    shop_open_hour: int
+    shop_close_hour: int
+
+    # --- Geofencing (metreinä) ---
+    checkout_x_min: float
+    checkout_x_max: float
+    checkout_y_min: float
+    checkout_y_max: float
+
+    # --- Suodatetut alueet (JSON string) ---
+    excluded_zones_json: str
+
     @classmethod
     def from_env(cls) -> "AppConfig":
         """
         Luo AppConfig-instanssin ympäristömuuttujista.
-        
-        Returns:
-            AppConfig-instanssi
         """
-        default_model = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
         return cls(
             duckdb_path=Path(
                 os.getenv("DUCKDB_PATH", str(DATA_ROOT / "warehouse" / "dev.duckdb"))
@@ -58,13 +77,30 @@ class AppConfig:
             embedding_model=os.getenv("EMBEDDING_MODEL", "nomic-embed-text:latest"),
             max_iterations=int(os.getenv("AGENT_MAX_ITERATIONS", "25")),
             verbose=os.getenv("AGENT_VERBOSE", "true").lower() == "true",
+            
+            store_name=os.getenv("STORE_NAME", "ByteBuddies Helsinki"),
+            timezone=os.getenv("APP_TIMEZONE", "Europe/Helsinki"),
+            locale=os.getenv("APP_LOCALE", "fi_FI"),
+            
+            store_width_m=float(os.getenv("STORE_WIDTH_M", "104.06")),
+            store_height_m=float(os.getenv("STORE_HEIGHT_M", "52.20")),
+            floorplan_image_path=os.getenv("FLOORPLAN_IMAGE_PATH", "image/kauppa2.png"),
+            
+            shop_open_hour=int(os.getenv("SHOP_OPEN_HOUR", "7")),
+            shop_close_hour=int(os.getenv("SHOP_CLOSE_HOUR", "22")),
+            
+            checkout_x_min=float(os.getenv("CHECKOUT_X_MIN", "0.0")),
+            checkout_x_max=float(os.getenv("CHECKOUT_X_MAX", "20.0")),
+            checkout_y_min=float(os.getenv("CHECKOUT_Y_MIN", "40.0")),
+            checkout_y_max=float(os.getenv("CHECKOUT_Y_MAX", "52.2")),
+            
+            excluded_zones_json=os.getenv("EXCLUDED_ZONES_JSON", "[]"),
         )
 
 
 CONFIG = AppConfig.from_env()
 
-# Varmistetaan, että tietokantatiedosto on olemassa, jottei read_only=True aiheuta kaatumista.
-# Jos tiedostoa ei ole, luodaan tyhjä tietokanta. Käyttäjä voi myöhemmin ajaa dbt-mallit sen täyttämiseksi.
+# Varmistetaan, että tietokantatiedosto on olemassa.
 if not CONFIG.duckdb_path.exists():
     CONFIG.duckdb_path.parent.mkdir(parents=True, exist_ok=True)
     import duckdb

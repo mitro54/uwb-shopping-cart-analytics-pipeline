@@ -29,7 +29,7 @@ from agents.shared.config import CONFIG
 
 # --- Sivun asetukset ---
 st.set_page_config(
-    page_title="ByteBuddies UWB Dashboard",
+    page_title=f"{CONFIG.store_name} Dashboard",
     page_icon="🛒",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -137,10 +137,10 @@ AGENT_INFO = [
 ]
 
 # --- Sivupalkki ---
-st.sidebar.markdown("""
+st.sidebar.markdown(f"""
 <div style="text-align:center; padding: 1rem 0 0.5rem 0;">
     <span style="font-size: 2.2rem;">🛒</span>
-    <div style="font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; margin-top: 0.3rem;">ByteBuddies</div>
+    <div style="font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; margin-top: 0.3rem;">{CONFIG.store_name}</div>
     <div style="font-size: 0.75rem; color: #64748B; font-weight: 500;">UWB Analytiikka</div>
 </div>
 """, unsafe_allow_html=True)
@@ -254,9 +254,9 @@ else:
 if page == "🏠 Etusivu":
 
     # Hero-osio
-    st.markdown("""
+    st.markdown(f"""
     <div class="hero-container">
-        <div class="hero-title">ByteBuddies: UWB-Analytiikka</div>
+        <div class="hero-title">{CONFIG.store_name}: UWB-Analytiikka</div>
         <div class="hero-subtitle">
             Moniagenttijärjestelmä sisätilojen ostoskärryliikkeen analysointiin —
             kysy datasta luonnollisella kielellä !
@@ -270,7 +270,7 @@ if page == "🏠 Etusivu":
         '<div class="floorplan-container">',
         unsafe_allow_html=True,
     )
-    st.image("image/kauppa.png", width='stretch')
+    st.image(CONFIG.floorplan_image_path, width='stretch')
     st.markdown(
         '<div class="floorplan-caption">Myymälän pohjapiirros — agentit voivat luoda heatmap-visualisointeja '
         'ostoskärryjen liikkeestä valitsemillesi ajanjaksoille</div></div>',
