@@ -28,7 +28,7 @@ st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigointi",
-    ["🏠 Etusivu", "🎯 Paikannustarkkuus", "📡 Verkkolaatu"],
+    ["🏠 Etusivu", "🎯 Paikannustarkkuus", "📡 Verkkolaatu", "🛒 Hylätyt kärryt"],
     label_visibility="collapsed",
 )
 
@@ -45,4 +45,8 @@ elif page == "🎯 Paikannustarkkuus":
 
 elif page == "📡 Verkkolaatu":
     from dashboards.iiwari.verkkolaatu import render
+    render()
+
+elif page == "🛒 Hylätyt kärryt":
+    from dashboards.iiwari.hylatyt_karryt import render
     render()
