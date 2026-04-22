@@ -10,12 +10,16 @@ Kutsutaan iiwari.py:stä: dashboards.iiwari.verkkolaatu.render()
 from pathlib import Path
 
 import duckdb
+import numpy as np
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
+from PIL import Image
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DUCKDB_PATH = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
+DUCKDB_PATH  = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
+IMAGE_PATH   = PROJECT_ROOT / "image" / "kauppa2.png"
+MAP_MAX_X, MAP_MAX_Y = 10406, 5220
 
 _CSS = """
 <style>
@@ -72,33 +76,48 @@ def _kpi(col, val, label, sub=""):
     )
 
 
+@st.cache_resource(show_spinner=False)
+def _load_image(path: Path) -> Image.Image:
+    return Image.open(path)
+
+
 def _heatmap(df: pl.DataFrame, z_col: str, title: str, colorscale: str, zmin=None, zmax=None):
-    fig = go.Figure(go.Scatter(
-        x=df["grid_x"].to_list(),
-        y=df["grid_y"].to_list(),
-        mode="markers",
-        marker=dict(
-            symbol="square",
-            size=8,
-            color=df[z_col].to_list(),
-            colorscale=colorscale,
-            showscale=True,
-            colorbar=dict(thickness=14, len=0.8),
-            cmin=zmin,
-            cmax=zmax,
-        ),
-        hovertemplate=(
-            f"x: %{{x}}, y: %{{y}}<br>{z_col}: %{{marker.color:.1f}}<extra></extra>"
-        ),
+    all_x = sorted(df["grid_x"].unique().to_list())
+    all_y = sorted(df["grid_y"].unique().to_list())
+    x_idx = {x: i for i, x in enumerate(all_x)}
+    y_idx = {y: i for i, y in enumerate(all_y)}
+
+    z = np.full((len(all_y), len(all_x)), np.nan)
+    for row in df.iter_rows(named=True):
+        z[y_idx[row["grid_y"]], x_idx[row["grid_x"]]] = row[z_col]
+
+    fig = go.Figure()
+
+    if IMAGE_PATH.exists():
+        fig.add_layout_image(dict(
+            source=_load_image(IMAGE_PATH),
+            xref="x", yref="y", x=0, y=0,
+            sizex=MAP_MAX_X, sizey=MAP_MAX_Y,
+            sizing="stretch", opacity=1.0, layer="below",
+            xanchor="left", yanchor="top",
+        ))
+
+    fig.add_trace(go.Heatmap(
+        x=all_x, y=all_y, z=z,
+        colorscale=colorscale,
+        zmin=zmin, zmax=zmax,
+        opacity=0.75,
+        xgap=1, ygap=1,
+        colorbar=dict(title=title, thickness=14, len=0.6),
+        hovertemplate=f"x=%{{x}} cm<br>y=%{{y}} cm<br>{title}=%{{z:.1f}}<extra></extra>",
     ))
+
+    fig.update_xaxes(range=[0, MAP_MAX_X], showgrid=False, showticklabels=False)
+    fig.update_yaxes(range=[MAP_MAX_Y, 0], showgrid=False, showticklabels=False,
+                     scaleanchor="x", scaleratio=1)
     fig.update_layout(
-        title=dict(text=title, font=dict(size=13)),
-        height=520,
-        margin=dict(l=40, r=40, t=40, b=40),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(248,250,252,1)",
-        xaxis=dict(title="X (cm)", scaleanchor="y", scaleratio=1),
-        yaxis=dict(title="Y (cm)"),
+        height=520, margin=dict(l=0, r=60, t=0, b=0),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
     )
     return fig
 
