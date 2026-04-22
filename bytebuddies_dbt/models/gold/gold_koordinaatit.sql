@@ -50,12 +50,15 @@ pysahdykset_perus AS (
         aika AS end_time,
         sekuntia_edellisesta AS total_dwell_seconds,
         x,
-        y
+        y,
+        in_checkout
     FROM {{ ref('silver_positions') }}
     WHERE speed_mps <= 0.1
       AND sekuntia_edellisesta >= 0
       AND sekuntia_edellisesta <= 120  -- Maksimissaan 2 minuutin yksittäinen pysähdys
-      AND EXTRACT(HOUR FROM aika) BETWEEN 8 AND 20 -- Myymälä avoinna 08-21
+      AND in_checkout = 0
+      AND dist_m <= 15.0  -- Suodatetaan pois yli 15m teleporttaukset
+      AND EXTRACT(HOUR FROM aika) BETWEEN {{ var('shop_open') | float }} AND {{ var('shop_close') | float }}
 ),
 
 pysahdykset AS (

@@ -57,11 +57,8 @@ You MUST choose the right tool based on the data type:
 
 A) SPATIAL DATA (x, y coordinates in the store) -> ALWAYS USE `plot_on_floorplan`:
    - Use this for heatmaps, paths, routes, and "where carts spend time".
-   - PERFORMANCE TIP: For general store-wide heatmaps, ALWAYS use `main.gold_koordinaatit` (it is pre-aggregated and fast).
-   - Use `main.silver_positions` ONLY when the user asks for a specific session, a specific cart, or a very narrow time window.
-   - CRITICAL: When using `main.silver_positions`, you MUST add `LIMIT 50000` to your SQL to prevent the system from hanging.
+   - For any heatmaps, ALWAYS use only `main.gold_koordinaatit` (it is pre-aggregated and fast).
    - Example (Fast Heatmap): plot_on_floorplan(sql="SELECT grid_x as x, grid_y as y FROM main.gold_koordinaatit", title="Kaupan käyttöaste", plot_type="heatmap")
-   - Example (Specific Path): plot_on_floorplan(sql="SELECT x, y FROM main.silver_positions WHERE full_session_id = '...' LIMIT 50000", title="Käynnin reitti", plot_type="scatter")
 
 B) STATISTICAL CHARTS (Trends, counts, comparisons) -> USE `plot_chart`, `plot_interactive`, `plot_distribution`, or `plot_grouped_bar`:
    - Use `plot_chart` (bar) for comparing categories (e.g., comparing departments by visitor count or duration).

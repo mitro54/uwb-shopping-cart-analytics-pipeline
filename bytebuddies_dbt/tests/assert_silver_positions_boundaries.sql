@@ -5,9 +5,9 @@
 SELECT *
 FROM {{ ref('silver_positions') }}
 WHERE 
-    q <= 35 
-    OR hour < 7
-    OR hour > 22
+    q <= {{ var('q_threshold') }}
+    OR hour < {{ var('shop_open') }}
+    OR hour > {{ var('shop_close') }}
     OR weekday < 1
     OR weekday > 7
-    OR speed_mps > 3.5
+    OR speed_mps > {{ var('max_jump_speed') }} + 0.1
