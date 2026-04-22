@@ -149,7 +149,7 @@ st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigointi",
-    ["🏠 Etusivu", "🔑 API-avain", "💬 Agenttichat", "📊 Datatutkimus", "🖼️ Visualisoinnit", "🗺️ Myymäläanalytiikka"],
+    ["🏠 Etusivu", "🔑 API-avain", "💬 Agenttichat", "📊 Datatutkimus", "🖼️ Visualisoinnit"],
     label_visibility="collapsed",
 )
 
@@ -158,7 +158,7 @@ st.sidebar.markdown('<div class="section-header">📊 Dashboardit</div>', unsafe
 
 dashboard_page = st.sidebar.radio(
     "Dashboard",
-    ["—", "📈 Liiketoiminta"],
+    ["—", "📈 Liiketoiminta", "🗺️ Myymäläanalytiikka"],
     label_visibility="collapsed",
 )
 
@@ -167,6 +167,60 @@ if dashboard_page != "—":
     page = dashboard_page
 
 st.sidebar.markdown("---")
+
+
+# --- Myymäläanalytiikan asetukset (jos sivu valittu) ---
+if page == "🗺️ Myymäläanalytiikka":
+    import duckdb
+    with st.sidebar:
+        st.markdown('<div class="section-header">⚙️ Visualisointiasetukset</div>', unsafe_allow_html=True)
+        
+        st.session_state.vis_mode = st.selectbox(
+            "Analyysityyppi",
+            ["🔥 Lämpökartta (Heatmap)", "📍 Pysähdyspaikat (Dwell)", "➿ Asiakasreitti (Route)"],
+            key="vis_mode_select"
+        )
+
+        st.session_state.show_zones = st.checkbox("Näytä osastot", value=True, key="show_zones_check")
+        
+        st.session_state.selected_date = st.date_input("Valitse päivämäärä", value=pd.to_datetime("2019-12-24"), key="date_input")
+        date_str = st.session_state.selected_date.strftime("%Y-%m-%d")
+
+        st.session_state.sql_query = ""
+        st.session_state.plot_type = "heatmap"
+        st.session_state.title = f"Visualisointi - {date_str}"
+
+        if st.session_state.vis_mode == "🔥 Lämpökartta (Heatmap)":
+            st.session_state.plot_type = "heatmap"
+            st.session_state.sql_query = f"SELECT x, y FROM main.silver_positions WHERE CAST(aika AS DATE) = '{date_str}'"
+            st.session_state.title = f"Asiakasvirrat - {date_str}"
+
+        elif st.session_state.vis_mode == "📍 Pysähdyspaikat (Dwell)":
+            st.session_state.plot_type = "dwell"
+            st.session_state.sql_query = f"SELECT grid_x as x, grid_y as y, kokonaisviipyma_s as dwell_time FROM main.gold_koordinaatit WHERE kokonaisviipyma_s > 10"
+            st.session_state.title = f"Pysähdykset ja viipymä"
+
+        elif st.session_state.vis_mode == "➿ Asiakasreitti (Route)":
+            st.session_state.plot_type = "route"
+            conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
+            nodes = conn.execute(f"SELECT DISTINCT node_id FROM main.silver_positions WHERE CAST(aika AS DATE) = '{date_str}'").df()
+            if not nodes.empty:
+                st.session_state.selected_node = st.selectbox("Valitse ostoskärry (node_id)", nodes["node_id"].tolist(), key="node_select")
+                sessions = conn.execute(f"SELECT DISTINCT full_session_id FROM main.silver_positions WHERE node_id = '{st.session_state.selected_node}' AND CAST(aika AS DATE) = '{date_str}'").df()
+                if not sessions.empty:
+                    st.session_state.selected_session = st.selectbox("Valitse sessio", sessions["full_session_id"].tolist(), key="session_select")
+                    st.session_state.sql_query = f"SELECT x, y FROM main.silver_positions WHERE node_id = '{st.session_state.selected_node}' AND full_session_id = '{st.session_state.selected_session}' ORDER BY aika"
+                    st.session_state.title = f"Reitti: Kärry {st.session_state.selected_node} (Sessio {st.session_state.selected_session[:8]}...)"
+                else:
+                    st.sidebar.warning("Ei sessioita valittuna päivänä.")
+            else:
+                st.sidebar.warning("Ei dataa valittuna päivänä.")
+            conn.close()
+
+        st.session_state.alpha = st.slider("Peittävyys (Alpha)", 0.1, 1.0, 0.6, key="alpha_slider")
+        st.session_state.generate_btn = st.button("🚀 Generoi visualisointi", type="primary", key="gen_btn")
+        st.sidebar.markdown("---")
+
 
 # --- Mallivalikot sivupalkissa ---
 st.sidebar.markdown('<div class="section-header">🤖 LLM-mallit</div>', unsafe_allow_html=True)
@@ -648,84 +702,19 @@ elif page == "🗺️ Myymäläanalytiikka":
     st.markdown("Tällä sivulla voit luoda mukautettuja visualisointeja myymälän pohjapiirroksen päälle.")
 
     from agents.shared.tools.floorplan_tools import plot_on_floorplan
-    import duckdb
 
-    # Alustetaan tietokantayhteys avustavia kyselyitä varten
-    conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
-
-    with st.sidebar:
-        st.markdown("---")
-        st.markdown("### ⚙️ Visualisointiasetukset")
-        
-        vis_mode = st.selectbox(
-            "Analyysityyppi",
-            ["🔥 Lämpökartta (Heatmap)", "📍 Pysähdyspaikat (Dwell)", "➿ Asiakasreitti (Route)"]
-        )
-
-        show_zones = st.checkbox("Näytä osastot", value=True)
-        
-        # Päivämäärävalinta
-        selected_date = st.date_input("Valitse päivämäärä", value=pd.to_datetime("2019-12-24"))
-        date_str = selected_date.strftime("%Y-%m-%d")
-
-        sql_query = ""
-        plot_type = "heatmap"
-        title = f"Visualisointi - {date_str}"
-
-        if vis_mode == "🔥 Lämpökartta (Heatmap)":
-            plot_type = "heatmap"
-            sql_query = f"SELECT x, y FROM main.silver_positions WHERE CAST(aika AS DATE) = '{date_str}'"
-            title = f"Asiakasvirrat - {date_str}"
-
-        elif vis_mode == "📍 Pysähdyspaikat (Dwell)":
-            plot_type = "dwell"
-            # Käytetään gold-tason grid-dataa pysähdyksiin
-            # grid_x/y ovat jo senttimetreissä dbt-mallissa
-            sql_query = f"""
-                SELECT grid_x as x, grid_y as y, kokonaisviipyma_s as dwell_time 
-                FROM main.gold_koordinaatit 
-                WHERE kokonaisviipyma_s > 10
-            """
-            title = f"Pysähdykset ja viipymä"
-
-        elif vis_mode == "➿ Asiakasreitti (Route)":
-            plot_type = "route"
-            # Haetaan saatavilla olevat node_id:t kyseiselle päivälle
-            nodes = conn.execute(f"SELECT DISTINCT node_id FROM main.silver_positions WHERE CAST(aika AS DATE) = '{date_str}'").df()
-            if not nodes.empty:
-                selected_node = st.selectbox("Valitse ostoskärry (node_id)", nodes["node_id"].tolist())
-                # Haetaan sessiot tälle node_id:lle
-                sessions = conn.execute(f"SELECT DISTINCT full_session_id FROM main.silver_positions WHERE node_id = '{selected_node}' AND CAST(aika AS DATE) = '{date_str}'").df()
-                if not sessions.empty:
-                    selected_session = st.selectbox("Valitse sessio", sessions["full_session_id"].tolist())
-                    sql_query = f"""
-                        SELECT x, y FROM main.silver_positions 
-                        WHERE node_id = '{selected_node}' AND full_session_id = '{selected_session}' 
-                        ORDER BY aika
-                    """
-                    title = f"Reitti: Kärry {selected_node} (Sessio {selected_session[:8]}...)"
-                else:
-                    st.warning("Ei sessioita valittuna päivänä tälle kärrylle.")
-            else:
-                st.warning("Ei dataa valittuna päivänä.")
-
-        alpha = st.slider("Peittävyys (Alpha)", 0.1, 1.0, 0.6)
-        
-        generate_btn = st.button("🚀 Generoi visualisointi", type="primary")
-
-    conn.close()
-
-    # Visualisoinnin generointi
-    if generate_btn:
+    # Visualisoinnin generointi (käyttää session_staten arvoja jotka asetettiin sivupalkissa)
+    if st.session_state.get("generate_btn"):
+        sql_query = st.session_state.get("sql_query")
         if sql_query:
             with st.spinner("Luodaan visualisointia..."):
                 try:
                     result_msg = plot_on_floorplan.invoke({
                         "sql": sql_query,
-                        "title": title,
-                        "plot_type": plot_type,
-                        "alpha": alpha,
-                        "show_zones": show_zones
+                        "title": st.session_state.get("title", "Visualisointi"),
+                        "plot_type": st.session_state.get("plot_type", "heatmap"),
+                        "alpha": st.session_state.get("alpha", 0.6),
+                        "show_zones": st.session_state.get("show_zones_check", True)
                     })
                     
                     if "luotu:" in result_msg:
@@ -734,7 +723,6 @@ elif page == "🗺️ Myymäläanalytiikka":
                             st.success("Visualisointi valmis!")
                             st.image(path_part, use_column_width=True)
                             
-                            # Tarjotaan latausnappia
                             with open(path_part, "rb") as file:
                                 st.download_button(
                                     label="📥 Lataa kuva",
@@ -749,7 +737,7 @@ elif page == "🗺️ Myymäläanalytiikka":
                 except Exception as e:
                     st.error(f"Virhe generoinnissa: {e}")
         else:
-            st.error("SQL-kyselyä ei voitu muodostaa. Tarkista suodattimet.")
+            st.error("SQL-kyselyä ei voitu muodostaa. Tarkista suodattimet sivupalkista.")
     else:
         st.info("Valitse asetukset sivupalkista ja paina 'Generoi visualisointi' nähdäksesi tulokset.")
 
