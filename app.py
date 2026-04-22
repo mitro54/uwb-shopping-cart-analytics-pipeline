@@ -149,22 +149,11 @@ st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigointi",
-    ["🏠 Etusivu", "🔑 API-avain", "💬 Agenttichat", "📊 Datatutkimus", "🖼️ Visualisoinnit"],
+    ["🏠 Etusivu", "💬 Agenttichat", "📊 Tietokantakyselyt", "🖼️ Generoidut kuvaajat", "📈 Liiketoiminta Dashboard", "🗺️ Myymäläanalytiikka"],
     label_visibility="collapsed",
 )
 
 st.sidebar.markdown("---")
-st.sidebar.markdown('<div class="section-header">📊 Dashboardit</div>', unsafe_allow_html=True)
-
-dashboard_page = st.sidebar.radio(
-    "Dashboard",
-    ["—", "📈 Liiketoiminta", "🗺️ Myymäläanalytiikka"],
-    label_visibility="collapsed",
-)
-
-# Jos dashboard valittu, se ohittaa päänavigaation
-if dashboard_page != "—":
-    page = dashboard_page
 
 st.sidebar.markdown("---")
 
@@ -225,7 +214,7 @@ if page == "🗺️ Myymäläanalytiikka":
 # --- Mallivalikot sivupalkissa ---
 st.sidebar.markdown('<div class="section-header">🤖 LLM-mallit</div>', unsafe_allow_html=True)
 
-st.sidebar.markdown("HUOM! Agentteja suositellaan ajamaan lokaalisti Ollamaa hyödyntäen. Mikäli se ei ole mahdollista, gemini API-avaimen voi syöttää sivupalkin API-avain osiossa.")
+st.sidebar.markdown("HUOM! Agentteja suositellaan ajamaan lokaalisti Ollamaa hyödyntäen. Mallivalinnat vaikuttavat agenttien toimintaan välittömästi.")
 
 if available_models:
     for ss_key, config_attr, label in MODEL_ROLES:
@@ -350,42 +339,7 @@ if page == "🏠 Etusivu":
         st.error(f"Virhe tilastojen haussa: {e}")
 
 
-# ═══════════════════════════════════════════════════════════════
-# 1.5. API-AVAIN
-# ═══════════════════════════════════════════════════════════════
-elif page == "🔑 API-avain":
-    st.markdown("## 🔑 Varajärjestelmän API-avain")
-    st.markdown("Gemini API avain vaaditaan vain siinä tapauksessa, mikäli lokaali ympäristö ei ole saavutettavissa.")
-    st.markdown("Gemini API avaimen voi generoida itselleen osoitteesta: https://ai.google.dev/gemini-api/docs/api-key")
-    
-    if not available_models:
-        st.warning("Lokaalia Ollama-järjestelmää ei havaittu. Vaihto Gemini 2.5 Flash -pilvimalliin suoritettu automaattisesti. Tarvitset API-avaimen käyttääksesi sovellusta.")
-    
-    current_api_key = os.getenv("GEMINI_API_KEY", "")
-    
-    with st.form("gemini_api_form"):
-        st.markdown("Syötä Google Gemini API -avain jatkaaksesi agenttien käyttöä.")
-        api_key_input = st.text_input("Gemini API -avain", value=current_api_key, type="password")
-        submit_btn = st.form_submit_button("💾 Tallenna avain (.env)")
-        
-        if submit_btn:
-            if api_key_input:
-                dotenv_path = Path(".env")
-                dotenv_path.touch(exist_ok=True) # Varmistaa että tiedosto luodaan jos puuttuu
-                dotenv.set_key(dotenv_path, "GEMINI_API_KEY", api_key_input)
-                os.environ["GEMINI_API_KEY"] = api_key_input
-                import agents.shared.config as config_module
-                config_module.CONFIG.gemini_api_key = api_key_input
-                get_agents.clear() # Pakota agentit uudelleenrakentumaan (poistaa feikkiavaimen)
-                st.success("API-avain tallennettu onnistuneesti! Voit nyt siirtyä lukemaan dataa tai keskustelemaan agentin kanssa.")
-            else:
-                st.error("API-avain ei voi olla tyhjä.")
-
-
-# ═══════════════════════════════════════════════════════════════
-# 2. AGENTTICHAT
-# ═══════════════════════════════════════════════════════════════
-elif page == "💬 Agenttichat":
+# --- Agentchatti ---
     st.markdown("## 💬 Keskustele Agentin kanssa")
 
     # --- Pikavalinnat (kiinteä yläpalkki) ---
@@ -566,9 +520,9 @@ elif page == "💬 Agenttichat":
 
 
 # ═══════════════════════════════════════════════════════════════
-# 3. DATATUTKIMUS
+# 3. TIETOKANTAKYSELYT
 # ═══════════════════════════════════════════════════════════════
-elif page == "📊 Datatutkimus":
+elif page == "📊 Tietokantakyselyt":
     st.markdown("## 📊 Tietokannan rakenne ja selaus")
 
     try:
@@ -658,9 +612,9 @@ elif page == "📊 Datatutkimus":
 
 
 # ═══════════════════════════════════════════════════════════════
-# 4. VISUALISOINNIT
+# 4. GENEROIDUT KUVAAJAT
 # ═══════════════════════════════════════════════════════════════
-elif page == "🖼️ Visualisoinnit":
+elif page == "🖼️ Generoidut kuvaajat":
     st.markdown("## 🖼️ Generoidut visualisoinnit")
 
     plot_dir = Path("data/processed/plots")
@@ -745,6 +699,6 @@ elif page == "🗺️ Myymäläanalytiikka":
 # ═══════════════════════════════════════════════════════════════
 # 5. DASHBOARDIT
 # ═══════════════════════════════════════════════════════════════
-elif page == "📈 Liiketoiminta":
+elif page == "📈 Liiketoiminta Dashboard":
     from dashboards.liiketoiminta import render as render_liiketoiminta
     render_liiketoiminta()
