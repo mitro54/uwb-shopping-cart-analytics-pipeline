@@ -1,0 +1,35 @@
+Shop Analytics Visualization Implementation Plan
+The goal is to finalize the spatial analytics suite by migrating prototype logic from Jupyter notebooks into the production environment and exposing these capabilities through the Streamlit dashboard.
+
+User Review Required
+IMPORTANT
+
+The visualization logic will now optionally overlay departmental zones (from osastot.csv) on the floor plan to provide better context. Please confirm if the current zone definitions in osastot.csv are final.
+
+Proposed Changes
+[Component] Agents Shared Tools
+[MODIFY] 
+floorplan_tools.py
+Zone Loading: Implement a function to load department coordinates from bytebuddies_dbt/seeds/osastot.csv.
+Plotting Extension:
+Add plot_type='route': Visualizes a single customer session by connecting coordinate points with lines.
+Add plot_type='dwell': Visualizes stop locations (dwell time). Uses marker size or color intensity to represent duration.
+Add show_zones parameter: Toggles the display of department boundaries and labels.
+Color Palettes: Standardize colors for different departments or routes for visual consistency.
+[Component] Dashboard
+[MODIFY] 
+app.py
+New Section: Add a "🗺️ Myymäläanalytiikka" page in the navigation.
+Analytics Controls:
+Type: Dropdown to select "Lämpökartta", "Reittianalyysi", or "Pysähdyspaikat".
+Date Filters: Date range picker for aggregated view.
+Session Filter: Dynamic selection of node_id and then full_session_id for individual route analysis.
+Interactive Integration: Wire the UI controls to call the plot_on_floorplan tool (either directly via a helper or via the Plotter agent).
+Open Questions
+Should the "Stops" visualization use the pre-aggregated 1m x 1m grid from gold_koordinaatit, or should we perform real-time clustering on the silver-level stop points?
+Do you want the ability to compare multiple sessions on the same plot?
+Verification Plan
+Automated/Manual Tests
+Local Run: Execute streamlit run app.py and verify all three visualization modes.
+Data Validation: Compare the generated routes against the silver_positions table to ensure sequential accuracy.
+Visual Check: Ensure the floor plan scaling remains correct (104.06m x 52.20m) after adding overlays.
