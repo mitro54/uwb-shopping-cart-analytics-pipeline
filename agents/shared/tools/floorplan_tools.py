@@ -27,6 +27,7 @@ from agents.shared.config import CONFIG
 
 # ── Polut ──
 FLOORPLAN_PATH = Path(__file__).resolve().parents[3] / "image" / "kauppa2.png"
+ZONES_PATH = Path(__file__).resolve().parents[3] / "bytebuddies_dbt" / "seeds" / "osastot.csv"
 OUTPUT_DIR = Path("data/processed/plots")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -53,6 +54,44 @@ def _get_conn() -> duckdb.DuckDBPyConnection:
     dbt_path = CONFIG.duckdb_path.parent.parent.parent / "bytebuddies_dbt"
     conn.execute(f"SET FILE_SEARCH_PATH = '{dbt_path.as_posix()}'")
     return conn
+
+
+def _load_zones() -> pd.DataFrame | None:
+    """Lataa osastojen rajat CSV-tiedostosta."""
+    if not ZONES_PATH.exists():
+        return None
+    try:
+        return pd.read_csv(ZONES_PATH)
+    except Exception:
+        return None
+
+
+def _draw_zones(ax: matplotlib.axes.Axes, zones_df: pd.DataFrame):
+    """Piirtää osastojen rajat ja nimekkeet kuvaan."""
+    import matplotlib.patches as patches
+    for _, row in zones_df.iterrows():
+        # Muunnetaan cm -> m
+        x_min, y_min = row["alku_x"] / 100.0, row["alku_y"] / 100.0
+        x_max, y_max = row["loppu_x"] / 100.0, row["loppu_y"] / 100.0
+        width = x_max - x_min
+        height = y_max - y_min
+        
+        # Piirretään suorakulmio
+        rect = patches.Rectangle(
+            (x_min, y_min), width, height,
+            linewidth=1, edgecolor="blue", facecolor="blue", alpha=0.1,
+            zorder=0.5
+        )
+        ax.add_patch(rect)
+        
+        # Lisätään osaston nimi (lyhennettynä jos tarpeen)
+        name = row["nimi"].replace(" ja ", " & ").capitalize()
+        ax.text(
+            x_min + width/2, y_min + height/2, name,
+            color="darkblue", fontsize=7, alpha=0.6,
+            ha="center", va="center", rotation=30,
+            zorder=0.6
+        )
 
 
 def _filter_valid_positions(df: pd.DataFrame) -> pd.DataFrame:
@@ -89,16 +128,24 @@ def plot_on_floorplan(
     title: str = "Ostoskärryjen liike",
     plot_type: str = "heatmap",
     alpha: float = 0.55,
+    show_zones: bool = False,
 ) -> str:
     """
     Piirtää UWB-positiontidataa kaupan pohjapiirroksen päälle.
 
     Parametrit:
     - sql: SQL-kysely joka palauttaa x ja y sarakkeet (cm-yksikössä).
-           Voit lisätä WHERE-ehtoja rajoittaaksesi ajanjakson, node_id:n jne.
-           Esim: SELECT x, y FROM main.bronze_csv_data WHERE timestamp BETWEEN '2019-03-08' AND '2019-03-09' LIMIT 500000    - title: Kuvan otsikko
-    - plot_type: 'heatmap' (oletus, KDE-tiheys) tai 'scatter' (yksittäiset pisteet)
-    - alpha: Läpinäkyvyys (0.0–1.0)
+           Route-tyypissä vaaditaan myös 'node_id' tai järjestys (aikaleima).
+           Dwell-tyypissä vaaditaan 'dwell_time' tai 'weight'.
+           Esim: SELECT x, y FROM main.gold_koordinaatit
+    - title: Kuvan otsikko
+    - plot_type: 
+        - 'heatmap': KDE-tiheyskartta (oletus)
+        - 'scatter': Yksittäiset havaintopisteet
+        - 'route': Viivalla yhdistetty kulkureitti
+        - 'dwell': Pysähdyspaikat (markerin koko riippuu vaipymästä)
+    - alpha: Peittävyys (0.0–1.0)
+    - show_zones: Jos True, piirtää osastojen rajat ja nimet
     """
     try:
         conn = _get_conn()
@@ -181,6 +228,41 @@ def plot_on_floorplan(
                 sample["x_m"], sample["y_m"],
                 s=1, alpha=max(0.02, alpha * 0.3), c="#FF4444", zorder=1,
             )
+
+        elif plot_type == "route":
+            # Reitti: yhdistetään peräkkäiset pisteet viivalla
+            # Oletetaan että data on aikajärjestyksessä (SQL-kyselyssä ORDER BY)
+            ax.plot(
+                df["x_m"], df["y_m"],
+                color="blue", linewidth=1.5, alpha=alpha, 
+                marker="o", markersize=3, markeredgecolor="darkblue",
+                zorder=2
+            )
+            # Merkitään alku ja loppu
+            if not df.empty:
+                ax.scatter(df["x_m"].iloc[0], df["y_m"].iloc[0], c="green", s=50, label="Alku", zorder=3)
+                ax.scatter(df["x_m"].iloc[-1], df["y_m"].iloc[-1], c="red", s=50, label="Loppu", zorder=3)
+
+        elif plot_type == "dwell":
+            # Pysähdyspaikat: markerin koko dwell_time mukaan
+            s_col = "dwell_time" if "dwell_time" in df.columns else "weight"
+            if s_col not in df.columns:
+                df[s_col] = 10  # Fallback koko
+            
+            # Normalisoidaan koot
+            sizes = df[s_col] / df[s_col].max() * 300 + 20
+            ax.scatter(
+                df["x_m"], df["y_m"],
+                s=sizes, alpha=alpha, c=df[s_col], cmap="inferno",
+                edgecolors="black", linewidths=0.5, zorder=2
+            )
+            plt.colorbar(ax.collections[0], ax=ax, label="Viipymä")
+
+        # Piirretään osastot jos pyydetty
+        if show_zones:
+            zones_df = _load_zones()
+            if zones_df is not None:
+                _draw_zones(ax, zones_df)
 
         # Tyylittelyt
         ax.set_xlim(0, X_MAX_M)
