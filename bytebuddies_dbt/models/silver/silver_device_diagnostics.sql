@@ -60,6 +60,8 @@ SELECT
     EXTRACT('hour' FROM aika) AS hour,
     x,
     y,
+    edellinen_x,
+    edellinen_y,
     q,
     speed_mps,
     sekuntia_edellisesta,
