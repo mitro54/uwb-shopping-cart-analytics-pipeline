@@ -23,7 +23,7 @@ from agents.shared.tools.plot_tools import ALL_PLOT_TOOLS
 from agents.shared.tools.floorplan_tools import ALL_FLOORPLAN_TOOLS
 from agents.shared.tools.delegation_tools import generate_visualization
 
-ALL_AGENT_TOOLS = DB_TOOLS + ALL_PLOT_TOOLS + ALL_FLOORPLAN_TOOLS
+ALL_AGENT_TOOLS = DB_TOOLS + [generate_visualization]
 
 AGENT_ROOT = AGENTS_ROOT / "analytics"
 IDENTITY_PATH = AGENT_ROOT / "identity.yml"
