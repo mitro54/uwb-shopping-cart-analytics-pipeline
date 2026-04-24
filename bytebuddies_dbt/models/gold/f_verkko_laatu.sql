@@ -8,10 +8,9 @@ WITH grid_pyoristys AS (
         q,
         is_low_quality,
         is_jitter,
-        x,
-        y,
         edellinen_x,
         edellinen_y,
+        edellinen_oli_jitter,
         -- Pyöristetään koordinaatit muodostamaan 1x1 metrin ruudukko (100cm grid)
         FLOOR(x / 100.0) * 100 AS grid_x,
         FLOOR(y / 100.0) * 100 AS grid_y
@@ -33,8 +32,9 @@ main_agg AS (
     GROUP BY grid_x, grid_y
 ),
 
--- Jitter lasketaan LÄHDESIJAINNIN mukaan — missä kärryn pingaus oli ENNEN hyppyä,
--- ei mihin se hypättyään päätyi. Näin heatmap osoittaa ongelman lähteen.
+-- Jitter kirjataan lähdesijainnin (edellinen_x/y) mukaan, mutta vain
+-- ketjun ensimmäiselle jitterille (edellinen_oli_jitter = 0).
+-- Näin peräkkäiset jitterit eivät ketjutu virheellisiin sijainteihin.
 jitter_lahde AS (
     SELECT
         FLOOR(edellinen_x / 100.0) * 100 AS grid_x,
@@ -42,6 +42,7 @@ jitter_lahde AS (
         COUNT(*) AS jitter_pings
     FROM grid_pyoristys
     WHERE is_jitter = 1
+      AND (edellinen_oli_jitter = 0 OR edellinen_oli_jitter IS NULL)
       AND edellinen_x IS NOT NULL
       AND edellinen_y IS NOT NULL
     GROUP BY 1, 2

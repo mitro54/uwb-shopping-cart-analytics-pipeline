@@ -100,7 +100,7 @@ def fetch_verkko(date_start: str, date_end: str) -> pl.DataFrame:
                 FLOOR(x / 100.0) * 100          AS grid_x,
                 FLOOR(y / 100.0) * 100          AS grid_y,
                 q, is_low_quality, is_jitter,
-                edellinen_x, edellinen_y
+                edellinen_x, edellinen_y, edellinen_oli_jitter
             FROM silver_device_diagnostics
             WHERE is_out_of_bounds = 0
               AND dt >= '{date_start}'
@@ -124,6 +124,7 @@ def fetch_verkko(date_start: str, date_end: str) -> pl.DataFrame:
                 COUNT(*)                          AS jitter_pings
             FROM src
             WHERE is_jitter = 1
+              AND (edellinen_oli_jitter = 0 OR edellinen_oli_jitter IS NULL)
               AND edellinen_x IS NOT NULL
               AND edellinen_y IS NOT NULL
             GROUP BY 1, 2
@@ -148,7 +149,7 @@ def fetch_verkko_corr(date_start: str, date_end: str) -> pl.DataFrame:
                 FLOOR(x / 100.0) * 100          AS grid_x,
                 FLOOR(y / 100.0) * 100          AS grid_y,
                 q, is_low_quality, is_jitter,
-                edellinen_x, edellinen_y
+                edellinen_x, edellinen_y, edellinen_oli_jitter
             FROM silver_device_diagnostics
             WHERE {_CORR_WHERE}
               AND dt >= '{date_start}'
@@ -170,6 +171,7 @@ def fetch_verkko_corr(date_start: str, date_end: str) -> pl.DataFrame:
                 COUNT(*)                          AS jitter_pings
             FROM src
             WHERE is_jitter = 1
+              AND (edellinen_oli_jitter = 0 OR edellinen_oli_jitter IS NULL)
               AND edellinen_x IS NOT NULL
               AND edellinen_y IS NOT NULL
             GROUP BY 1, 2
