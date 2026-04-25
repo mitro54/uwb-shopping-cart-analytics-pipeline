@@ -62,36 +62,61 @@ def _get_conn():
     st.stop()
 
 
-@st.cache_data(show_spinner=False, ttl=300)
-def _date_range() -> tuple:
+@st.cache_data(show_spinner=False, ttl=600)
+def _get_time_options():
     conn = _get_conn()
-    row = conn.execute("SELECT MIN(kaynti_paiva), MAX(kaynti_paiva) FROM f_kaynti").fetchone()
-    return row[0], row[1]
+    df = conn.execute("""
+        SELECT 
+            DISTINCT YEAR(kaynti_paiva) as year,
+            MONTH(kaynti_paiva) as month,
+            WEEK(kaynti_paiva) as week
+        FROM f_kaynti
+    """).pl()
+    years = sorted(df["year"].unique().to_list())
+    months = sorted(df["month"].unique().to_list())
+    weeks = sorted(df["week"].unique().to_list())
+    return years, months, weeks
 
 
 @st.cache_data(show_spinner="📅 Haetaan käyntidata…", ttl=300)
-def _kaynti(d0: str, d1: str, h0: int, h1: int) -> pl.DataFrame:
+def _kaynti(years, months, weeks, h0: int, h1: int) -> pl.DataFrame:
     conn = _get_conn()
+    where_clauses = [f"kaynti_tunti >= {h0} AND kaynti_tunti <= {h1}"]
+    if years:
+        where_clauses.append(f"YEAR(kaynti_paiva) IN ({','.join(map(str, years))})")
+    if months:
+        where_clauses.append(f"MONTH(kaynti_paiva) IN ({','.join(map(str, months))})")
+    if weeks:
+        where_clauses.append(f"WEEK(kaynti_paiva) IN ({','.join(map(str, weeks))})")
+    
+    where_str = " AND ".join(where_clauses)
     return conn.execute(f"""
         SELECT kaynti_id, node_id, kaynti_paiva, kaynti_tunti,
                kaynti_viikonpaiva, kesto_sekunteina, matka, keskinopeus
         FROM f_kaynti
-        WHERE kaynti_paiva >= '{d0}' AND kaynti_paiva <= '{d1}'
-          AND kaynti_tunti >= {h0} AND kaynti_tunti <= {h1}
+        WHERE {where_str}
     """).pl()
 
 
 @st.cache_data(show_spinner="🏬 Haetaan osastodata…", ttl=300)
-def _osasto(d0: str, d1: str, h0: int, h1: int) -> pl.DataFrame:
+def _osasto(years, months, weeks, h0: int, h1: int) -> pl.DataFrame:
     conn = _get_conn()
+    where_clauses = [f"k.kaynti_tunti >= {h0} AND k.kaynti_tunti <= {h1}"]
+    if years:
+        where_clauses.append(f"YEAR(k.kaynti_paiva) IN ({','.join(map(str, years))})")
+    if months:
+        where_clauses.append(f"MONTH(k.kaynti_paiva) IN ({','.join(map(str, months))})")
+    if weeks:
+        where_clauses.append(f"WEEK(k.kaynti_paiva) IN ({','.join(map(str, weeks))})")
+    
+    where_str = " AND ".join(where_clauses)
     return conn.execute(f"""
         SELECT ok.kaynti_id, ok.osasto_id, ok.osaston_nimi,
                ok.vietetty_aika_sekunteina, ok.matka_osastolla_m,
                ok.havainnot_osastolla
         FROM f_osastokaynti ok
         INNER JOIN f_kaynti k ON ok.kaynti_id = k.kaynti_id
-        WHERE k.kaynti_paiva >= '{d0}' AND k.kaynti_paiva <= '{d1}'
-          AND k.kaynti_tunti >= {h0} AND k.kaynti_tunti <= {h1}
+        WHERE {where_str}
     """).pl()
 
 
@@ -124,30 +149,38 @@ def render():
     """, unsafe_allow_html=True)
 
     # --- Filters ----------------------------------------------------------
-    st.markdown("### ⚙️ Aikarajaus")
-    dt_min, dt_max = _date_range()
+    st.markdown("### ⚙️ Suodattimet")
+    years_opt, months_opt, weeks_opt = _get_time_options()
     
-    col_filter1, col_filter2 = st.columns([1, 1])
-    with col_filter1:
-        date_range = st.date_input(
-            "Valitse päivämäärät", value=(dt_min, dt_max),
-            min_value=dt_min, max_value=dt_max,
+    col_f1, col_f2, col_f3 = st.columns(3)
+    with col_f1:
+        sel_years = st.multiselect("Vuodet", options=years_opt, placeholder="Kaikki vuodet")
+    with col_f2:
+        month_labels = {
+            1: "Tammi", 2: "Helmi", 3: "Maalis", 4: "Huhti", 5: "Touko", 6: "Kesä",
+            7: "Heinä", 8: "Elo", 9: "Syys", 10: "Loka", 11: "Marras", 12: "Joulu"
+        }
+        sel_months = st.multiselect(
+            "Kuukaudet", 
+            options=months_opt, 
+            format_func=lambda x: month_labels.get(x, str(x)),
+            placeholder="Kaikki kuukaudet"
         )
-    with col_filter2:
+    with col_f3:
+        sel_weeks = st.multiselect("Viikot", options=weeks_opt, placeholder="Kaikki viikot")
+
+    col_f4 = st.columns(1)[0]
+    with col_f4:
         hour_range = st.slider(
-            "Valitse kellonajat", min_value=0, max_value=23,
+            "Kellonajat", min_value=0, max_value=23,
             value=(0, 23), step=1, format="%d:00"
         )
     
-    if len(date_range) != 2:
-        st.info("Valitse alku- ja loppupäivä kalenterista.")
-        st.stop()
-    d0, d1 = str(date_range[0]), str(date_range[1])
     h0, h1 = hour_range
 
     # --- Load data ---------------------------------------------------------
-    df = _kaynti(d0, d1, h0, h1)
-    df_o = _osasto(d0, d1, h0, h1)
+    df = _kaynti(sel_years, sel_months, sel_weeks, h0, h1)
+    df_o = _osasto(sel_years, sel_months, sel_weeks, h0, h1)
     if df.is_empty():
         st.warning("Ei käyntejä valitulla aikavälillä.")
         st.stop()
