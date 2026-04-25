@@ -130,7 +130,17 @@ Kun jokin näistä ehdoista täyttyy, koodi merkitsee kyseiselle riville lipun: 
 * **Suorituskyky:** Kumulatiivinen summa on ns. vektorisoitu operaatio. Sen ajaminen kymmenille miljoonille riveille on tuhansia kertoja nopeampaa kuin datan läpikäynti rivi riviltä (for-looppaaminen).
 * **MD5 Full Session ID:** Lopuksi laitteen ID ja tämä juokseva numero yhdistetään (esim. `kärryA_2`) ja niistä luodaan MD5-tiiviste. Tämä siksi, että tietokannan Gold-kerros saa tasapitkän ja uniikin pääavaimen (Primary Key), joka nopeuttaa taulujen yhdistämistä (JOIN).
 
-## Tekninen Arkkitehtuuri: Visualisointi Streamlit-dashboardeilla
+    Raportointiin ja visualisointiin käytetään Streamlit-alustaa, joka lukee dataa suoraan DuckDB-tietokannasta (`app.py` / `dashboards/`). Gold-tason taulut käsitellään tavallisina tietokantatauluina, mikä yksinkertaistaa arkkitehtuuria ja mahdollistaa suoran pääsyn valmiiseen liiketoimintadataan. Tällä korvattiin aiemmin suunniteltu Apache Superset -ratkaisu, koska se tarjoaa riittävän visualisointikyvyn ja tiiviimmän integraation muun Python-koodin ja agenttien kanssa.
+
+## Analyyttinen moottori: Mediaaniarvot ja suhteellinen suodatus
 
 **Päätös:**
-Raportointiin ja visualisointiin käytetään Streamlit-alustaa, joka lukee dataa suoraan DuckDB-tietokannasta (`app.py` / `dashboards/`). Gold-tason taulut käsitellään tavallisina tietokantatauluina, mikä yksinkertaistaa arkkitehtuuria ja mahdollistaa suoran pääsyn valmiiseen liiketoimintadataan. Tällä korvattiin aiemmin suunniteltu Apache Superset -ratkaisu, koska se tarjoaa riittävän visualisointikyvyn ja tiiviimmän integraation muun Python-koodin ja agenttien kanssa.
+Dashboardin ensisijaiseksi tunnusluvuksi (KPI) valittiin **mediaani** keskiarvon sijaan viipymän ja matkan osalta. Osastokohtainen asiointisuodatus muutettiin kiinteästä sekuntirajasta **suhteelliseksi**, joka skaalautuu osaston fyysisen koon mukaan.
+
+**Tilanne ja ongelma:**
+UWB-datassa on usein pitkiä "häntiä" (outliers), kuten unohdettuja kärryjä tai työntekijöiden liikkeitä, jotka vääristävät keskiarvoja merkittävästi ylöspäin. Lisäksi kiinteä 30 sekunnin suodatus toimi hyvin suurilla osastoilla, mutta karsi pois tyypillistä asiointia pieniltä osastoilta.
+
+**Miksi valittiin:**
+1. **Vikasietoisuus (Robustness):** Mediaani kestää ääriarvot huomattavasti keskiarvoa paremmin, tarjoten totuudenmukaisemman kuvan "tavallisesta" asiakkaasta.
+2. **Analyyttinen rehellisyys:** Suhteellinen suodatus huomioi, että suuren hallin halki käveleminen vie luonnostaan kauemmin kuin pienessä hyllyvälissä asiointi. Diagonaaliperusteinen skaalaus varmistaa, että asiointitilastot ovat vertailukelpoisia osastojen välillä.
+3. **Dynaaminen vertailu (Baseline):** Dashbord laskee vertailuindeksit (delta-%) lennosta siten, että ne noudattavat samaa mediaani- ja suodatuslogiikkaa kuin valittu data, varmistaen matemaattisen eheyden.

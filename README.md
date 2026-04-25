@@ -144,9 +144,10 @@ bytebuddies/
 
 Projektin kehitys jatkuu useissa eri vaiheissa:
 
-*   **Dashboardin laajentaminen:** Streamlit-dashboardin ominaisuuksien ja visualisointityyppien lisääminen.
+*   **Dashboardin laajentaminen:** Streamlit-dashboardin ominaisuuksien ja visualisointityyppien lisääminen. (PÄIVITETTY: Segmentointi, mediaani-KPI:t ja cascading-filterit toteutettu 25.4.2026)
 *   **Agenttien laajentaminen:** Uusien analytiikka- ja automaatioagenttien lisääminen monimutkaisempiin tehtäviin.
 *   **Integraatiot:** Mahdollisuus yhdistää data muihin lähteisiin ja automatisoida raportointisyklejä.
+
 
 ## Yhteistyö ja osallistuminen
 
