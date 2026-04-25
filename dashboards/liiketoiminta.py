@@ -134,20 +134,14 @@ def _osasto(years, months, weeks, hours) -> pl.DataFrame:
 def _get_baseline_stats():
     conn = _get_conn()
     # Lasketaan globaalit keskiarvot vertailupohjaksi
+    # Huom: Jotta oletusnäkymä (kaikki data) näyttää 0% eron,
+    # baseline pitää laskea samalla tavalla kuin dashboardin mittarit.
     res = conn.execute("""
         SELECT 
-            AVG(count_per_day) as avg_v,
-            AVG(avg_kesto) as avg_d,
-            AVG(avg_matka) as avg_m
-        FROM (
-            SELECT 
-                kaynti_paiva, 
-                COUNT(*) as count_per_day,
-                AVG(kesto_sekunteina) as avg_kesto,
-                AVG(matka) as avg_matka
-            FROM f_kaynti
-            GROUP BY kaynti_paiva
-        )
+            CAST(COUNT(*) AS FLOAT) / COUNT(DISTINCT kaynti_paiva),
+            AVG(kesto_sekunteina),
+            AVG(matka)
+        FROM f_kaynti
     """).fetchone()
     
     # Osastokäyntien keskiarvo
