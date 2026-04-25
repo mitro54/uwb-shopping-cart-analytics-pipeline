@@ -146,12 +146,13 @@ def _get_baseline_stats():
         FROM f_kaynti
     """).fetchone()
     
-    # Osastokäyntien keskiarvo
+    # Osastokäyntien keskiarvo (kuten _osasto() -funktiossa)
     res_o = conn.execute("""
         SELECT AVG(n) FROM (
-            SELECT kaynti_id, COUNT(DISTINCT osasto_id) as n
-            FROM f_osastokaynti
-            GROUP BY kaynti_id
+            SELECT ok.kaynti_id, COUNT(DISTINCT ok.osasto_id) as n
+            FROM f_osastokaynti ok
+            INNER JOIN f_kaynti k ON ok.kaynti_id = k.kaynti_id
+            GROUP BY ok.kaynti_id
         )
     """).fetchone()
     
