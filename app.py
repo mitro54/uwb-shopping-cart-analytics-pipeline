@@ -354,7 +354,7 @@ elif page == "💬 Agenttichat":
         button_query = "Tutki mitä tauluja ja dataa tietokannassa on saatavilla ja esittele ne lyhyesti."
     
     if qa_col1[1].button("🗺️ Kärryliike (Heatmap)", key="qa_vis", width='stretch'):
-        button_query = "Visualisoi ostoskärryjen liikkeet kaupan pohjapiirrokselle  heatmappina 2019-12-24 päivän osalta."
+        button_query = "Visualisoi ostoskärryjen liikkeet kaupan pohjapiirrokselle  heatmappina 2019-12-22 päivän osalta."
     
     if qa_col1[2].button("🎻 Viipymäjakauma", key="qa_violin", width='stretch'):
         button_query = "Piirrä violin plot osastojen viipymäajoista taulusta. Näytä tilastolaatikot."
@@ -395,8 +395,8 @@ elif page == "💬 Agenttichat":
         )
         shown = set()
         for p in potential_paths:
-            # Siivoa välimerkit lopusta
-            p_clean = p.rstrip(".,;:!?\"'`)]}>")
+            # Siivoa välimerkit ja markdown-muotoilut lopusta
+            p_clean = p.rstrip(".,;:!?\"'`)]}>*~")
             # Normalisoi polku
             p_norm = p_clean.replace("/", os.sep).replace("\\", os.sep)
 
@@ -676,7 +676,7 @@ elif page == "🗺️ Myymäläanalytiikka":
                         path_part = result_msg.split("luotu:")[1].strip()
                         if os.path.exists(path_part):
                             st.success("Visualisointi valmis!")
-                            st.image(path_part, use_column_width=True)
+                            st.image(path_part, width="stretch")
                             
                             with open(path_part, "rb") as file:
                                 st.download_button(

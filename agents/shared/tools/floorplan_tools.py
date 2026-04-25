@@ -286,7 +286,7 @@ def plot_on_floorplan(
         fig.savefig(filepath, dpi=120, bbox_inches="tight")
         plt.close(fig)
 
-        return f"Pohjapiirrosvisualisointi luotu: {filepath.absolute()}"
+        return f"Pohjapiirrosvisualisointi luotu: {filepath}"
 
     except Exception as e:
         return f"Virhe pohjapiirrosvisualisoinnissa: {e}"

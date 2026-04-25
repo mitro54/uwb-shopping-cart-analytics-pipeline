@@ -37,7 +37,6 @@ WITH perus_puhdistus AS (
         AND EXTRACT('hour' FROM timestamp) >= {{ var('shop_open') }}
         AND EXTRACT('hour' FROM timestamp) <= {{ var('shop_close') }}
 
-        -- NEW: Rectangular Exclusions (Removing "outside" areas)
         -- 1. y > 30 and x between 0 and 15
         AND NOT (y > 3000 AND x >= 0 AND x <= 1500)
         
@@ -90,34 +89,124 @@ sessiomerkinta AS (
             WHEN edellinen_aika IS NULL OR sekuntia_edellisesta > {{ var('session_gap_threshold', 900) }} THEN 1 
             -- Kärry poistui kassa-alueelta (edellinen piste kassalla, uusi ei ole)
             WHEN in_checkout = 0 AND edellinen_in_checkout = 1 THEN 1
+            -- Kärry teki fyysisesti mahdottoman hypyn (> 15m) -> Katkaistaan sessio
+            WHEN dist_m > 15.0 THEN 1
             ELSE 0 
         END AS is_new_session
     FROM jitter_suodatus
 ),
-sessiot AS (
-    -- 6. Kumulatiivinen summa is_new_session-arvoista muodostaa yksilöllisen session numeron
+sessiot_raaka AS (
+    -- 6. Kumulatiivinen summa muodostaa sessiot
     SELECT
         *,
         SUM(is_new_session) OVER (PARTITION BY node_id ORDER BY aika) AS session_id
     FROM sessiomerkinta
+),
+sessiot_metadata AS (
+    -- 7. Lisätään full_session_id ja perustiedot
+    SELECT
+        *,
+        MD5(node_id || '_' || CAST(session_id AS VARCHAR)) AS full_session_id,
+        EXTRACT('hour' FROM aika) AS hour,
+        EXTRACT('isodow' FROM aika) AS weekday,
+        CASE 
+            WHEN sekuntia_edellisesta > 0 THEN dist_m / sekuntia_edellisesta 
+            ELSE 0 
+        END AS speed_mps
+    FROM sessiot_raaka
+),
+stationary_detector AS (
+    -- 8. PAIKALLAANOLO-LEIKKURI (Stationary Cutter)
+    -- Etsitään pisteet, joista alkaa vähintään 20 minuutin paikallaanolo
+    SELECT
+        *,
+        -- Lasketaan 20 minuutin forward-windowin bounding box
+        MAX(x) OVER w_20m - MIN(x) OVER w_20m AS spread_x,
+        MAX(y) OVER w_20m - MIN(y) OVER w_20m AS spread_y,
+        MAX(aika) OVER w_20m AS window_end_time,
+        COUNT(*) OVER w_20m AS window_points
+    FROM sessiot_metadata
+    WINDOW w_20m AS (
+        PARTITION BY full_session_id 
+        ORDER BY aika 
+        RANGE BETWEEN CURRENT ROW AND INTERVAL '{{ var("stationary_timeout_min") }}' MINUTE FOLLOWING
+    )
+),
+stationary_flags AS (
+    -- Liputetaan pisteet, joista alkaa hylkäys (diagonaali < ~7m eli radius 5m)
+    SELECT
+        *,
+        CASE 
+            WHEN DATEDIFF('second', aika, window_end_time) >= {{ var("stationary_timeout_min") * 60 }}
+             AND SQRT(POWER(spread_x, 2) + POWER(spread_y, 2)) < {{ var("stationary_radius_m") * 100 * 2.0 }}
+            THEN 1 ELSE 0 
+        END AS is_stationary_start
+    FROM stationary_detector
+),
+session_cutoffs AS (
+    -- Etsitään ensimmäinen hylkäyspiste per sessio
+    SELECT
+        full_session_id,
+        MIN(CASE WHEN is_stationary_start = 1 THEN aika ELSE '9999-12-31'::TIMESTAMP END) AS cutoff_time
+    FROM stationary_flags
+    GROUP BY full_session_id
+),
+sessiot_leikattu AS (
+    -- Leikataan sessiot cutoff-ajan kohdalta (säilytetään alku)
+    SELECT f.*
+    FROM stationary_flags f
+    JOIN session_cutoffs c ON f.full_session_id = c.full_session_id
+    WHERE f.aika <= c.cutoff_time
+),
+session_point_metadata AS (
+    -- 9. LASKETAAN PISTEKOHTAISET RIVEITÄ KOSKEVAT TIEDOT (Window functions tässä)
+    SELECT
+        *,
+        -- Järjestysnumerot alusta ja lopusta
+        ROW_NUMBER() OVER (PARTITION BY full_session_id ORDER BY aika) AS rnk_start,
+        ROW_NUMBER() OVER (PARTITION BY full_session_id ORDER BY aika DESC) AS rnk_back
+    FROM sessiot_leikattu
+),
+session_validation_base AS (
+    -- 10. KERÄTÄÄN TUNNUSLUVUT LOPULLISTA VALIDIOINTIA VARTEN
+    SELECT
+        full_session_id,
+        MIN(aika) AS session_start,
+        MAX(aika) AS session_end,
+        SUM(dist_m) AS total_dist_m,
+        COUNT(*) AS point_count,
+        MIN(x) AS min_x,
+        MAX(x) AS max_x,
+        MIN(y) AS min_y,
+        MAX(y) AS max_y,
+        -- Aloituspisteen koordinaatit (haetaan rnk_start = 1 kohdalta)
+        MAX(CASE WHEN rnk_start = 1 THEN x ELSE NULL END) AS first_x,
+        MAX(CASE WHEN rnk_start = 1 THEN y ELSE NULL END) AS first_y,
+        -- Päättyminen kassoille (tail 5)
+        MAX(CASE WHEN rnk_back <= 5 AND in_checkout = 1 THEN 1 ELSE 0 END) AS ends_in_checkout
+    FROM session_point_metadata
+    GROUP BY full_session_id
+),
+valid_sessions AS (
+    -- 11. LOPULLINEN SUODATUS (Vastaten notebookin clean_data)
+    SELECT full_session_id
+    FROM session_validation_base
+    WHERE 
+        -- Aloitus sisäänkäynniltä (metrit -> senttimetrit)
+        first_x BETWEEN {{ var('start_zone_x_min') | float * 100 }} AND {{ var('start_zone_x_max') | float * 100 }}
+        AND first_y BETWEEN {{ var('start_zone_y_min') | float * 100 }} AND {{ var('start_zone_y_max') | float * 100 }}
+        -- Päättyminen kassoille
+        AND ends_in_checkout = 1
+        -- Fysiologiset ja liiketoiminnalliset rajat
+        AND point_count >= {{ var('min_session_points') }}
+        AND total_dist_m BETWEEN {{ var('min_session_dist_m') }} AND {{ var('max_session_dist_m') }}
+        AND DATEDIFF('second', session_start, session_end) BETWEEN {{ var('min_session_time_s') }} AND {{ var('max_session_time_s') }}
+        AND (total_dist_m / NULLIF(DATEDIFF('second', session_start, session_end), 0)) BETWEEN {{ var('min_avg_speed_mps') }} AND {{ var('max_avg_speed_mps') }}
+        AND SQRT(POWER(max_x - min_x, 2) + POWER(max_y - min_y, 2)) >= {{ var('min_spatial_spread_m') | float * 100 }}
 )
 
-SELECT
-    node_id,
-    aika,
-    x,
-    y,
-    q,
-    session_id,
-    -- Luodaan MD5-hash full_session_id:ksi schema.yml vaatimuksen mukaan
-    MD5(node_id || '_' || CAST(session_id AS VARCHAR)) AS full_session_id,
-    EXTRACT('hour' FROM aika) AS hour,
-    EXTRACT('isodow' FROM aika) AS weekday,
-    dist_m,
-    sekuntia_edellisesta,
-    -- Nopeus (m/s)
-    CASE 
-        WHEN sekuntia_edellisesta > 0 THEN dist_m / sekuntia_edellisesta 
-        ELSE 0 
-    END AS speed_mps
-FROM sessiot
+-- LOPPUTULOS: Vain validit sessiot, leikattuna ja kassa-alue poistettuna (visualisoinnin siistimiseksi)
+SELECT * EXCLUDE(spread_x, spread_y, window_end_time, window_points, is_stationary_start, rnk_start, rnk_back)
+FROM session_point_metadata
+WHERE full_session_id IN (SELECT full_session_id FROM valid_sessions)
+  AND in_checkout = 0

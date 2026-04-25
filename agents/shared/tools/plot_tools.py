@@ -73,7 +73,7 @@ def plot_chart(sql: str, chart_type: str, x_col: str, y_col: str, title: str = "
         plt.savefig(filepath)
         plt.close()
 
-        return f"Kuvaaja luotu onnistuneesti: {filepath.absolute()}"
+        return f"Kuvaaja luotu onnistuneesti: {filepath}"
     except Exception as e:
         return f"Virhe kuvaajan luomisessa: {e}"
 
@@ -142,7 +142,7 @@ def plot_distribution(sql: str, category_col: str, value_col: str, title: str = 
         plt.savefig(filepath)
         plt.close()
 
-        return f"Jakaumakuvaaja luotu: {filepath.absolute()}"
+        return f"Jakaumakuvaaja luotu: {filepath}"
     except Exception as e:
         return f"Virhe jakaumakuvaajan luomisessa: {e}"
 
@@ -191,7 +191,7 @@ def plot_grouped_bar(sql: str, x_col: str, y_col: str, hue_col: str, title: str 
         plt.savefig(filepath, bbox_inches='tight')
         plt.close()
 
-        return f"Ryhmitelty pylväskaavio luotu: {filepath.absolute()}"
+        return f"Ryhmitelty pylväskaavio luotu: {filepath}"
     except Exception as e:
         return f"Virhe ryhmitellyn kaavion luomisessa: {e}"
 
@@ -232,7 +232,7 @@ def plot_interactive(sql: str, chart_type: str, x_col: str, y_col: str, title: s
         filepath = OUTPUT_DIR / filename
         pio.write_json(fig, str(filepath))
 
-        return f"Interaktiivinen visualisointi luotu: {filepath.absolute()}"
+        return f"Interaktiivinen visualisointi luotu: {filepath}"
     except Exception as e:
         return f"Virhe Plotly-visualisoinnissa: {e}"
 

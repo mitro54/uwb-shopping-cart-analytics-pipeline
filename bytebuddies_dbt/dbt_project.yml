@@ -32,9 +32,9 @@ vars:
   max_x_cm: "{{ env_var('STORE_WIDTH_M', '104.06') | float * 100 }}"
   max_y_cm: "{{ env_var('STORE_HEIGHT_M', '52.20') | float * 100 }}"
   checkout_x_min: "{{ env_var('CHECKOUT_X_MIN', '0.0') | float * 100 }}"
-  checkout_x_max: "{{ env_var('CHECKOUT_X_MAX', '20.0') | float * 100 }}"
-  checkout_y_min: "{{ env_var('CHECKOUT_Y_MIN', '40.0') | float * 100 }}"
-  checkout_y_max: "{{ env_var('CHECKOUT_Y_MAX', '52.20') | float * 100 }}"
+  checkout_x_max: "{{ env_var('CHECKOUT_X_MAX', '7.0') | float * 100 }}"
+  checkout_y_min: "{{ env_var('CHECKOUT_Y_MIN', '0.0') | float * 100 }}"
+  checkout_y_max: "{{ env_var('CHECKOUT_Y_MAX', '20.0') | float * 100 }}"
   
   # Problemaattiset ympyräalueet (cm)
   prob1_x: "{{ env_var('PROB1_X', '100') | float }}"
@@ -44,9 +44,30 @@ vars:
   prob2_y: "{{ env_var('PROB2_Y', '3600') | float }}"
   prob2_r: "{{ env_var('PROB2_R', '600') | float }}"
   
-  # Kynnysarvot
+  # Kynnysarvot (Vastaten notebooks/01_03_data_exploration.ipynb)
+  q_threshold: "{{ env_var('Q_THRESHOLD', '0.0') | float }}"
   session_gap_threshold: "{{ env_var('SESSION_GAP_SECONDS', '900') | float }}"
-  max_jump_speed: "{{ env_var('MAX_JUMP_SPEED_MPS', '3.5') | float }}"
+  max_jump_speed: "{{ env_var('MAX_JUMP_SPEED_MPS', '3.0') | float }}"
+  
+  # ALOITUSALUEEN VAATIMUKSET (metreinä)
+  start_zone_x_min: "{{ env_var('START_ZONE_X_MIN', '0.0') | float }}"
+  start_zone_x_max: "{{ env_var('START_ZONE_X_MAX', '12.0') | float }}"
+  start_zone_y_min: "{{ env_var('START_ZONE_Y_MIN', '22.0') | float }}"
+  start_zone_y_max: "{{ env_var('START_ZONE_Y_MAX', '34.0') | float }}"
+  
+  # FYSIOLOGISET JA LIIKETOIMINNALLISET RAJAT
+  min_session_points: 30
+  min_session_dist_m: 30.0
+  max_session_dist_m: 8000.0
+  min_session_time_s: 180
+  max_session_time_s: 14400
+  min_avg_speed_mps: 0.08
+  max_avg_speed_mps: 1.5
+  min_spatial_spread_m: 15.0
+  
+  # PAIKALLAANOLO-LEIKKURI (Stationary Cutter)
+  stationary_timeout_min: 20
+  stationary_radius_m: 5.0
 
 models:
   bytebuddies_dbt:

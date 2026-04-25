@@ -15,6 +15,7 @@ from langgraph.prebuilt import create_react_agent
 from agents.shared.config import AGENTS_ROOT, CONFIG
 from agents.shared.llm import build_chat_model
 from agents.shared.tools.plot_tools import ALL_PLOT_TOOLS
+from agents.shared.tools.floorplan_tools import ALL_FLOORPLAN_TOOLS
 
 AGENT_ROOT = AGENTS_ROOT / "plotter"
 IDENTITY_PATH = AGENT_ROOT / "identity.yml"
@@ -42,7 +43,7 @@ class PlotterAgent:
             # Plotter-agentilla on vain visualisointityökalut käytössä
             graph = create_react_agent(
                 model=llm,
-                tools=ALL_PLOT_TOOLS,
+                tools=ALL_PLOT_TOOLS + ALL_FLOORPLAN_TOOLS,
                 prompt=self._system_prompt(),
             )
             
