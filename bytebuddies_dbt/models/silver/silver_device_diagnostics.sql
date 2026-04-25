@@ -32,8 +32,8 @@ WITH liikkeet AS (
         LAG(y) OVER (PARTITION BY node_id ORDER BY timestamp) AS edellinen_y,
         LAG(timestamp) OVER (PARTITION BY node_id ORDER BY timestamp) AS edellinen_aika
     FROM {{ ref('bronze_csv_data') }}
-    -- HUOM: Tästä mallista ei poisteta mitään reaalimaailman rivejä, vain tyhjät koordinaatit jottei laskenta kaadu
     WHERE x IS NOT NULL AND y IS NOT NULL
+    {{ var('excluded_zones_sql', '') }}
 ),
 rikastettu AS (
     SELECT

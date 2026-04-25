@@ -16,6 +16,7 @@ import polars as pl
 import streamlit as st
 from PIL import Image
 
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DUCKDB_PATH  = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
 IMAGE_PATH   = PROJECT_ROOT / "image" / "kauppa2.png"
@@ -56,7 +57,7 @@ def _get_conn():
 @st.cache_data(show_spinner="📡 Haetaan verkkolaatu…", ttl=300)
 def _load() -> pl.DataFrame:
     conn = _get_conn()
-    return conn.execute("""
+    return conn.execute(f"""
         SELECT grid_x, grid_y, total_pings,
                median_quality, min_quality,
                low_quality_pings, jitter_pings, low_quality_pct

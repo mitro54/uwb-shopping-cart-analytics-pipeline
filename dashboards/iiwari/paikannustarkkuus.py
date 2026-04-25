@@ -18,7 +18,6 @@ import polars as pl
 import streamlit as st
 from PIL import Image
 
-from dashboards.iiwari.utils import excluded_zones_sql
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DUCKDB_PATH  = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
@@ -82,7 +81,6 @@ def _fetch_night(node_id: str, yo_paiva: str, cx: float, cy: float) -> pl.DataFr
             FROM silver_device_diagnostics
             WHERE node_id = '{node_id}'
               AND x IS NOT NULL AND y IS NOT NULL
-              {excluded_zones_sql()}
         )
         SELECT aika_hki,
                EXTRACT('hour' FROM aika_hki)::INT              AS tunti,
@@ -167,12 +165,27 @@ def render():
     _metric(m5, f"{r['drift_x_cmh']:+.1f}", "Drift X (cm/h)")
     _metric(m6, f"{r['outlier_pct']:.1f}", "Outlierit (%)")
 
+    # Fetch with gold centroid first to get filtered points, then recompute centroid
     with st.spinner("Haetaan yön raakadata silveristä…"):
         df_raw = _fetch_night(selected_node, selected_date, cx, cy)
 
     if df_raw.is_empty():
-        st.info("Ei raakadataa tälle laite/yö-kombinaatiolle.")
+        st.info("Ei raakadataa tälle laite/yö-kombinaatiolle (kaikki pisteet exclusion zonessa).")
         st.stop()
+
+    # Recompute centroid and CEP from zone-filtered data
+    cx = float(df_raw["x"].mean())
+    cy = float(df_raw["y"].mean())
+    df_raw = df_raw.with_columns([
+        (pl.col("x") - cx).round(1).alias("dx"),
+        (pl.col("y") - cy).round(1).alias("dy"),
+        ((pl.col("x") - cx).pow(2) + (pl.col("y") - cy).pow(2)).sqrt().round(1).alias("dist"),
+    ])
+    dist_sorted = df_raw["dist"].sort()
+    n = len(dist_sorted)
+    r["cep50"] = float(dist_sorted[int(n * 0.50)])
+    r["cep68"] = float(dist_sorted[int(n * 0.68)])
+    r["cep95"] = float(dist_sorted[int(n * 0.95)])
 
     angles   = np.linspace(0, 2 * math.pi, 361)
     cos_a    = np.cos(angles).tolist()

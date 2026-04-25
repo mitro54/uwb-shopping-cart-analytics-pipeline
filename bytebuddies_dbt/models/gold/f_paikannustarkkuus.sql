@@ -34,7 +34,7 @@ paikallaan AS (
     SELECT node_id, yo_paiva
     FROM yopingit
     GROUP BY node_id, yo_paiva
-    HAVING COUNT(*) > 1000
+    HAVING COUNT(*) > 10000
 ),
 
 pingit AS (
@@ -102,6 +102,16 @@ SELECT
 
 FROM etaisyydet e
 JOIN aggregaatti a USING (node_id, yo_paiva)
+WHERE 
+    -- Suodatetaan haamuvaunut, joiden keskipiste on rajojen ulkopuolella
+    a.cx >= 0 AND a.cx <= {{ var('max_x_cm') }}
+    AND a.cy >= 0 AND a.cy <= {{ var('max_y_cm') }}
+    -- Suodatetaan myös laajennetut poissuljetut alueet (margin 200 cm), jotta jitter-vuodot poistuvat
+    AND NOT (a.cx <= 700 AND a.cy >= 1950 AND a.cy <= 3200)
+    AND NOT (a.cx >= 650 AND a.cx <= 1150 AND a.cy >= 3350 AND a.cy <= 3850)
+    AND NOT (a.cx <= 1700 AND a.cy >= 2800)
+    AND NOT (a.cx >= 8200 AND a.cy <= 800)
+    AND NOT (a.cx >= 9700 AND a.cy >= 4500)
 GROUP BY
     a.yo_paiva, a.node_id, a.n_pings,
     a.cx, a.cy, a.std_x, a.std_y,

@@ -13,7 +13,6 @@ from pathlib import Path
 import duckdb
 import numpy as np
 
-from dashboards.iiwari.utils import excluded_zones_sql
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
@@ -101,7 +100,6 @@ uniikki AS (
         LAG(tunti_alku) OVER (PARTITION BY node_id, paiva ORDER BY tunti_alku) AS prev_t
     FROM ikkunat
     WHERE 1=1
-    {excluded_zones_sql(x_col="keski_x", y_col="keski_y")}
 )
 SELECT
     node_id,
