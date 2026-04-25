@@ -15,8 +15,6 @@
 -- Maksiminopeus m/s (Jitter-liputus)
 {% set max_jump_speed = 3.5 %}
 
--- Suodatettavat alueet .env:stä (JSON, metreistä cm:ksi)
-{% set excluded_zones = modules.json.loads(env_var('EXCLUDED_ZONES_JSON', '[]')) %}
 
 -- =========================================================================
 -- 🛠️ SQL-LOGIIKKA
@@ -78,19 +76,6 @@ SELECT
     CASE WHEN speed_mps > {{ max_jump_speed }} THEN 1 ELSE 0 END AS is_jitter,
 
     -- 4. Kaupan aukioloaikojen ulkopuolella (Yöaika)
-    CASE WHEN EXTRACT('hour' FROM aika) < {{ shop_open }} OR EXTRACT('hour' FROM aika) > {{ shop_close }} THEN 1 ELSE 0 END AS is_night_time,
-
-    -- 5. Suodatetulla alueella (latausasema, varasto tms.) — .env EXCLUDED_ZONES_JSON
-    CASE WHEN
-        {% if excluded_zones %}
-            {% for zone in excluded_zones %}
-                (x >= {{ (zone.x_min * 100) | int }} AND x <= {{ (zone.x_max * 100) | int }}
-                 AND y >= {{ (zone.y_min * 100) | int }} AND y <= {{ (zone.y_max * 100) | int }})
-                {% if not loop.last %} OR {% endif %}
-            {% endfor %}
-        {% else %}
-            FALSE
-        {% endif %}
-    THEN 1 ELSE 0 END AS is_excluded_zone
+    CASE WHEN EXTRACT('hour' FROM aika) < {{ shop_open }} OR EXTRACT('hour' FROM aika) > {{ shop_close }} THEN 1 ELSE 0 END AS is_night_time
 
 FROM nopeus_laskettu

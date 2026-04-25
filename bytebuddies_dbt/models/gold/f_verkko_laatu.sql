@@ -16,7 +16,6 @@ WITH grid_pyoristys AS (
     FROM {{ ref('silver_device_diagnostics') }}
     -- Analysoidaan vain pisteet, jotka ylipäätään saatiin kaupan alueelta. (Jitter ja low_q saa olla).
     WHERE is_out_of_bounds = 0
-      AND is_excluded_zone = 0
 )
 
 SELECT

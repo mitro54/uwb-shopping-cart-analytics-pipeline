@@ -23,7 +23,6 @@ WITH yopingit AS (
         AS DATE) AS yo_paiva
     FROM {{ ref('silver_device_diagnostics') }}
     WHERE x IS NOT NULL AND y IS NOT NULL
-      AND is_excluded_zone = 0
       AND (
           EXTRACT('hour' FROM aika) >= 22
           OR EXTRACT('hour' FROM aika) < 7

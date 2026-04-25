@@ -80,7 +80,7 @@ def _fetch_night(node_id: str, yo_paiva: str, cx: float, cy: float) -> pl.DataFr
             FROM silver_device_diagnostics
             WHERE node_id = '{node_id}'
               AND x IS NOT NULL AND y IS NOT NULL
-              AND is_excluded_zone = 0
+              AND x >= 500
         )
         SELECT aika_hki,
                EXTRACT('hour' FROM aika_hki)::INT              AS tunti,
