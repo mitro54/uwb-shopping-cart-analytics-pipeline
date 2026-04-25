@@ -19,6 +19,15 @@ from agents.shared.config import CONFIG
 DUCKDB_PATH = CONFIG.duckdb_path
 WEEKDAY_LABELS = ["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"]
 
+@st.cache_data(show_spinner=False, ttl=600)
+def _get_special_events():
+    """Lataa erikoistapahtumat CSV-tiedostosta (myöhemmin Gold-taulusta)."""
+    try:
+        df = pl.read_csv("bytebuddies_dbt/seeds/special_events.csv")
+        return df
+    except:
+        return pl.DataFrame()
+
 # ---------------------------------------------------------------------------
 # Styles (injected once per render)
 # ---------------------------------------------------------------------------
@@ -291,10 +300,38 @@ def render():
             placeholder="Kaikki tunnit"
         )
 
-    # --- Visit Segmentation ------------------------------------------------
-    # Luodaan segmentit datan perusteella ennen varsinaista suodatusta
-    # (käytämme tätä suodattimen rakentamiseen)
+    # --- Special Events Filter ---------------------------------------------
+    df_ev = _get_special_events()
+    sel_events = []
+    if not df_ev.is_empty():
+        # Suodatetaan tapahtumat valittujen vuosien mukaan
+        if sel_years:
+            df_ev = df_ev.with_columns(pl.col("start_date").str.to_date())
+            df_ev = df_ev.filter(pl.col("start_date").dt.year().is_in(sel_years))
+        
+        event_names = sorted(df_ev["event_name"].unique().to_list())
+        st.markdown("---")
+        st.info("💡 Voit valita alta erikoistapahtuman, jolloin dashboard suodattuu automaattisesti kyseiseen ajankohtaan.")
+        sel_events = st.multiselect("Erikoistapahtumat", options=event_names, placeholder="Valitse tapahtuma vertailuun")
+
+    # --- Apply Special Events Filter ---------------------------------------
     raw_df = _kaynti(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours)
+    
+    if sel_events and not df_ev.is_empty() and not raw_df.is_empty():
+        # Haetaan valitun tapahtuman päivämäärärajat
+        ev_filter = df_ev.filter(pl.col("event_name").is_in(sel_events))
+        date_ranges = []
+        for row in ev_filter.to_dicts():
+            date_ranges.append((row["start_date"], row["end_date"]))
+        
+        # Filtteröidään raw_df näille väleille
+        mask = pl.lit(False)
+        for start_str, end_str in date_ranges:
+            # Varmistetaan että ovat date-tyyppiä vertailussa
+            s = pl.lit(start_str).str.to_date()
+            e = pl.lit(end_str).str.to_date()
+            mask = mask | ((pl.col("kaynti_paiva") >= s) & (pl.col("kaynti_paiva") <= e))
+        raw_df = raw_df.filter(mask)
     
     def classify_visit(sec):
         if sec < 300: return "Pikakäynti (< 5 min)"
