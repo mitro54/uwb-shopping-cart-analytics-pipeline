@@ -18,6 +18,8 @@ import polars as pl
 import streamlit as st
 from PIL import Image
 
+from dashboards.iiwari.utils import excluded_zones_sql
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DUCKDB_PATH  = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
 IMAGE_PATH   = PROJECT_ROOT / "image" / "kauppa2.png"
@@ -80,7 +82,7 @@ def _fetch_night(node_id: str, yo_paiva: str, cx: float, cy: float) -> pl.DataFr
             FROM silver_device_diagnostics
             WHERE node_id = '{node_id}'
               AND x IS NOT NULL AND y IS NOT NULL
-              AND x >= 500
+              {excluded_zones_sql()}
         )
         SELECT aika_hki,
                EXTRACT('hour' FROM aika_hki)::INT              AS tunti,

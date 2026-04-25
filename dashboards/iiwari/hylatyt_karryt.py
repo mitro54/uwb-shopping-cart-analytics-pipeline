@@ -12,6 +12,8 @@ from pathlib import Path
 
 import duckdb
 import numpy as np
+
+from dashboards.iiwari.utils import excluded_zones_sql
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
@@ -63,7 +65,17 @@ _CSS = """
 </style>
 """
 
-HYLATTY_QUERY = """
+@st.cache_resource(show_spinner=False)
+def _get_conn():
+    if DUCKDB_PATH.exists():
+        return duckdb.connect(str(DUCKDB_PATH), read_only=True)
+    st.error("dev.duckdb ei löydy. Aja ensin `dbt run`.")
+    st.stop()
+
+
+@st.cache_data(show_spinner="🛒 Haetaan hylättyjen kärryjen data…", ttl=300)
+def _load() -> pl.DataFrame:
+    query = f"""
 WITH per_tunti AS (
     SELECT node_id, CAST(aika AS DATE) AS paiva,
         DATE_TRUNC('hour', aika) AS tunti,
@@ -88,7 +100,8 @@ uniikki AS (
     SELECT *,
         LAG(tunti_alku) OVER (PARTITION BY node_id, paiva ORDER BY tunti_alku) AS prev_t
     FROM ikkunat
-    WHERE NOT (keski_x >= 0 AND keski_x <= 700 AND keski_y >= 800 AND keski_y <= 1600)
+    WHERE 1=1
+    {excluded_zones_sql(x_col="keski_x", y_col="keski_y")}
 )
 SELECT
     node_id,
@@ -101,19 +114,7 @@ FROM uniikki
 WHERE prev_t IS NULL OR tunti_alku > prev_t + INTERVAL 2 HOUR
 ORDER BY paiva, tunti_alku
 """
-
-
-@st.cache_resource(show_spinner=False)
-def _get_conn():
-    if DUCKDB_PATH.exists():
-        return duckdb.connect(str(DUCKDB_PATH), read_only=True)
-    st.error("dev.duckdb ei löydy. Aja ensin `dbt run`.")
-    st.stop()
-
-
-@st.cache_data(show_spinner="🛒 Haetaan hylättyjen kärryjen data…", ttl=300)
-def _load() -> pl.DataFrame:
-    return _get_conn().execute(HYLATTY_QUERY).pl()
+    return _get_conn().execute(query).pl()
 
 
 @st.cache_resource(show_spinner=False)
