@@ -109,7 +109,14 @@ def _kaynti(years, months, weeks, hours) -> pl.DataFrame:
 @st.cache_data(show_spinner="🏬 Haetaan osastodata…", ttl=300)
 def _osasto(years, months, weeks, hours, min_dwell: int = 0) -> pl.DataFrame:
     conn = _get_conn()
-    where_clauses = [f"ok.vietetty_aika_sekunteina >= {min_dwell}"]
+    
+    # Suhteellinen suodatus: lasketaan osaston koko (diagonaali) ja suhteutetaan viipymä siihen
+    where_clauses = [
+        f"ok.vietetty_aika_sekunteina >= {min_dwell} * "
+        "(SQRT(POWER(d.loppu_x-d.alku_x, 2) + POWER(d.loppu_y-d.alku_y, 2)) / "
+        "(SELECT MAX(SQRT(POWER(loppu_x-alku_x, 2) + POWER(loppu_y-alku_y, 2))) FROM dim_osastot))"
+    ]
+    
     if years:
         where_clauses.append(f"YEAR(k.kaynti_paiva) IN ({','.join(map(str, years))})")
     if months:
@@ -126,6 +133,7 @@ def _osasto(years, months, weeks, hours, min_dwell: int = 0) -> pl.DataFrame:
                ok.havainnot_osastolla
         FROM f_osastokaynti ok
         INNER JOIN f_kaynti k ON ok.kaynti_id = k.kaynti_id
+        INNER JOIN dim_osastot d ON ok.osasto_id = d.osasto_id
         WHERE {where_str}
     """).pl()
 
@@ -144,13 +152,16 @@ def _get_baseline_stats(min_dwell: int = 0):
         FROM f_kaynti
     """).fetchone()
     
-    # Osastokäyntien keskiarvo filteröitynä minimiviipymällä
+    # Osastokäyntien keskiarvo suhteellisella suodatuksella
     res_o = conn.execute(f"""
         SELECT AVG(n) FROM (
             SELECT ok.kaynti_id, COUNT(DISTINCT ok.osasto_id) as n
             FROM f_osastokaynti ok
             INNER JOIN f_kaynti k ON ok.kaynti_id = k.kaynti_id
-            WHERE ok.vietetty_aika_sekunteina >= {min_dwell}
+            INNER JOIN dim_osastot d ON ok.osasto_id = d.osasto_id
+            WHERE ok.vietetty_aika_sekunteina >= {min_dwell} * 
+                (SQRT(POWER(d.loppu_x-d.alku_x, 2) + POWER(d.loppu_y-d.alku_y, 2)) / 
+                (SELECT MAX(SQRT(POWER(loppu_x-alku_x, 2) + POWER(loppu_y-alku_y, 2))) FROM dim_osastot))
             GROUP BY ok.kaynti_id
         )
     """).fetchone()
@@ -234,7 +245,7 @@ def render():
         )
     
     st.markdown("---")
-    min_dwell = st.slider("Minimiviipymä osastolla (sekuntia)", 0, 300, 30, help="Suodata pois nopeat läpikulkumatkat. Vain osastokäynnit, jotka kestävät vähintään tämän ajan, lasketaan mukaan.")
+    min_dwell = st.slider("Viipymäsuodatin (suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut. Suuremmilla osastoilla sallitaan pitempi läpikulkuun viittaava aika, pienillä lyhyempi. Valittu arvo on viitearvo suurimmalle osastolle.")
 
     # --- Load data ---------------------------------------------------------
     baseline = _get_baseline_stats(min_dwell)
