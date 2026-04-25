@@ -385,7 +385,7 @@ def render():
 
         ds = (df_o.group_by("osaston_nimi").agg([
             pl.col("kaynti_id").n_unique().alias("visits"),
-            pl.col("vietetty_aika_sekunteina").mean().alias("avg_s"),
+            pl.col("vietetty_aika_sekunteina").median().alias("med_s"),
         ]).sort("visits", descending=True)
             .filter(pl.col("osaston_nimi") != "kassat"))
 
@@ -407,14 +407,15 @@ def render():
             st.plotly_chart(fig_p, width="stretch")
 
         with col_d:
-            st.markdown("**Keskim. viipymäaika osastoittain**")
-            dw = ds.sort("avg_s", descending=True)
+            st.markdown("**Tyypillinen viipymäaika osastoittain (mediaani)**")
+            dw = ds.sort("med_s", descending=True)
             dn = dw["osaston_nimi"].to_list()
-            dt_vals = [s / 60.0 for s in dw["avg_s"].to_list()]
+            dt_vals = [s / 60.0 for s in dw["med_s"].to_list()]
             fig_d = go.Figure(go.Bar(
                 y=dn[::-1], x=dt_vals[::-1], orientation="h",
                 marker=dict(color=dt_vals[::-1], colorscale="Oranges"),
                 text=[f"{d:.1f} min" for d in dt_vals[::-1]], textposition="outside",
+                hovertemplate="<b>%{y}</b><br>Mediaaniviipymä: %{x:.1f} min<extra></extra>",
             ))
             fig_d.update_layout(
                 height=420, margin=dict(l=160, r=70, t=10, b=30),
