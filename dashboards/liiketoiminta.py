@@ -245,7 +245,7 @@ def render():
         )
     
     st.markdown("---")
-    min_dwell = st.slider("Viipymäsuodatin (suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut. Suuremmilla osastoilla sallitaan pitempi läpikulkuun viittaava aika, pienillä lyhyempi. Valittu arvo on viitearvo suurimmalle osastolle.")
+    min_dwell = st.slider("Viipymäsuodatin (sekunteina, suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut. Suuremmilla osastoilla sallitaan pitempi läpikulkuun viittaava aika, pienillä lyhyempi. Valittu arvo on viitearvo suurimmalle osastolle.")
 
     # --- Load data ---------------------------------------------------------
     baseline = _get_baseline_stats(min_dwell)
