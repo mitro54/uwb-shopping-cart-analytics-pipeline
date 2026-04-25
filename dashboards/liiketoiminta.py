@@ -140,7 +140,9 @@ def _get_baseline_stats():
         SELECT 
             CAST(COUNT(*) AS FLOAT) / COUNT(DISTINCT kaynti_paiva),
             AVG(kesto_sekunteina),
-            AVG(matka)
+            AVG(matka),
+            MEDIAN(kesto_sekunteina),
+            MEDIAN(matka)
         FROM f_kaynti
     """).fetchone()
     
@@ -157,6 +159,8 @@ def _get_baseline_stats():
         "visits": res[0] or 0,
         "duration": (res[1] or 0) / 60.0,
         "distance": res[2] or 0,
+        "med_duration": (res[3] or 0) / 60.0,
+        "med_distance": res[4] or 0,
         "depts": res_o[0] or 0
     }
 
@@ -246,6 +250,7 @@ def render():
     avg_dur = df["kesto_sekunteina"].mean() / 60.0
     med_dur = df["kesto_sekunteina"].median() / 60.0
     avg_dist = df["matka"].mean()
+    med_dist = df["matka"].median()
     avg_spd = df["keskinopeus"].mean()
 
     # Deltas
@@ -253,8 +258,8 @@ def render():
         return (curr - base) / base * 100.0 if base > 0 else 0
 
     d_visits = get_d(v_per_day, baseline["visits"])
-    d_dur = get_d(avg_dur, baseline["duration"])
-    d_dist = get_d(avg_dist, baseline["distance"])
+    d_dur = get_d(med_dur, baseline["med_duration"])
+    d_dist = get_d(med_dist, baseline["med_distance"])
 
     hour_top = df.group_by("kaynti_tunti").agg(pl.len().alias("n")).sort("n", descending=True)
     busiest_h = int(hour_top["kaynti_tunti"][0])
@@ -274,8 +279,8 @@ def render():
 
     c1, c2, c3, c4 = st.columns(4)
     _kpi(c1, f"{total_visits:,}", "Käyntejä yhteensä", f"{v_per_day:.1f} / päivä", delta=d_visits)
-    _kpi(c2, f"{avg_dur:.1f}", "Keskim. kesto (min)", f"Mediaani {med_dur:.1f} min", delta=d_dur)
-    _kpi(c3, f"{avg_dist:.0f}", "Keskim. kävelymatka (m)", f"Nopeus {avg_spd:.2f} m/s", delta=d_dist)
+    _kpi(c2, f"{med_dur:.1f}", "Tyypillinen kesto (min)", f"Keskiarvo {avg_dur:.1f} min", delta=d_dur)
+    _kpi(c3, f"{med_dist:.0f}", "Tyypillinen matka (m)", f"Keskiarvo {avg_dist:.0f} m", delta=d_dist)
     _kpi(c4, f"{depts_per:.1f}", "Osastoja per käynti", delta=d_depts)
 
     c5, c6, c7, c8 = st.columns(4)
