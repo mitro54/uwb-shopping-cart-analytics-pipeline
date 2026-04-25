@@ -287,11 +287,18 @@ def render():
     _kpi(c3, f"{med_dist:.0f}", "Tyypillinen matka (m)", f"Keskiarvo {avg_dist:.0f} m", delta=d_dist)
     _kpi(c4, f"{depts_per:.1f}", "Osastoja per käynti", delta=d_depts)
 
-    c5, c6, c7, c8 = st.columns(4)
-    _kpi(c5, f"{busiest_h}:00", "Vilkkain tunti")
-    _kpi(c6, busiest_wd, "Vilkkain viikonpäivä")
-    _kpi(c7, f"{df['matka'].max():.0f}", "Pisin reitti (m)")
-    _kpi(c8, f"{df['kesto_sekunteina'].max() / 60:.0f}", "Pisin käynti (min)")
+    # Näytetään huiput vain jos tunti-suodatin ei ole aktiivinen
+    if not sel_hours:
+        c5, c6, c7, c8 = st.columns(4)
+        _kpi(c5, f"{busiest_h}:00", "Vilkkain tunti")
+        _kpi(c6, busiest_wd, "Vilkkain viikonpäivä")
+        _kpi(c7, f"{df['matka'].max():.0f}", "Pisin reitti (m)")
+        _kpi(c8, f"{df['kesto_sekunteina'].max() / 60:.0f}", "Pisin käynti (min)")
+    else:
+        # Jos tunti on valittu, näytetään vain loput kaksi mittaria
+        c7, c8, _gap1, _gap2 = st.columns(4)
+        _kpi(c7, f"{df['matka'].max():.0f}", "Pisin reitti (m)")
+        _kpi(c8, f"{df['kesto_sekunteina'].max() / 60:.0f}", "Pisin käynti (min)")
 
     # --- 1. Daily trend ----------------------------------------------------
     st.markdown('<div class="biz-section">📅 Käynnit päivittäin</div>', unsafe_allow_html=True)
