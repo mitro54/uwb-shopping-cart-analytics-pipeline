@@ -59,7 +59,7 @@ def _load() -> pl.DataFrame:
     return conn.execute("""
         SELECT grid_x, grid_y, total_pings,
                median_quality, min_quality,
-               low_quality_pings, jitter_pings, low_quality_pct, jitter_pct
+               low_quality_pings, jitter_pings, low_quality_pct
         FROM f_verkko_laatu
         ORDER BY grid_x, grid_y
     """).pl()
@@ -158,17 +158,11 @@ def render():
     # --- Heatmap controls ---
     st.markdown('<div class="vl-section">🗺️ Spatiaalinen heatmap</div>', unsafe_allow_html=True)
 
-    # p95 leikkaus jitter_pings-skaalalle — estää yksittäisten outliereiden
-    # venyttämästä koko skaalaa valkoiseksi
-    jitter_nonzero = df.filter(pl.col("jitter_pings") > 0)["jitter_pings"]
-    jitter_p95 = float(jitter_nonzero.quantile(0.95)) if len(jitter_nonzero) > 0 else None
-
     metric_opts = {
-        "Mediaanilaatu (q)":   ("median_quality",  "RdYlGn",   None,      None),
-        "Heikkolaatuisia (%)": ("low_quality_pct", "Reds",     0,         None),
-        "Jitter (%)":          ("jitter_pct",      "OrRd",     0,         10),
-        "Jitter-pingauksia":   ("jitter_pings",    "OrRd",     0,         jitter_p95),
-        "Pingauksia yhteensä": ("total_pings",     "Blues",    0,         None),
+        "Mediaanilaatu (q)": ("median_quality", "RdYlGn", None, None),
+        "Heikkolaatuisia (%)": ("low_quality_pct", "Reds", 0, None),
+        "Jitter-pingauksia": ("jitter_pings", "OrRd", 0, None),
+        "Pingauksia yhteensä": ("total_pings", "Blues", 0, None),
     }
     selected = st.selectbox("Näytettävä mittari", list(metric_opts.keys()))
     z_col, colorscale, zmin, zmax = metric_opts[selected]

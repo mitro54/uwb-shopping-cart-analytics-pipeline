@@ -46,20 +46,11 @@ nopeus_laskettu AS (
     SELECT
         *,
         -- Nopeus (m/s)
-        CASE
-            WHEN sekuntia_edellisesta > 0 THEN dist_m / sekuntia_edellisesta
-            ELSE 0
+        CASE 
+            WHEN sekuntia_edellisesta > 0 THEN dist_m / sekuntia_edellisesta 
+            ELSE 0 
         END AS speed_mps
     FROM rikastettu
-),
-jitter_ketju AS (
-    SELECT
-        *,
-        -- Oliko edellinen pingi myös jitter? Yksinkertainen 1 rivin LAG,
-        -- käytetään katkaisemaan jitter-ketjut gold-kerroksessa.
-        LAG(CASE WHEN speed_mps > {{ max_jump_speed }} THEN 1 ELSE 0 END)
-            OVER (PARTITION BY node_id ORDER BY aika) AS edellinen_oli_jitter
-    FROM nopeus_laskettu
 )
 
 SELECT
@@ -69,24 +60,21 @@ SELECT
     EXTRACT('hour' FROM aika) AS hour,
     x,
     y,
-    edellinen_x,
-    edellinen_y,
-    edellinen_oli_jitter,
     q,
     speed_mps,
     sekuntia_edellisesta,
-
+    
     -- Laitteistodiagnostiikan olennaiset TAGIT analytiikkaan
     -- 1. Heikko signaali (kyllä/ei)
     CASE WHEN q < {{ q_threshold }} THEN 1 ELSE 0 END AS is_low_quality,
-
+    
     -- 2. Seinien ulkopuolella eksyminen (kyllä/ei)
     CASE WHEN x < 0 OR x > {{ max_x }} OR y < 0 OR y > {{ max_y }} THEN 1 ELSE 0 END AS is_out_of_bounds,
-
+    
     -- 3. Jitter eli epäfysikaalinen hyppy (kyllä/ei)
     CASE WHEN speed_mps > {{ max_jump_speed }} THEN 1 ELSE 0 END AS is_jitter,
 
     -- 4. Kaupan aukioloaikojen ulkopuolella (Yöaika)
     CASE WHEN EXTRACT('hour' FROM aika) < {{ shop_open }} OR EXTRACT('hour' FROM aika) > {{ shop_close }} THEN 1 ELSE 0 END AS is_night_time
 
-FROM jitter_ketju
+FROM nopeus_laskettu

@@ -95,48 +95,25 @@ _CORR_WHERE = """
 def fetch_verkko(date_start: str, date_end: str) -> pl.DataFrame:
     conn = _get_conn()
     arrow = conn.execute(f"""
-        WITH src AS (
-            SELECT
-                FLOOR(x / 100.0) * 100          AS grid_x,
-                FLOOR(y / 100.0) * 100          AS grid_y,
-                q, is_low_quality, is_jitter,
-                edellinen_x, edellinen_y, edellinen_oli_jitter
-            FROM silver_device_diagnostics
-            WHERE is_out_of_bounds = 0
-              AND dt >= '{date_start}'
-              AND dt <= '{date_end}'
-        ),
-        main_agg AS (
-            SELECT
-                grid_x, grid_y,
-                COUNT(*)                                                     AS total_pings,
-                ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY q), 1)    AS median_quality,
-                MIN(q)                                                       AS min_quality,
-                SUM(is_low_quality)                                          AS low_quality_pings,
-                ROUND(SUM(is_low_quality) * 100.0 / NULLIF(COUNT(*), 0), 2) AS low_quality_pct
-            FROM src
-            GROUP BY grid_x, grid_y
-        ),
-        jitter_lahde AS (
-            SELECT
-                FLOOR(edellinen_x / 100.0) * 100 AS grid_x,
-                FLOOR(edellinen_y / 100.0) * 100 AS grid_y,
-                COUNT(*)                          AS jitter_pings
-            FROM src
-            WHERE is_jitter = 1
-              AND (edellinen_oli_jitter = 0 OR edellinen_oli_jitter IS NULL)
-              AND edellinen_x IS NOT NULL
-              AND edellinen_y IS NOT NULL
-            GROUP BY 1, 2
-        )
         SELECT
-            m.*,
-            COALESCE(j.jitter_pings, 0)                                          AS jitter_pings,
-            ROUND(COALESCE(j.jitter_pings, 0) * 100.0 / NULLIF(m.total_pings, 0), 2) AS jitter_pct
-        FROM main_agg m
-        LEFT JOIN jitter_lahde j ON m.grid_x = j.grid_x AND m.grid_y = j.grid_y
+            FLOOR(x / 100.0) * 100                                          AS grid_x,
+            FLOOR(y / 100.0) * 100                                          AS grid_y,
+            COUNT(*)                                                         AS total_pings,
+            ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY q), 1)          AS median_quality,
+            MIN(q)                                                           AS min_quality,
+            SUM(is_low_quality)                                              AS low_quality_pings,
+            SUM(is_jitter)                                                   AS jitter_pings,
+            ROUND(SUM(is_low_quality) * 100.0 / NULLIF(COUNT(*), 0), 2)     AS low_quality_pct
+        FROM silver_device_diagnostics
+        WHERE is_out_of_bounds = 0
+          AND dt >= '{date_start}'
+          AND dt <= '{date_end}'
+        GROUP BY grid_x, grid_y
     """).fetch_arrow_table()
-    return pl.from_arrow(arrow)
+    df = pl.from_arrow(arrow)
+    return df.with_columns(
+        (pl.col("jitter_pings") * 100.0 / pl.col("total_pings")).alias("jitter_pct")
+    )
 
 
 @st.cache_data(show_spinner="🔗 Haetaan korrelaatiodata…", ttl=300)
@@ -144,43 +121,18 @@ def fetch_verkko_corr(date_start: str, date_end: str) -> pl.DataFrame:
     """Grid aggregation with silver_positions filters for correlation analysis."""
     conn = _get_conn()
     arrow = conn.execute(f"""
-        WITH src AS (
-            SELECT
-                FLOOR(x / 100.0) * 100          AS grid_x,
-                FLOOR(y / 100.0) * 100          AS grid_y,
-                q, is_low_quality, is_jitter,
-                edellinen_x, edellinen_y, edellinen_oli_jitter
-            FROM silver_device_diagnostics
-            WHERE {_CORR_WHERE}
-              AND dt >= '{date_start}'
-              AND dt <= '{date_end}'
-        ),
-        main_agg AS (
-            SELECT
-                grid_x, grid_y,
-                COUNT(*)                                                     AS total_pings,
-                ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY q), 1)    AS median_quality,
-                ROUND(SUM(is_low_quality) * 100.0 / NULLIF(COUNT(*), 0), 2) AS low_quality_pct
-            FROM src
-            GROUP BY grid_x, grid_y
-        ),
-        jitter_lahde AS (
-            SELECT
-                FLOOR(edellinen_x / 100.0) * 100 AS grid_x,
-                FLOOR(edellinen_y / 100.0) * 100 AS grid_y,
-                COUNT(*)                          AS jitter_pings
-            FROM src
-            WHERE is_jitter = 1
-              AND (edellinen_oli_jitter = 0 OR edellinen_oli_jitter IS NULL)
-              AND edellinen_x IS NOT NULL
-              AND edellinen_y IS NOT NULL
-            GROUP BY 1, 2
-        )
         SELECT
-            m.*,
-            ROUND(COALESCE(j.jitter_pings, 0) * 100.0 / NULLIF(m.total_pings, 0), 2) AS jitter_pct
-        FROM main_agg m
-        LEFT JOIN jitter_lahde j ON m.grid_x = j.grid_x AND m.grid_y = j.grid_y
+            FLOOR(x / 100.0) * 100                                      AS grid_x,
+            FLOOR(y / 100.0) * 100                                      AS grid_y,
+            COUNT(*)                                                     AS total_pings,
+            ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY q), 1)     AS median_quality,
+            ROUND(SUM(is_jitter) * 100.0 / NULLIF(COUNT(*), 0), 2)     AS jitter_pct,
+            ROUND(SUM(is_low_quality) * 100.0 / NULLIF(COUNT(*), 0), 2) AS low_quality_pct
+        FROM silver_device_diagnostics
+        WHERE {_CORR_WHERE}
+          AND dt >= '{date_start}'
+          AND dt <= '{date_end}'
+        GROUP BY grid_x, grid_y
     """).fetch_arrow_table()
     return pl.from_arrow(arrow)
 
