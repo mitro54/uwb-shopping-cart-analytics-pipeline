@@ -69,6 +69,7 @@ def _get_conn():
 @st.cache_data(show_spinner=False, ttl=600)
 def _get_time_options():
     conn = _get_conn()
+    # Haetaan uniikit yhdistelmät, jotta voimme tehdä ristiinsuodatusta
     df = conn.execute("""
         SELECT 
             DISTINCT YEAR(kaynti_paiva) as year,
@@ -77,11 +78,7 @@ def _get_time_options():
             kaynti_tunti as hour
         FROM f_kaynti
     """).pl()
-    years = sorted(df["year"].unique().to_list())
-    months = sorted(df["month"].unique().to_list())
-    weeks = sorted(df["week"].unique().to_list())
-    hours = sorted(df["hour"].unique().to_list())
-    return years, months, weeks, hours
+    return df
 
 
 @st.cache_data(show_spinner="📅 Haetaan käyntidata…", ttl=300)
@@ -218,12 +215,21 @@ def render():
 
     # --- Filters ----------------------------------------------------------
     st.markdown("### ⚙️ Suodattimet")
-    years_opt, months_opt, weeks_opt, hours_opt = _get_time_options()
+    df_time = _get_time_options()
     
     col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+    
     with col_f1:
+        years_opt = sorted(df_time["year"].unique().to_list())
         sel_years = st.multiselect("Vuodet", options=years_opt, placeholder="Kaikki vuodet")
+    
     with col_f2:
+        # Suodatetaan kuukaudet valittujen vuosien mukaan
+        df_m = df_time
+        if sel_years:
+            df_m = df_m.filter(pl.col("year").is_in(sel_years))
+        months_opt = sorted(df_m["month"].unique().to_list())
+        
         month_labels = {
             1: "Tammi", 2: "Helmi", 3: "Maalis", 4: "Huhti", 5: "Touko", 6: "Kesä",
             7: "Heinä", 8: "Elo", 9: "Syys", 10: "Loka", 11: "Marras", 12: "Joulu"
@@ -234,15 +240,35 @@ def render():
             format_func=lambda x: month_labels.get(x, str(x)),
             placeholder="Kaikki kuukaudet"
         )
+    
     with col_f3:
+        # Suodatetaan viikot valittujen vuosien ja kuukausien mukaan
+        df_w = df_time
+        if sel_years:
+            df_w = df_w.filter(pl.col("year").is_in(sel_years))
+        if sel_months:
+            df_w = df_w.filter(pl.col("month").is_in(sel_months))
+        weeks_opt = sorted(df_w["week"].unique().to_list())
         sel_weeks = st.multiselect("Viikot", options=weeks_opt, placeholder="Kaikki viikot")
+    
     with col_f4:
+        # Tunnit voivat yleensä olla aina samat, mutta suodatetaan nekin datan mukaan varmuudeksi
+        df_h = df_time
+        if sel_years:
+            df_h = df_h.filter(pl.col("year").is_in(sel_years))
+        if sel_months:
+            df_h = df_h.filter(pl.col("month").is_in(sel_months))
+        if sel_weeks:
+            df_h = df_h.filter(pl.col("week").is_in(sel_weeks))
+            
+        hours_opt = sorted(df_h["hour"].unique().to_list())
         sel_hours = st.multiselect(
             "Kellonajat", 
             options=hours_opt, 
             format_func=lambda x: f"{x}:00",
             placeholder="Kaikki tunnit"
         )
+
     
     st.markdown("---")
     min_dwell = st.slider("Viipymäsuodatin (sekunteina, suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut. Suuremmilla osastoilla sallitaan pitempi läpikulkuun viittaava aika, pienillä lyhyempi. Valittu arvo on viitearvo suurimmalle osastolle.")
