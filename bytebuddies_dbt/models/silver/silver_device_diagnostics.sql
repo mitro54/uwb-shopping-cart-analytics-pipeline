@@ -33,7 +33,7 @@ WITH liikkeet AS (
         LAG(timestamp) OVER (PARTITION BY node_id ORDER BY timestamp) AS edellinen_aika
     FROM {{ ref('bronze_csv_data') }}
     WHERE x IS NOT NULL AND y IS NOT NULL
-    {{ var('excluded_zones_sql', '') }}
+    {{ get_exclusion_zones() }}
 ),
 rikastettu AS (
     SELECT
