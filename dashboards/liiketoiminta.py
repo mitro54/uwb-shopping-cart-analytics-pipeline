@@ -43,6 +43,10 @@ _CSS = """
 .biz-metric .val { font-size: 2.2rem; font-weight: 700; color: #60a5fa; }
 .biz-metric .lbl { font-size: 0.78rem; color: #94a3b8; margin-top: 0.3rem; font-weight: 500; }
 .biz-metric .sub { font-size: 0.7rem; color: #64748b; margin-top: 0.15rem; }
+.biz-metric .delta { font-size: 0.8rem; font-weight: 600; margin-top: 0.4rem; padding: 0.1rem 0.4rem; border-radius: 4px; display: inline-block; }
+.delta-up { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+.delta-down { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.delta-neutral { background: rgba(148, 163, 184, 0.1); color: #94a3b8; }
 .biz-section {
     font-size: 1.1rem; font-weight: 600; color: var(--text-color, #e2e8f0);
     margin: 1.5rem 0 0.6rem 0; border-left: 4px solid #3b82f6; padding-left: 0.6rem;
@@ -126,16 +130,65 @@ def _osasto(years, months, weeks, hours) -> pl.DataFrame:
     """).pl()
 
 
+@st.cache_data(show_spinner=False, ttl=600)
+def _get_baseline_stats():
+    conn = _get_conn()
+    # Lasketaan globaalit keskiarvot vertailupohjaksi
+    res = conn.execute("""
+        SELECT 
+            AVG(count_per_day) as avg_v,
+            AVG(avg_kesto) as avg_d,
+            AVG(avg_matka) as avg_m
+        FROM (
+            SELECT 
+                kaynti_paiva, 
+                COUNT(*) as count_per_day,
+                AVG(kesto_sekunteina) as avg_kesto,
+                AVG(matka) as avg_matka
+            FROM f_kaynti
+            GROUP BY kaynti_paiva
+        )
+    """).fetchone()
+    
+    # Osastokäyntien keskiarvo
+    res_o = conn.execute("""
+        SELECT AVG(n) FROM (
+            SELECT kaynti_id, COUNT(DISTINCT osasto_id) as n
+            FROM f_osastokaynti
+            GROUP BY kaynti_id
+        )
+    """).fetchone()
+    
+    return {
+        "visits": res[0] or 0,
+        "duration": (res[1] or 0) / 60.0,
+        "distance": res[2] or 0,
+        "depts": res_o[0] or 0
+    }
+
+
 # ---------------------------------------------------------------------------
 # Render helper
 # ---------------------------------------------------------------------------
-def _kpi(col, val, label, sub=""):
+def _kpi(col, val, label, sub="", delta=None, invert=False):
     sub_html = f'<div class="sub">{sub}</div>' if sub else ""
+    delta_html = ""
+    if delta is not None:
+        cls = "delta-neutral"
+        prefix = ""
+        if delta > 0.5:
+            cls = "delta-down" if invert else "delta-up"
+            prefix = "↑ "
+        elif delta < -0.5:
+            cls = "delta-up" if invert else "delta-down"
+            prefix = "↓ "
+        delta_html = f'<div class="delta {cls}">{prefix}{abs(delta):.1f}%</div>'
+
     col.markdown(
         f'<div class="biz-metric">'
         f'<div class="val">{val}</div>'
         f'<div class="lbl">{label}</div>'
-        f'{sub_html}</div>',
+        f'{sub_html}{delta_html}</div>',
         unsafe_allow_html=True,
     )
 
@@ -190,11 +243,24 @@ def render():
         st.stop()
 
     # --- KPI calculations --------------------------------------------------
-    total = len(df)
+    baseline = _get_baseline_stats()
+    
+    days_count = df["kaynti_paiva"].n_unique()
+    total_visits = len(df)
+    v_per_day = total_visits / days_count if days_count > 0 else 0
+    
     avg_dur = df["kesto_sekunteina"].mean() / 60.0
     med_dur = df["kesto_sekunteina"].median() / 60.0
     avg_dist = df["matka"].mean()
     avg_spd = df["keskinopeus"].mean()
+
+    # Deltas
+    def get_d(curr, base):
+        return (curr - base) / base * 100.0 if base > 0 else 0
+
+    d_visits = get_d(v_per_day, baseline["visits"])
+    d_dur = get_d(avg_dur, baseline["duration"])
+    d_dist = get_d(avg_dist, baseline["distance"])
 
     hour_top = df.group_by("kaynti_tunti").agg(pl.len().alias("n")).sort("n", descending=True)
     busiest_h = int(hour_top["kaynti_tunti"][0])
@@ -207,15 +273,16 @@ def render():
         depts_per = df_o.group_by("kaynti_id").agg(
             pl.col("osasto_id").n_unique().alias("n")
         )["n"].mean()
+    d_depts = get_d(depts_per, baseline["depts"])
 
     # --- KPI cards ---------------------------------------------------------
-    st.markdown('<div class="biz-section">📊 Yhteenveto</div>', unsafe_allow_html=True)
+    st.markdown('<div class="biz-section">📊 Yhteenveto ja vertailu keskiarvoon</div>', unsafe_allow_html=True)
 
     c1, c2, c3, c4 = st.columns(4)
-    _kpi(c1, f"{total:,}", "Käyntejä yhteensä")
-    _kpi(c2, f"{avg_dur:.1f}", "Keskim. kesto (min)", f"Mediaani {med_dur:.1f} min")
-    _kpi(c3, f"{avg_dist:.0f}", "Keskim. kävelymatka (m)", f"Nopeus {avg_spd:.2f} m/s")
-    _kpi(c4, f"{depts_per:.1f}", "Osastoja per käynti")
+    _kpi(c1, f"{total_visits:,}", "Käyntejä yhteensä", f"{v_per_day:.1f} / päivä", delta=d_visits)
+    _kpi(c2, f"{avg_dur:.1f}", "Keskim. kesto (min)", f"Mediaani {med_dur:.1f} min", delta=d_dur)
+    _kpi(c3, f"{avg_dist:.0f}", "Keskim. kävelymatka (m)", f"Nopeus {avg_spd:.2f} m/s", delta=d_dist)
+    _kpi(c4, f"{depts_per:.1f}", "Osastoja per käynti", delta=d_depts)
 
     c5, c6, c7, c8 = st.columns(4)
     _kpi(c5, f"{busiest_h}:00", "Vilkkain tunti")
