@@ -291,13 +291,45 @@ def render():
             placeholder="Kaikki tunnit"
         )
 
-    st.markdown("---")
-    min_dwell = st.slider("Viipymäsuodatin (sekunteina, suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut. Suuremmilla osastoilla sallitaan pitempi läpikulkuun viittaava aika, pienillä lyhyempi. Valittu arvo on viitearvo suurimmalle osastolle.")
+    # --- Visit Segmentation ------------------------------------------------
+    # Luodaan segmentit datan perusteella ennen varsinaista suodatusta
+    # (käytämme tätä suodattimen rakentamiseen)
+    raw_df = _kaynti(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours)
+    
+    def classify_visit(sec):
+        if sec < 300: return "Pikakäynti (< 5 min)"
+        if sec < 900: return "Peruskäynti (5-15 min)"
+        return "Viipymäkäynti (> 15 min)"
 
-    # --- Load data ---------------------------------------------------------
+    if not raw_df.is_empty():
+        raw_df = raw_df.with_columns(
+            pl.col("kesto_sekunteina").map_elements(classify_visit, return_dtype=pl.String).alias("segment")
+        )
+        segment_counts = raw_df["segment"].value_counts().sort("count", descending=True)
+        seg_options = segment_counts["segment"].to_list()
+    else:
+        seg_options = []
+
+    st.markdown("---")
+    col_seg1, col_seg2 = st.columns([1, 2])
+    with col_seg1:
+        sel_segments = st.multiselect("Kävijäsegmentit", options=seg_options, placeholder="Kaikki segmentit")
+    with col_seg2:
+        min_dwell = st.slider("Viipymäsuodatin (sekunteina, suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut osastotasolla.")
+
+    # --- Apply Segment Filter ----------------------------------------------
+    df = raw_df
+    if sel_segments:
+        df = df.filter(pl.col("segment").is_in(sel_segments))
+        # Suodataan myös osastodata vastaamaan valittuja segmenttejä
+        valid_ids = df["kaynti_id"].to_list()
+        df_o = _osasto(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours, min_dwell).filter(pl.col("kaynti_id").is_in(valid_ids))
+    else:
+        df_o = _osasto(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours, min_dwell)
+
+    # --- Load baseline (updated with min_dwell) ----------------------------
     baseline = _get_baseline_stats(min_dwell)
-    df = _kaynti(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours)
-    df_o = _osasto(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours, min_dwell)
+
     if df.is_empty():
         st.warning("Ei käyntejä valitulla aikavälillä.")
         st.stop()
@@ -344,6 +376,19 @@ def render():
     _kpi(c2, f"{med_dur:.1f}", "Tyypillinen kesto (min)", f"Keskiarvo {avg_dur:.1f} min", delta=d_dur)
     _kpi(c3, f"{med_dist:.0f}", "Tyypillinen matka (m)", f"Keskiarvo {avg_dist:.0f} m", delta=d_dist)
     _kpi(c4, f"{depts_per:.1f}", "Osastoja per käynti", delta=d_depts)
+
+    # Segmenttijakauma-rivi
+    if not df.is_empty():
+        st.markdown('<div class="biz-section">👥 Kävijäsegmenttien jakauma</div>', unsafe_allow_html=True)
+        counts = df["segment"].value_counts().sort("count", descending=True)
+        labels = counts["segment"].to_list()
+        values = counts["count"].to_list()
+        
+        # Näytetään segmentit pieninä metric-kortteina
+        cols = st.columns(len(labels))
+        for i, (lbl, val) in enumerate(zip(labels, values)):
+            percent = (val / total_visits) * 100
+            cols[i].metric(lbl, f"{val:,} kpl", f"{percent:.1f} %")
 
     # Näytetään huiput vain jos tunti-suodatin ei ole aktiivinen
     if not sel_hours:
