@@ -22,10 +22,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DUCKDB_PATH  = PROJECT_ROOT / "data" / "warehouse" / "dev.duckdb"
 IMAGE_PATH   = PROJECT_ROOT / "image" / "kauppa2.png"
 MAP_MAX_X, MAP_MAX_Y = 10406, 5220
-CHARGING_STATIONS = [
-    {"x": 100,  "y": 2500, "radius": 400},
-    {"x": 900,  "y": 3600, "radius": 600},
-]
 
 _CSS = """
 <style>
@@ -72,18 +68,9 @@ def _fetch_gold() -> pl.DataFrame:
     return conn.execute("SELECT * FROM f_paikannustarkkuus").pl().sort(["yo_paiva", "node_id"])
 
 
-def _charging_exclusion() -> str:
-    parts = []
-    for cs in CHARGING_STATIONS:
-        r_sq = cs["radius"] ** 2
-        parts.append(f"(POWER(x - {cs['x']}, 2) + POWER(y - {cs['y']}, 2) > {r_sq})")
-    return " AND ".join(parts)
-
-
 @st.cache_data(show_spinner="🔗 Haetaan yön raakadata…", ttl=300)
 def _fetch_night(node_id: str, yo_paiva: str, cx: float, cy: float) -> pl.DataFrame:
     conn      = _get_conn()
-    excl      = _charging_exclusion()
     next_date = str(_date.fromisoformat(yo_paiva) + timedelta(days=1))
     arrow = conn.execute(f"""
         WITH tz AS (
@@ -93,8 +80,7 @@ def _fetch_night(node_id: str, yo_paiva: str, cx: float, cy: float) -> pl.DataFr
             FROM silver_device_diagnostics
             WHERE node_id = '{node_id}'
               AND x IS NOT NULL AND y IS NOT NULL
-              AND x >= 500
-              AND {excl}
+              AND is_excluded_zone = 0
         )
         SELECT aika_hki,
                EXTRACT('hour' FROM aika_hki)::INT              AS tunti,

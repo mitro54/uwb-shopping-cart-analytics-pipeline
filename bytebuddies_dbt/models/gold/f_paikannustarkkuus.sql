@@ -23,11 +23,7 @@ WITH yopingit AS (
         AS DATE) AS yo_paiva
     FROM {{ ref('silver_device_diagnostics') }}
     WHERE x IS NOT NULL AND y IS NOT NULL
-      AND x >= 500
-      -- Latausasema 1 poissuljettu (x=100, y=2500, r=400)
-      AND (POWER(x - 100,  2) + POWER(y - 2500, 2) > 160000)
-      -- Latausasema 2 poissuljettu (x=900, y=3600, r=600)
-      AND (POWER(x - 900,  2) + POWER(y - 3600, 2) > 360000)
+      AND is_excluded_zone = 0
       AND (
           EXTRACT('hour' FROM aika) >= 22
           OR EXTRACT('hour' FROM aika) < 7
