@@ -107,9 +107,9 @@ def _kaynti(years, months, weeks, hours) -> pl.DataFrame:
 
 
 @st.cache_data(show_spinner="🏬 Haetaan osastodata…", ttl=300)
-def _osasto(years, months, weeks, hours) -> pl.DataFrame:
+def _osasto(years, months, weeks, hours, min_dwell: int = 0) -> pl.DataFrame:
     conn = _get_conn()
-    where_clauses = []
+    where_clauses = [f"ok.vietetty_aika_sekunteina >= {min_dwell}"]
     if years:
         where_clauses.append(f"YEAR(k.kaynti_paiva) IN ({','.join(map(str, years))})")
     if months:
@@ -119,7 +119,7 @@ def _osasto(years, months, weeks, hours) -> pl.DataFrame:
     if hours:
         where_clauses.append(f"k.kaynti_tunti IN ({','.join(map(str, hours))})")
     
-    where_str = " AND ".join(where_clauses) if where_clauses else "1=1"
+    where_str = " AND ".join(where_clauses)
     return conn.execute(f"""
         SELECT ok.kaynti_id, ok.osasto_id, ok.osaston_nimi,
                ok.vietetty_aika_sekunteina, ok.matka_osastolla_m,
@@ -131,11 +131,9 @@ def _osasto(years, months, weeks, hours) -> pl.DataFrame:
 
 
 @st.cache_data(show_spinner=False, ttl=600)
-def _get_baseline_stats():
+def _get_baseline_stats(min_dwell: int = 0):
     conn = _get_conn()
     # Lasketaan globaalit keskiarvot vertailupohjaksi
-    # Huom: Jotta oletusnäkymä (kaikki data) näyttää 0% eron,
-    # baseline pitää laskea samalla tavalla kuin dashboardin mittarit.
     res = conn.execute("""
         SELECT 
             CAST(COUNT(*) AS FLOAT) / COUNT(DISTINCT kaynti_paiva),
@@ -146,12 +144,13 @@ def _get_baseline_stats():
         FROM f_kaynti
     """).fetchone()
     
-    # Osastokäyntien keskiarvo (kuten _osasto() -funktiossa)
-    res_o = conn.execute("""
+    # Osastokäyntien keskiarvo filteröitynä minimiviipymällä
+    res_o = conn.execute(f"""
         SELECT AVG(n) FROM (
             SELECT ok.kaynti_id, COUNT(DISTINCT ok.osasto_id) as n
             FROM f_osastokaynti ok
             INNER JOIN f_kaynti k ON ok.kaynti_id = k.kaynti_id
+            WHERE ok.vietetty_aika_sekunteina >= {min_dwell}
             GROUP BY ok.kaynti_id
         )
     """).fetchone()
@@ -233,10 +232,14 @@ def render():
             format_func=lambda x: f"{x}:00",
             placeholder="Kaikki tunnit"
         )
+    
+    st.markdown("---")
+    min_dwell = st.slider("Minimiviipymä osastolla (sekuntia)", 0, 300, 30, help="Suodata pois nopeat läpikulkumatkat. Vain osastokäynnit, jotka kestävät vähintään tämän ajan, lasketaan mukaan.")
 
     # --- Load data ---------------------------------------------------------
+    baseline = _get_baseline_stats(min_dwell)
     df = _kaynti(sel_years, sel_months, sel_weeks, sel_hours)
-    df_o = _osasto(sel_years, sel_months, sel_weeks, sel_hours)
+    df_o = _osasto(sel_years, sel_months, sel_weeks, sel_hours, min_dwell)
     if df.is_empty():
         st.warning("Ei käyntejä valitulla aikavälillä.")
         st.stop()
