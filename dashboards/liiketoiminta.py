@@ -69,27 +69,31 @@ def _get_time_options():
         SELECT 
             DISTINCT YEAR(kaynti_paiva) as year,
             MONTH(kaynti_paiva) as month,
-            WEEK(kaynti_paiva) as week
+            WEEK(kaynti_paiva) as week,
+            kaynti_tunti as hour
         FROM f_kaynti
     """).pl()
     years = sorted(df["year"].unique().to_list())
     months = sorted(df["month"].unique().to_list())
     weeks = sorted(df["week"].unique().to_list())
-    return years, months, weeks
+    hours = sorted(df["hour"].unique().to_list())
+    return years, months, weeks, hours
 
 
 @st.cache_data(show_spinner="📅 Haetaan käyntidata…", ttl=300)
-def _kaynti(years, months, weeks, h0: int, h1: int) -> pl.DataFrame:
+def _kaynti(years, months, weeks, hours) -> pl.DataFrame:
     conn = _get_conn()
-    where_clauses = [f"kaynti_tunti >= {h0} AND kaynti_tunti <= {h1}"]
+    where_clauses = []
     if years:
         where_clauses.append(f"YEAR(kaynti_paiva) IN ({','.join(map(str, years))})")
     if months:
         where_clauses.append(f"MONTH(kaynti_paiva) IN ({','.join(map(str, months))})")
     if weeks:
         where_clauses.append(f"WEEK(kaynti_paiva) IN ({','.join(map(str, weeks))})")
+    if hours:
+        where_clauses.append(f"kaynti_tunti IN ({','.join(map(str, hours))})")
     
-    where_str = " AND ".join(where_clauses)
+    where_str = " AND ".join(where_clauses) if where_clauses else "1=1"
     return conn.execute(f"""
         SELECT kaynti_id, node_id, kaynti_paiva, kaynti_tunti,
                kaynti_viikonpaiva, kesto_sekunteina, matka, keskinopeus
@@ -99,17 +103,19 @@ def _kaynti(years, months, weeks, h0: int, h1: int) -> pl.DataFrame:
 
 
 @st.cache_data(show_spinner="🏬 Haetaan osastodata…", ttl=300)
-def _osasto(years, months, weeks, h0: int, h1: int) -> pl.DataFrame:
+def _osasto(years, months, weeks, hours) -> pl.DataFrame:
     conn = _get_conn()
-    where_clauses = [f"k.kaynti_tunti >= {h0} AND k.kaynti_tunti <= {h1}"]
+    where_clauses = []
     if years:
         where_clauses.append(f"YEAR(k.kaynti_paiva) IN ({','.join(map(str, years))})")
     if months:
         where_clauses.append(f"MONTH(k.kaynti_paiva) IN ({','.join(map(str, months))})")
     if weeks:
         where_clauses.append(f"WEEK(k.kaynti_paiva) IN ({','.join(map(str, weeks))})")
+    if hours:
+        where_clauses.append(f"k.kaynti_tunti IN ({','.join(map(str, hours))})")
     
-    where_str = " AND ".join(where_clauses)
+    where_str = " AND ".join(where_clauses) if where_clauses else "1=1"
     return conn.execute(f"""
         SELECT ok.kaynti_id, ok.osasto_id, ok.osaston_nimi,
                ok.vietetty_aika_sekunteina, ok.matka_osastolla_m,
@@ -150,9 +156,9 @@ def render():
 
     # --- Filters ----------------------------------------------------------
     st.markdown("### ⚙️ Suodattimet")
-    years_opt, months_opt, weeks_opt = _get_time_options()
+    years_opt, months_opt, weeks_opt, hours_opt = _get_time_options()
     
-    col_f1, col_f2, col_f3 = st.columns(3)
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
     with col_f1:
         sel_years = st.multiselect("Vuodet", options=years_opt, placeholder="Kaikki vuodet")
     with col_f2:
@@ -168,19 +174,17 @@ def render():
         )
     with col_f3:
         sel_weeks = st.multiselect("Viikot", options=weeks_opt, placeholder="Kaikki viikot")
-
-    col_f4 = st.columns(1)[0]
     with col_f4:
-        hour_range = st.slider(
-            "Kellonajat", min_value=0, max_value=23,
-            value=(0, 23), step=1, format="%d:00"
+        sel_hours = st.multiselect(
+            "Kellonajat", 
+            options=hours_opt, 
+            format_func=lambda x: f"{x}:00",
+            placeholder="Kaikki tunnit"
         )
-    
-    h0, h1 = hour_range
 
     # --- Load data ---------------------------------------------------------
-    df = _kaynti(sel_years, sel_months, sel_weeks, h0, h1)
-    df_o = _osasto(sel_years, sel_months, sel_weeks, h0, h1)
+    df = _kaynti(sel_years, sel_months, sel_weeks, sel_hours)
+    df_o = _osasto(sel_years, sel_months, sel_weeks, sel_hours)
     if df.is_empty():
         st.warning("Ei käyntejä valitulla aikavälillä.")
         st.stop()
