@@ -75,6 +75,7 @@ def _get_time_options():
             DISTINCT YEAR(kaynti_paiva) as year,
             MONTH(kaynti_paiva) as month,
             WEEK(kaynti_paiva) as week,
+            kaynti_viikonpaiva as weekday,
             kaynti_tunti as hour
         FROM f_kaynti
     """).pl()
@@ -82,7 +83,7 @@ def _get_time_options():
 
 
 @st.cache_data(show_spinner="📅 Haetaan käyntidata…", ttl=300)
-def _kaynti(years, months, weeks, hours) -> pl.DataFrame:
+def _kaynti(years, months, weeks, weekdays, hours) -> pl.DataFrame:
     conn = _get_conn()
     where_clauses = []
     if years:
@@ -91,6 +92,8 @@ def _kaynti(years, months, weeks, hours) -> pl.DataFrame:
         where_clauses.append(f"MONTH(kaynti_paiva) IN ({','.join(map(str, months))})")
     if weeks:
         where_clauses.append(f"WEEK(kaynti_paiva) IN ({','.join(map(str, weeks))})")
+    if weekdays:
+        where_clauses.append(f"kaynti_viikonpaiva IN ({','.join(map(str, weekdays))})")
     if hours:
         where_clauses.append(f"kaynti_tunti IN ({','.join(map(str, hours))})")
     
@@ -104,7 +107,7 @@ def _kaynti(years, months, weeks, hours) -> pl.DataFrame:
 
 
 @st.cache_data(show_spinner="🏬 Haetaan osastodata…", ttl=300)
-def _osasto(years, months, weeks, hours, min_dwell: int = 0) -> pl.DataFrame:
+def _osasto(years, months, weeks, weekdays, hours, min_dwell: int = 0) -> pl.DataFrame:
     conn = _get_conn()
     
     # Suhteellinen suodatus: lasketaan osaston koko (diagonaali) ja suhteutetaan viipymä siihen
@@ -120,6 +123,8 @@ def _osasto(years, months, weeks, hours, min_dwell: int = 0) -> pl.DataFrame:
         where_clauses.append(f"MONTH(k.kaynti_paiva) IN ({','.join(map(str, months))})")
     if weeks:
         where_clauses.append(f"WEEK(k.kaynti_paiva) IN ({','.join(map(str, weeks))})")
+    if weekdays:
+        where_clauses.append(f"k.kaynti_viikonpaiva IN ({','.join(map(str, weekdays))})")
     if hours:
         where_clauses.append(f"k.kaynti_tunti IN ({','.join(map(str, hours))})")
     
@@ -133,6 +138,7 @@ def _osasto(years, months, weeks, hours, min_dwell: int = 0) -> pl.DataFrame:
         INNER JOIN dim_osastot d ON ok.osasto_id = d.osasto_id
         WHERE {where_str}
     """).pl()
+
 
 
 @st.cache_data(show_spinner=False, ttl=600)
@@ -217,19 +223,17 @@ def render():
     st.markdown("### ⚙️ Suodattimet")
     df_time = _get_time_options()
     
-    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+    col_f1, col_f2, col_f3 = st.columns(3)
     
     with col_f1:
         years_opt = sorted(df_time["year"].unique().to_list())
         sel_years = st.multiselect("Vuodet", options=years_opt, placeholder="Kaikki vuodet")
     
     with col_f2:
-        # Suodatetaan kuukaudet valittujen vuosien mukaan
         df_m = df_time
         if sel_years:
             df_m = df_m.filter(pl.col("year").is_in(sel_years))
         months_opt = sorted(df_m["month"].unique().to_list())
-        
         month_labels = {
             1: "Tammi", 2: "Helmi", 3: "Maalis", 4: "Huhti", 5: "Touko", 6: "Kesä",
             7: "Heinä", 8: "Elo", 9: "Syys", 10: "Loka", 11: "Marras", 12: "Joulu"
@@ -242,7 +246,6 @@ def render():
         )
     
     with col_f3:
-        # Suodatetaan viikot valittujen vuosien ja kuukausien mukaan
         df_w = df_time
         if sel_years:
             df_w = df_w.filter(pl.col("year").is_in(sel_years))
@@ -250,9 +253,26 @@ def render():
             df_w = df_w.filter(pl.col("month").is_in(sel_months))
         weeks_opt = sorted(df_w["week"].unique().to_list())
         sel_weeks = st.multiselect("Viikot", options=weeks_opt, placeholder="Kaikki viikot")
-    
+
+    col_f4, col_f5 = st.columns(2)
     with col_f4:
-        # Tunnit voivat yleensä olla aina samat, mutta suodatetaan nekin datan mukaan varmuudeksi
+        df_wd = df_time
+        if sel_years:
+            df_wd = df_wd.filter(pl.col("year").is_in(sel_years))
+        if sel_months:
+            df_wd = df_wd.filter(pl.col("month").is_in(sel_months))
+        if sel_weeks:
+            df_wd = df_wd.filter(pl.col("week").is_in(sel_weeks))
+        
+        wd_opt = sorted(df_wd["weekday"].unique().to_list())
+        sel_weekdays = st.multiselect(
+            "Viikonpäivät", 
+            options=wd_opt,
+            format_func=lambda x: WEEKDAY_LABELS[x-1],
+            placeholder="Kaikki päivät"
+        )
+    
+    with col_f5:
         df_h = df_time
         if sel_years:
             df_h = df_h.filter(pl.col("year").is_in(sel_years))
@@ -260,6 +280,8 @@ def render():
             df_h = df_h.filter(pl.col("month").is_in(sel_months))
         if sel_weeks:
             df_h = df_h.filter(pl.col("week").is_in(sel_weeks))
+        if sel_weekdays:
+            df_h = df_h.filter(pl.col("weekday").is_in(sel_weekdays))
             
         hours_opt = sorted(df_h["hour"].unique().to_list())
         sel_hours = st.multiselect(
@@ -269,14 +291,13 @@ def render():
             placeholder="Kaikki tunnit"
         )
 
-    
     st.markdown("---")
     min_dwell = st.slider("Viipymäsuodatin (sekunteina, suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut. Suuremmilla osastoilla sallitaan pitempi läpikulkuun viittaava aika, pienillä lyhyempi. Valittu arvo on viitearvo suurimmalle osastolle.")
 
     # --- Load data ---------------------------------------------------------
     baseline = _get_baseline_stats(min_dwell)
-    df = _kaynti(sel_years, sel_months, sel_weeks, sel_hours)
-    df_o = _osasto(sel_years, sel_months, sel_weeks, sel_hours, min_dwell)
+    df = _kaynti(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours)
+    df_o = _osasto(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours, min_dwell)
     if df.is_empty():
         st.warning("Ei käyntejä valitulla aikavälillä.")
         st.stop()
