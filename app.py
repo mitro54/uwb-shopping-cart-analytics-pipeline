@@ -149,7 +149,7 @@ st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigointi",
-    ["📈 Liiketoiminta Dashboard", "💬 Agenttichat", "📊 Tietokantakyselyt", "🗺️ Myymäläanalytiikka", "🖼️ Generoidut kuvaajat", "ℹ️ Tietoa sovelluksesta"],
+    ["📈 Liiketoiminta Dashboard", "💬 Agenttichat", "📊 Tietokantakyselyt", "🗺️ Myymäläanalytiikka", "⚙️ Osastojen konfigurointi", "🖼️ Generoidut kuvaajat", "ℹ️ Tietoa sovelluksesta"],
     label_visibility="collapsed",
 )
 
@@ -703,3 +703,7 @@ elif page == "🗺️ Myymäläanalytiikka":
 elif page == "📈 Liiketoiminta Dashboard":
     from dashboards.liiketoiminta import render as render_liiketoiminta
     render_liiketoiminta()
+
+elif page == "⚙️ Osastojen konfigurointi":
+    from dashboards.kartta_editori import render as render_editori
+    render_editori()
