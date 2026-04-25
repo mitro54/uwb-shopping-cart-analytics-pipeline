@@ -395,8 +395,8 @@ elif page == "💬 Agenttichat":
         )
         shown = set()
         for p in potential_paths:
-            # Siivoa välimerkit lopusta
-            p_clean = p.rstrip(".,;:!?\"'`)]}>")
+            # Siivoa välimerkit ja markdown-muotoilut lopusta
+            p_clean = p.rstrip(".,;:!?\"'`)]}>*~")
             # Normalisoi polku
             p_norm = p_clean.replace("/", os.sep).replace("\\", os.sep)
 
