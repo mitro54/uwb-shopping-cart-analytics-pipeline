@@ -149,7 +149,6 @@ st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigointi",
-<<<<<<< HEAD
     ["📈 Liiketoiminta Dashboard", "💬 Agenttichat", "📊 Tietokantakyselyt", "🗺️ Myymäläanalytiikka", "🛠️ Advanced Features", "🖼️ Generoidut kuvaajat", "ℹ️ Tietoa sovelluksesta"],
 
     label_visibility="collapsed",
