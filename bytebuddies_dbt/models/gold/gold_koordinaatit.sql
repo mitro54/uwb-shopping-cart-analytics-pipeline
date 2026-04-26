@@ -52,7 +52,7 @@ pysahdykset_perus AS (
         x,
         y,
         in_checkout
-    FROM {{ ref('silver_positions') }}
+    FROM {{ ref('gold_reitit') }}
     WHERE speed_mps <= 0.1
       AND sekuntia_edellisesta >= 0
       AND sekuntia_edellisesta <= 120  -- Maksimissaan 2 minuutin yksittäinen pysähdys
