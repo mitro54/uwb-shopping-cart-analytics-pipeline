@@ -541,49 +541,50 @@ jotta voin arvioida eri tuoteosastojen houkuttelevuutta ja tehokkuutta.
 
 ***
 
-## Sprint 5 – BI & Agentti-integraatiot
+## Sprint 5 – BI, Agentit & Hallintatyökalut
 
-### Ajanjakso: 20.4. – 24.4.2026
+### Ajanjakso: 20.4. – 27.4.2026
 
 **Tavoitteet:**
 - Agenttien kytkeminen suoraan DuckDB-kantaan (luku & kirjoitus).
 - Agenttien muistin (Feedback Loop) toteutus.
 - Liiketoiminta-dashboardin visualisointien parantaminen (segmentointi, mediaanit).
+- Hallintatyökalujen (Advanced Features) alustus.
 
-**Toteutuma:**
-- [x] Agentit osaavat nyt hakea skeeman ja generoida SQL-kyselyitä.
-- [x] Käyttäjäpalaute tallentuu tietokantaan ja ohjaa agenttien tulevia vastauksia.
-- [x] Liiketoiminta-dashboard päivitetty käyttämään mediaaneja ja cascading-filttereitä.
+**Toteutuma (päivitetty 26.4.2026):**
+- [x] **Agentti-integraatio:** Agentit osaavat nyt hakea skeeman ja generoida SQL-kyselyitä.
+- [x] **Feedback Loop:** Käyttäjäpalaute tallentuu tietokantaan ja ohjaa agentteja.
+- [x] **Liiketoiminta UI:** Päivitetty käyttämään mediaaneja ja cascading-filttereitä.
+- [x] **Advanced Features:** Toteutettu LLM-konfiguraatio, erikoistapahtumien hallinta ja interaktiivinen karttaeditori (integroitu `app.py`).
+- [x] **Navigointi:** Yhtenäistetty käyttöliittymä seitsemällä eri analyysisivulla.
+- [x] **Technical Explorer:** Erillinen työkalu paikannusyrityksen teknisiin tarpeisiin (`overnight_explorer.py`).
 
 ***
 
-## Sprint 6 & 7 – Dashboardin viimeistely ja Advanced Features
+## Sprint 6 – Raportoinnin viimeistely ja validointi [SUUNNITELTU]
 
-### Ajanjakso: 25.4. – 26.4.2026 (Intensiiviviikonloppu)
+### Ajanjakso: 27.4. – 1.5.2026
 
 **Tavoitteet:**
-- Kaikkien analytiikkaominaisuuksien yhdistäminen yhteen UI:hin.
-- Ylläpitotyökalujen (Advanced Features) toteutus.
-- Dokumentaation ja arkkitehtuurikuvauksien (ADR) viimeistely.
+- Dashboardien hienosäätö ja bugien korjaus.
+- Datan oikeellisuuden lopullinen validointi (Gold-taso).
+- Käyttäjäohjeiden viimeistely demon varten.
 
-**Toteutuma:**
-- [x] **Advanced Features:** Toteutettu LLM-konfiguraatio, erikoistapahtumien hallinta ja interaktiivinen karttaeditori.
-- [x] **Navigointi:** Yhtenäistetty Streamlit-käyttöliittymä seitsemällä eri sivulla.
-- [x] **Technical Explorer:** Erillinen työkalu paikannusyrityksen teknisiin tarpeisiin.
-- [x] **Valmiustila:** Kaikki haarat yhdistetty `main`-haaraan ja DoD (Definition of Done) saavutettu.
+***
 
-## Projektin yhteenveto
+## Sprint 7 – Projektin lopputyöt [SUUNNITELTU]
 
-Projekti onnistui rakentamaan modernin ja automatisoidun IoT-analytiikkaputken. Medallion-arkkitehtuuri DuckDB:n ja dbt:n päällä osoittautui erittäin tehokkaaksi paikalliseen analytiikkaan. Tekoälyagentit tuovat järjestelmään uniikin "Ask your data" -ominaisuuden, joka madaltaa kynnystä monimutkaisten spatiaalisten analyysien tekemiseen.
+### Ajanjakso: 4.5. – 8.5.2026
 
-**Keskeiset tuotokset:**
-1. **Datan Hallinta:** Täysin skriptattu dbt-putki raakadatasta Gold-tasolle.
-2. **Business UI:** Streamlit-dashboard liiketoiminnan seurantaan.
-3. **Technical UI:** Kattava työkalu paikannustarkkuuden diagnosointiin.
-4. **AI-Agentit:** Orkestraattori-, Analytiikka- ja Visualisointiagentit.
+**Tavoitteet:**
+- Projektin viimeinen demo.
+- Loppudokumentaation paketointi.
+- Definition of Done (DoD) tarkistus ja projektin sulkeminen.
+
+***
 
 ## Koko ryhmän työaikayhteenveto
-- **Yhteensä:** n. 450 - 500 tuntia (sisältäen suunnittelun, toteutuksen ja dokumentoinnin).
+- **Päivitetty tilanne:** n. 380 - 420 tuntia (Sprint 5 loppuvaiheessa).
 - **Tiimi:** Toni, Joni, Mitro, Tuija, Panu.
 
 
