@@ -12,18 +12,19 @@ WITH session_validation_base AS (
     -- 1. KERÄTÄÄN TUNNUSLUVUT LOPULLISTA VALIDIOINTIA VARTEN
     SELECT
         full_session_id,
-        MIN(aika) AS session_start,
-        MAX(aika) AS session_end,
-        SUM(dist_m) AS total_dist_m,
-        COUNT(*) AS point_count,
-        MIN(x) AS min_x,
-        MAX(x) AS max_x,
-        MIN(y) AS min_y,
-        MAX(y) AS max_y,
-        -- Aloituspisteen koordinaatit (haetaan rnk_start = 1 kohdalta)
+        -- Lasketaan tunnusluvut vain myymälän puolelta (in_checkout = 0)
+        MIN(CASE WHEN in_checkout = 0 THEN aika ELSE NULL END) AS session_start,
+        MAX(CASE WHEN in_checkout = 0 THEN aika ELSE NULL END) AS session_end,
+        SUM(CASE WHEN in_checkout = 0 THEN dist_m ELSE 0 END) AS total_dist_m,
+        SUM(CASE WHEN in_checkout = 0 THEN 1 ELSE 0 END) AS point_count,
+        MIN(CASE WHEN in_checkout = 0 THEN x ELSE NULL END) AS min_x,
+        MAX(CASE WHEN in_checkout = 0 THEN x ELSE NULL END) AS max_x,
+        MIN(CASE WHEN in_checkout = 0 THEN y ELSE NULL END) AS min_y,
+        MAX(CASE WHEN in_checkout = 0 THEN y ELSE NULL END) AS max_y,
+        -- Aloituspisteen koordinaatit (haetaan koko reitin rnk_start = 1 kohdalta)
         MAX(CASE WHEN rnk_start = 1 THEN x ELSE NULL END) AS first_x,
         MAX(CASE WHEN rnk_start = 1 THEN y ELSE NULL END) AS first_y,
-        -- Päättyminen kassoille (tail 5)
+        -- Päättyminen kassoille (tail 5 katsotaan koko reitistä)
         MAX(CASE WHEN rnk_back <= 5 AND in_checkout = 1 THEN 1 ELSE 0 END) AS ends_in_checkout
     FROM {{ ref('silver_positions') }}
     GROUP BY full_session_id
