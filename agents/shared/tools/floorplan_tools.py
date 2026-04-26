@@ -247,31 +247,48 @@ def plot_on_floorplan(
                 time_colors = elapsed_min
                 cbar_label = "Ajan kulku (minuuttia)"
                 
-                # Pysähdyspaikkojen tunnistus: tasoitetaan nopeutta 10 sekunnin ikkunalla
+                # Pysähdyspaikkojen tunnistus ja keston laskenta
                 if "speed_mps" in df.columns:
                     smoothed_speed = df["speed_mps"].rolling(window=10, min_periods=1).mean()
-                    is_stopped = smoothed_speed < 0.15
-                    # Poimitaan vain ne hetket kun pysähdys alkaa
-                    stop_starts = is_stopped & (~is_stopped.shift(1, fill_value=False))
                     
-                    # Spatiaalinen yhdistäminen (Clustering): karsitaan samassa paikassa tapahtuvat mikropysähdykset
-                    dwell_candidates = df[stop_starts]
                     valid_dwells = []
-                    last_x, last_y = None, None
+                    current_dwell = None
                     
-                    for _, row in dwell_candidates.iterrows():
-                        if last_x is None:
-                            valid_dwells.append(row)
-                            last_x, last_y = row["x_m"], row["y_m"]
+                    # Tehokkaampi läpikäynti tilakoneella, jossa seurataan pysähdysaikaa ja sijaintia
+                    for x, y, aika, speed in zip(df["x_m"], df["y_m"], df["aika"], smoothed_speed):
+                        if speed < 0.15:
+                            if current_dwell is None:
+                                # Uusi pysähdys alkaa
+                                current_dwell = {"x_m": x, "y_m": y, "start_time": aika, "end_time": aika}
+                            else:
+                                # Ollaan pysähdyksissä. Tarkistetaan onko liikuttu liikaa (yli 1.5m).
+                                dist = ((x - current_dwell["x_m"])**2 + (y - current_dwell["y_m"])**2)**0.5
+                                if dist > 1.5:
+                                    # Liikuttu liikaa -> edellinen pysähdys päättyy, uusi alkaa
+                                    valid_dwells.append(current_dwell)
+                                    current_dwell = {"x_m": x, "y_m": y, "start_time": aika, "end_time": aika}
+                                else:
+                                    # Pysytään paikallaan -> päivitetään vain päättymisaikaa
+                                    current_dwell["end_time"] = aika
                         else:
-                            # Lasketaan etäisyys edelliseen rekisteröityyn pysähdykseen
-                            dist = ((row["x_m"] - last_x)**2 + (row["y_m"] - last_y)**2)**0.5
-                            if dist > 1.5:  # Vaaditaan vähintään 1.5 metrin siirtymä uutta pysähdystä varten
-                                valid_dwells.append(row)
-                                last_x, last_y = row["x_m"], row["y_m"]
+                            # Ei olla pysähdyksissä. Jos oli käynnissä, se päättyy.
+                            if current_dwell is not None:
+                                valid_dwells.append(current_dwell)
+                                current_dwell = None
                                 
-                    dwells = pd.DataFrame(valid_dwells)
-                    num_stops = len(dwells)
+                    if current_dwell is not None:
+                        valid_dwells.append(current_dwell)
+                        
+                    if valid_dwells:
+                        dwells = pd.DataFrame(valid_dwells)
+                        # Lasketaan kesto sekunteina
+                        dwells["kesto_s"] = (dwells["end_time"] - dwells["start_time"]).dt.total_seconds()
+                        # Suodatetaan pois alle 5 sekunnin mikropysähdykset
+                        dwells = dwells[dwells["kesto_s"] >= 5.0]
+                        num_stops = len(dwells)
+                    else:
+                        dwells = pd.DataFrame()
+                        num_stops = 0
                 
                 # Päivitetään otsikko
                 if "dist_m" in df.columns:
@@ -282,6 +299,15 @@ def plot_on_floorplan(
             # Pysähdyspaikat piirretään reitin päälle
             if num_stops > 0 and not dwells.empty:
                 ax.scatter(dwells["x_m"], dwells["y_m"], color="hotpink", edgecolor="white", marker="o", s=100, alpha=0.9, zorder=3.5, label=f"Pysähdykset ({num_stops} kpl)")
+                
+                # Kirjoitetaan pysähdysaika markerin viereen
+                for _, row in dwells.iterrows():
+                    kesto_min = int(row["kesto_s"] // 60)
+                    kesto_sek = int(row["kesto_s"] % 60)
+                    aika_str = f"{kesto_min}m {kesto_sek}s" if kesto_min > 0 else f"{kesto_sek}s"
+                    
+                    ax.text(row["x_m"] + 0.4, row["y_m"] + 0.4, aika_str, fontsize=8, color='white', 
+                            bbox=dict(facecolor='black', alpha=0.6, edgecolor='none', boxstyle='round,pad=0.2'), zorder=4.5)
             
             # Piirretään pisteet aikavärillä
             sc = ax.scatter(
