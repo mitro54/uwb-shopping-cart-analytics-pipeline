@@ -149,7 +149,9 @@ st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigointi",
+<<<<<<< HEAD
     ["📈 Liiketoiminta Dashboard", "💬 Agenttichat", "📊 Tietokantakyselyt", "🗺️ Myymäläanalytiikka", "🛠️ Advanced Features", "🖼️ Generoidut kuvaajat", "ℹ️ Tietoa sovelluksesta"],
+
     label_visibility="collapsed",
 )
 
@@ -707,3 +709,4 @@ elif page == "📈 Liiketoiminta Dashboard":
 elif page == "🛠️ Advanced Features":
     from dashboards.advanced_admin import render as render_admin
     render_admin()
+
