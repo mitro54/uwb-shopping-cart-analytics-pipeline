@@ -43,26 +43,8 @@ def load_css(file_name):
 load_css("style.css")
 
 
-# --- Ollama-mallien haku ---
-@st.cache_data(ttl=120, show_spinner=False)
-def fetch_ollama_models():
-    """Hakee saatavilla olevat mallit Ollama API:sta."""
-    try:
-        resp = requests.get(f"{CONFIG.ollama_base_url}/api/tags", timeout=5)
-        resp.raise_for_status()
-        models = resp.json().get("models", [])
-        return sorted([m["name"] for m in models])
-    except Exception:
-        return []
-
+from agents.shared.ui_utils import fetch_ollama_models, apply_model_selection, MODEL_ROLES
 available_models = fetch_ollama_models()
-
-# Callback: kun käyttäjä vaihtaa mallia alasvetovalikossa
-def _apply_model_selection(ss_key: str, widget_key: str):
-    """Päivittää session state -mallinvalinnan ja pakottaa agentit uudelleenluontiin."""
-    new_value = st.session_state[widget_key]
-    if new_value and new_value != st.session_state.get(ss_key):
-        st.session_state[ss_key] = new_value
 
 # --- Session State alustus ---
 if "messages" not in st.session_state:
@@ -70,14 +52,6 @@ if "messages" not in st.session_state:
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = "streamlit_session"
 
-# Mallivalintojen oletusarvot CONFIG:sta
-MODEL_ROLES = [
-    ("model_orchestrator", "orchestrator_model", "🎯 Orkestraattori"),
-    ("model_analytics", "analytics_model", "📊 Analytiikka"),
-    ("model_plotter", "plotter_model", "🎨 Visualisointi"),
-    ("model_schema", "schema_model", "🗄️ Skeema"),
-    ("model_embedding", "embedding_model", "📎 Embedding"),
-]
 for ss_key, config_attr, _ in MODEL_ROLES:
     if ss_key not in st.session_state:
         if not available_models:
@@ -216,40 +190,6 @@ if page == "🗺️ Myymäläanalytiikka":
         st.session_state.generate_btn = st.button("🚀 Generoi visualisointi", type="primary", key="gen_btn")
         st.sidebar.markdown("---")
 
-
-# --- Mallivalikot sivupalkissa ---
-st.sidebar.markdown('<div class="section-header">🤖 LLM-mallit</div>', unsafe_allow_html=True)
-
-st.sidebar.markdown("HUOM! Agentteja suositellaan ajamaan lokaalisti Ollamaa hyödyntäen. Mallivalinnat vaikuttavat agenttien toimintaan välittömästi.")
-
-if available_models:
-    for ss_key, config_attr, label in MODEL_ROLES:
-        current_val = st.session_state[ss_key]
-        # Varmistetaan että nykyinen valinta on listassa
-        options = list(available_models)
-        if current_val not in options:
-            options.insert(0, current_val)
-        idx = options.index(current_val)
-
-        st.sidebar.selectbox(
-            label,
-            options=options,
-            index=idx,
-            key=f"_sel_{ss_key}",
-            on_change=_apply_model_selection,
-            args=(ss_key, f"_sel_{ss_key}"),
-        )
-else:
-    # Fallback: teksti-input jos Ollama ei ole saatavilla
-    st.sidebar.warning("⚠️ Lokaalia Ollamaa ei havaittu — käytetään pilvipalvelua (Gemini).")
-    for ss_key, config_attr, label in MODEL_ROLES:
-        st.sidebar.text_input(
-            label,
-            value=st.session_state[ss_key],
-            key=f"_txt_{ss_key}",
-            on_change=_apply_model_selection,
-            args=(ss_key, f"_txt_{ss_key}"),
-        )
 
 
 

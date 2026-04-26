@@ -18,7 +18,10 @@ Projekti koostuu kolmesta päävaiheesta:
 
 1.  **Datan prosessointi (dbt & DuckDB):** UWB-paikannusdata kerätään ja prosessoidaan Medallion-arkkitehtuurin mukaisesti (Bronze -> Silver -> Gold). Tässä vaiheessa raakadatasta puhdistetaan virheet ja siitä luodaan analyysivalmiit aggregaatit.
 2.  **Agenttipohjainen analyysi:** Projektissa käytetään agentteja (Python-pohjaisia), jotka suorittavat monimutkaisia tehtäviä automaattisesti. Agentit voivat esimerkiksi laskea tilastoja, suorittaa klusterointia (kuten K-means) tai valmistella visualisointeja.
-3.  **Visualisointi:** Lopputuloksena on useita visualisointeja, kuten PowerBI, Jupyter Notebookit ja Streamlit-dashboard, jotka näyttävät heatmap-kuvia, asiakasvirtoja ja muita asiakkaalle tärkeitä mittareita.
+3.  **Visualisointi:** Lopputuloksena on kaksi erillistä Streamlit-pohjaista sovellusta:
+    *   **Pääsovellus (`app.py`):** Kauppiaan dashboard, liiketoiminnan KPI-mittarit, spatiaalinen analytiikka ja älykäs agenttichat.
+    *   **Technical Explorer (`overnight_explorer.py`):** Laitteiston toimittajalle suunnattu tekninen tarkkuusanalyysi ja laadunvarmistus.
+    *   Visualisoinnit kattavat heatmapit, viipymäjakaumat, asiakasreitit sekä tekniset metriikat kuten RMSE ja CEP95.
 
 ## Datan prosessointi (Medallion-arkkitehtuuri)
 
@@ -144,9 +147,9 @@ bytebuddies/
 
 Projektin kehitys jatkuu useissa eri vaiheissa:
 
-*   **Dashboardin laajentaminen:** Streamlit-dashboardin ominaisuuksien ja visualisointityyppien lisääminen. (PÄIVITETTY: Segmentointi, mediaani-KPI:t ja cascading-filterit toteutettu 25.4.2026)
+*   **Yhtenäistetty Dashboard:** Kaikki analytiikka- ja hallintaominaisuudet on tuotu yhden UI:n alle (Liiketoiminta, Agentit, SQL-työkalut, Admin). (TOTEUTETTU 26.4.2026)
+*   **Interaktiivinen Hallinta:** Osastojen dynaaminen määrittely suoraan kartalta ja erikoistapahtumien hallinta UI:n kautta. (TOTEUTETTU 26.4.2026)
 *   **Agenttien laajentaminen:** Uusien analytiikka- ja automaatioagenttien lisääminen monimutkaisempiin tehtäviin.
-*   **Integraatiot:** Mahdollisuus yhdistää data muihin lähteisiin ja automatisoida raportointisyklejä.
 
 
 ## Yhteistyö ja osallistuminen

@@ -86,11 +86,17 @@ uv run streamlit run app.py
 ```
 
 
-### 2.1 Etusivu
+### 2.1 Navigointi ja sivun valinta
 
-Etusivulla näet dataan liittyvän kaupan pohjapiirroksen ja agenttikortit, joista selviää tarkemmin millaisia agentteja järjestelmässä on. 
+Sovelluksen vasemmassa sivupalkissa on navigointivalikko, josta voit vaihtaa eri näkymien välillä:
+- **📈 Liiketoiminta Dashboard:** Valmiit KPI-mittarit ja trendit.
+- **💬 Agenttichat:** Älykäs analyysi ja visualisoinnit luonnollisella kielellä.
+- **📊 Tietokantakyselyt:** Rajapinta suoriin SQL-hakuihin.
+- **🗺️ Myymäläanalytiikka:** Spatiaalinen analyysi (lämpökartat, reitit).
+- **🛠️ Advanced Features:** Ylläpito- ja konfiguraatiotyökalut.
+- **🖼️ Generoidut kuvaajat:** Galleriat aiemmin luoduista visualisoinneista.
 
-Sivupalkissa voit valita haluamasi mallin kullekkin agentille.
+Sivupalkissa sijaitsevat myös agenttien mallivalinnat (🤖 LLM-mallit).
 
 ### 2.2 API-avaimen lisäys
 
@@ -110,8 +116,21 @@ Tässä osiossa voit tarkastella agenttien luomia visualisointeja.
 
 ### 2.6 Dashboardit
 
-Sivupalkin "Dashboardit"-osiosta löytyvät analytiikkanäkymät, jotka on rakennettu suoraan Gold-kerroksen datasta:
+Sovellus sisältää kaksi eri käyttötarkoituksiin optimoitua dashboardia:
 
-- **📈 Liiketoiminta:** Asiakaskäyttäytymisen tunnusluvut (käyntimäärät, viipymät, osastojen suosio) aikarajauksella.
+1.  **📈 Liiketoiminta Dashboard (`app.py` -> Liiketoiminta):**
+    - Tarkoitettu kauppiaalle ja liiketoiminnan johdolle.
+    - Mittarit: Käyntimäärät, keskiviipymät, osastojen suosio ja asiakassegmentointi (esim. pikakäynnit).
+    - Suodatus: Aika, viikonpäivä ja erikoistapahtumat.
 
-Dashboard-moduulit sijaitsevat `dashboards/`-kansiossa. Uudet dashboardit lisätään samaan kansioon `render()`-rajapinnalla.
+2.  **🌙 Technical Explorer (`notebooks/overnight_explorer/overnight_explorer.py`):**
+    - Tarkoitettu paikannusyritykselle tekniseen laadunvarmistukseen.
+    - Ominaisuudet: Paikannustarkkuuden analyysi (RMSE, CEP95), jitter- ja drift-seuranta sekä yöaikainen diagnostiikka.
+    - Käynnistys: `uv run streamlit run notebooks/overnight_explorer/overnight_explorer.py`
+
+### 2.7 Advanced Features (Ylläpito)
+
+Tämä osio on tarkoitettu järjestelmän pääkäyttäjille ja sisältää kolme keskeistä työkalua:
+- **🤖 LLM & API Konfiguraatio:** Kielimallien ja API-osoitteiden dynaaminen hallinta.
+- **📅 Erikoistapahtumat:** Mahdollisuus lisätä ja muokata myyntisesonkeja tai juhlapyhiä suoraan UI:sta.
+- **🗺️ Osastojen määrittely:** Interaktiivinen työkalu, jolla voit määritellä uusia osastoalueita myymälän pohjakuvaan klikkaamalla tai koordinaateilla.

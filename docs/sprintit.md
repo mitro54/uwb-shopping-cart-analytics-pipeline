@@ -539,9 +539,53 @@ jotta voin arvioida eri tuoteosastojen houkuttelevuutta ja tehokkuutta.
 
 #### Jatkokehitysidea: Ulkoisten datalähteiden yhdistäminen [TODO]
 
-## Projektin yhteenveto
+***
+
+## Sprint 5 – BI, Agentit & Hallintatyökalut
+
+### Ajanjakso: 20.4. – 27.4.2026
+
+**Tavoitteet:**
+- Agenttien kytkeminen suoraan DuckDB-kantaan (luku & kirjoitus).
+- Agenttien muistin (Feedback Loop) toteutus.
+- Liiketoiminta-dashboardin visualisointien parantaminen (segmentointi, mediaanit).
+- Hallintatyökalujen (Advanced Features) alustus.
+
+**Toteutuma (päivitetty 26.4.2026):**
+- [x] **Agentti-integraatio:** Agentit osaavat nyt hakea skeeman ja generoida SQL-kyselyitä.
+- [x] **Feedback Loop:** Käyttäjäpalaute tallentuu tietokantaan ja ohjaa agentteja.
+- [x] **Liiketoiminta UI:** Päivitetty käyttämään mediaaneja ja cascading-filttereitä.
+- [x] **Advanced Features:** Toteutettu LLM-konfiguraatio, erikoistapahtumien hallinta ja interaktiivinen karttaeditori (integroitu `app.py`).
+- [x] **Navigointi:** Yhtenäistetty käyttöliittymä seitsemällä eri analyysisivulla.
+- [x] **Technical Explorer:** Erillinen työkalu paikannusyrityksen teknisiin tarpeisiin (`overnight_explorer.py`).
+
+***
+
+## Sprint 6 – Raportoinnin viimeistely ja validointi [SUUNNITELTU]
+
+### Ajanjakso: 27.4. – 1.5.2026
+
+**Tavoitteet:**
+- Dashboardien hienosäätö ja bugien korjaus.
+- Datan oikeellisuuden lopullinen validointi (Gold-taso).
+- Käyttäjäohjeiden viimeistely demon varten.
+
+***
+
+## Sprint 7 – Projektin lopputyöt [SUUNNITELTU]
+
+### Ajanjakso: 4.5. – 8.5.2026
+
+**Tavoitteet:**
+- Projektin viimeinen demo.
+- Loppudokumentaation paketointi.
+- Definition of Done (DoD) tarkistus ja projektin sulkeminen.
+
+***
 
 ## Koko ryhmän työaikayhteenveto
+- **Päivitetty tilanne:** n. 380 - 420 tuntia (Sprint 5 loppuvaiheessa).
+- **Tiimi:** Toni, Joni, Mitro, Tuija, Panu.
 
 
 

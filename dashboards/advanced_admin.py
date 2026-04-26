@@ -11,21 +11,48 @@ def render():
     tabs = st.tabs(["🤖 LLM & API Konfiguraatio", "📅 Erikoistapahtumat", "🗺️ Osastojen määrittely"])
     
     # --- Tab 1: LLM & API ---
+    from agents.shared.ui_utils import fetch_ollama_models, apply_model_selection, MODEL_ROLES
+    available_models = fetch_ollama_models()
+
     with tabs[0]:
         st.markdown("### 🔑 Kielimallit ja API-avaimet")
-        st.info("Täällä voit hallita tekoälyn asetuksia. Huom: API-avaimet tallennetaan vain istunnon ajaksi tai .env-tiedostoon.")
+        st.info("Täällä voit hallita tekoälyn asetuksia. Valinnat vaikuttavat agenttien toimintaan välittömästi.")
         
         col1, col2 = st.columns(2)
         with col1:
-            st.text_input("OpenAI / Gemini API Key", type="password", placeholder="Aseta API-avain...")
-            st.text_input("Ollama Base URL", value="http://localhost:11434")
+            st.text_input("OpenAI / Gemini API Key", type="password", placeholder="Aseta API-avain...", value=os.getenv("GOOGLE_API_KEY", ""))
+            st.text_input("Ollama Base URL", value=CONFIG.ollama_base_url)
         
         with col2:
-            st.selectbox("Pääasiallinen malli (Analytics)", ["gemini-2.0-flash", "llama3", "mistral"], index=0)
-            st.selectbox("Orkestraattori", ["gemini-2.0-flash", "gpt-4o"], index=0)
+            if available_models:
+                for ss_key, config_attr, label in MODEL_ROLES:
+                    current_val = st.session_state.get(ss_key, getattr(CONFIG, config_attr))
+                    options = list(available_models)
+                    if current_val not in options:
+                        options.insert(0, current_val)
+                    idx = options.index(current_val)
+
+                    st.selectbox(
+                        label,
+                        options=options,
+                        index=idx,
+                        key=f"_admin_sel_{ss_key}",
+                        on_change=apply_model_selection,
+                        args=(ss_key, f"_admin_sel_{ss_key}"),
+                    )
+            else:
+                st.warning("⚠️ Lokaalia Ollamaa ei havaittu — käytetään varajärjestelmää.")
+                for ss_key, config_attr, label in MODEL_ROLES:
+                    st.text_input(
+                        label,
+                        value=st.session_state.get(ss_key, getattr(CONFIG, config_attr)),
+                        key=f"_admin_txt_{ss_key}",
+                        on_change=apply_model_selection,
+                        args=(ss_key, f"_admin_txt_{ss_key}"),
+                    )
             
-        if st.button("Tallenna asetukset"):
-            st.success("Asetukset päivitetty!")
+        if st.button("Päivitä järjestelmä"):
+            st.success("Asetukset tallennettu ja agentit synkronoitu!")
 
     # --- Tab 2: Erikoistapahtumat ---
     with tabs[1]:
