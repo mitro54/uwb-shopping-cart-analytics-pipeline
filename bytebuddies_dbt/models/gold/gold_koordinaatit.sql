@@ -57,7 +57,6 @@ pysahdykset_perus AS (
       AND sekuntia_edellisesta >= 0
       AND sekuntia_edellisesta <= 120  -- Maksimissaan 2 minuutin yksittäinen pysähdys
       AND in_checkout = 0
-      AND dist_m <= 15.0  -- Suodatetaan pois yli 15m teleporttaukset
       AND EXTRACT(HOUR FROM aika) BETWEEN {{ var('shop_open') | float }} AND {{ var('shop_close') | float }}
 ),
 

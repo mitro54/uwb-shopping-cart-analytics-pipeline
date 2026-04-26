@@ -82,8 +82,6 @@ sessiomerkinta AS (
             WHEN edellinen_aika IS NULL OR sekuntia_edellisesta > {{ var('session_gap_threshold', 900) }} THEN 1 
             -- Kärry poistui kassa-alueelta (edellinen piste kassalla, uusi ei ole)
             WHEN in_checkout = 0 AND edellinen_in_checkout = 1 THEN 1
-            -- Kärry teki fyysisesti mahdottoman hypyn (> 15m) -> Katkaistaan sessio
-            WHEN dist_m > 15.0 THEN 1
             ELSE 0 
         END AS is_new_session
     FROM jitter_suodatus
