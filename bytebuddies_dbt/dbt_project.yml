@@ -36,6 +36,9 @@ vars:
   checkout_y_min: "{{ env_var('CHECKOUT_Y_MIN', '0.0') | float * 100 }}"
   checkout_y_max: "{{ env_var('CHECKOUT_Y_MAX', '20.0') | float * 100 }}"
   
+  # Suodatettavat alueet (SQL-ehto, koordinaatit cm:ssä)
+  excluded_zones_sql: "{{ env_var('EXCLUDED_ZONES_SQL', '') }}"
+
   # Problemaattiset ympyräalueet (cm)
   prob1_x: "{{ env_var('PROB1_X', '100') | float }}"
   prob1_y: "{{ env_var('PROB1_Y', '2500') | float }}"

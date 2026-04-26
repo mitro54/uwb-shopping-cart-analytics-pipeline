@@ -231,17 +231,100 @@ def plot_on_floorplan(
 
         elif plot_type == "route":
             # Reitti: yhdistetään peräkkäiset pisteet viivalla
-            # Oletetaan että data on aikajärjestyksessä (SQL-kyselyssä ORDER BY)
             ax.plot(
                 df["x_m"], df["y_m"],
-                color="blue", linewidth=1.5, alpha=alpha, 
-                marker="o", markersize=3, markeredgecolor="darkblue",
-                zorder=2
+                color="gray", linewidth=1.5, alpha=0.5, zorder=2
             )
-            # Merkitään alku ja loppu
+            
+            time_colors = range(len(df))
+            cbar_label = "Ajan kulku (Mittauspisteen järjestysnumero)"
+            num_stops = 0
+            
+            if "aika" in df.columns:
+                df["aika"] = pd.to_datetime(df["aika"])
+                total_time = (df["aika"].max() - df["aika"].min()).total_seconds() / 60.0
+                elapsed_min = (df["aika"] - df["aika"].min()).dt.total_seconds() / 60.0
+                time_colors = elapsed_min
+                cbar_label = "Ajan kulku (minuuttia)"
+                
+                # Pysähdyspaikkojen tunnistus ja keston laskenta
+                if "speed_mps" in df.columns:
+                    smoothed_speed = df["speed_mps"].rolling(window=10, min_periods=1).mean()
+                    
+                    valid_dwells = []
+                    current_dwell = None
+                    
+                    # Tehokkaampi läpikäynti tilakoneella, jossa seurataan pysähdysaikaa ja sijaintia
+                    for x, y, aika, speed in zip(df["x_m"], df["y_m"], df["aika"], smoothed_speed):
+                        if speed < 0.15:
+                            if current_dwell is None:
+                                # Uusi pysähdys alkaa
+                                current_dwell = {"x_m": x, "y_m": y, "start_time": aika, "end_time": aika}
+                            else:
+                                # Ollaan pysähdyksissä. Tarkistetaan onko liikuttu liikaa (yli 1.5m).
+                                dist = ((x - current_dwell["x_m"])**2 + (y - current_dwell["y_m"])**2)**0.5
+                                if dist > 1.5:
+                                    # Liikuttu liikaa -> edellinen pysähdys päättyy, uusi alkaa
+                                    valid_dwells.append(current_dwell)
+                                    current_dwell = {"x_m": x, "y_m": y, "start_time": aika, "end_time": aika}
+                                else:
+                                    # Pysytään paikallaan -> päivitetään vain päättymisaikaa
+                                    current_dwell["end_time"] = aika
+                        else:
+                            # Ei olla pysähdyksissä. Jos oli käynnissä, se päättyy.
+                            if current_dwell is not None:
+                                valid_dwells.append(current_dwell)
+                                current_dwell = None
+                                
+                    if current_dwell is not None:
+                        valid_dwells.append(current_dwell)
+                        
+                    if valid_dwells:
+                        dwells = pd.DataFrame(valid_dwells)
+                        # Lasketaan kesto sekunteina
+                        dwells["kesto_s"] = (dwells["end_time"] - dwells["start_time"]).dt.total_seconds()
+                        # Suodatetaan pois alle 5 sekunnin mikropysähdykset
+                        dwells = dwells[dwells["kesto_s"] >= 5.0]
+                        num_stops = len(dwells)
+                    else:
+                        dwells = pd.DataFrame()
+                        num_stops = 0
+                
+                # Päivitetään otsikko
+                if "dist_m" in df.columns:
+                    total_dist = df["dist_m"].sum()
+                    title += f"\n(Kesto: {total_time:.1f} min, Matka: {total_dist:.0f} m, Pysähdyksiä: {num_stops})"
+                    ax.set_title(title, fontsize=14, fontweight="bold", pad=12)
+            
+            # Pysähdyspaikat piirretään reitin päälle
+            if num_stops > 0 and not dwells.empty:
+                ax.scatter(dwells["x_m"], dwells["y_m"], color="hotpink", edgecolor="white", marker="o", s=100, alpha=0.9, zorder=3.5, label=f"Pysähdykset ({num_stops} kpl)")
+                
+                # Kirjoitetaan pysähdysaika markerin viereen
+                for _, row in dwells.iterrows():
+                    kesto_min = int(row["kesto_s"] // 60)
+                    kesto_sek = int(row["kesto_s"] % 60)
+                    aika_str = f"{kesto_min}m {kesto_sek}s" if kesto_min > 0 else f"{kesto_sek}s"
+                    
+                    ax.text(row["x_m"] + 0.4, row["y_m"] + 0.4, aika_str, fontsize=8, color='white', 
+                            bbox=dict(facecolor='black', alpha=0.6, edgecolor='none', boxstyle='round,pad=0.2'), zorder=4.5)
+            
+            # Piirretään pisteet aikavärillä
+            sc = ax.scatter(
+                df["x_m"], df["y_m"],
+                c=time_colors, cmap='winter', s=30, alpha=0.9, zorder=3
+            )
+            
+            # Merkitään alku ja loppu yksiselitteisesti
             if not df.empty:
-                ax.scatter(df["x_m"].iloc[0], df["y_m"].iloc[0], c="green", s=50, label="Alku", zorder=3)
-                ax.scatter(df["x_m"].iloc[-1], df["y_m"].iloc[-1], c="red", s=50, label="Loppu", zorder=3)
+                # Ensimmäinen piste on reitin alku
+                ax.scatter(df["x_m"].iloc[0], df["y_m"].iloc[0], color="lime", marker="*", s=400, edgecolor="black", label="Kauppareitin Alku", zorder=4)
+                # Viimeinen piste on reitin loppu
+                ax.scatter(df["x_m"].iloc[-1], df["y_m"].iloc[-1], color="red", marker="X", s=200, edgecolor="black", label="Kauppareitin Loppu", zorder=4)
+                ax.legend(loc="upper right")
+                
+                # Väripalkki ajan kululle
+                plt.colorbar(sc, ax=ax, label=cbar_label, pad=0.02)
 
         elif plot_type == "dwell":
             # Pysähdyspaikat: markerin koko dwell_time mukaan

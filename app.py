@@ -168,7 +168,7 @@ if page == "🗺️ Myymäläanalytiikka":
         
         st.session_state.vis_mode = st.selectbox(
             "Analyysityyppi",
-            ["🔥 Lämpökartta (Heatmap)", "📍 Pysähdyspaikat (Dwell)", "➿ Asiakasreitti (Route)"],
+            ["🔥 Lämpökartta (Heatmap)", "📍 Pysähdyspaikat (Dwell)", "➿ Asiakasreitti (Route)", "🔴 Pistepilvi (Scatter)"],
             key="vis_mode_select"
         )
 
@@ -183,24 +183,29 @@ if page == "🗺️ Myymäläanalytiikka":
 
         if st.session_state.vis_mode == "🔥 Lämpökartta (Heatmap)":
             st.session_state.plot_type = "heatmap"
-            st.session_state.sql_query = f"SELECT x, y FROM main.silver_positions WHERE CAST(aika AS DATE) = '{date_str}'"
+            st.session_state.sql_query = f"SELECT x, y FROM main.gold_reitit WHERE CAST(aika AS DATE) = '{date_str}'"
             st.session_state.title = f"Asiakasvirrat - {date_str}"
+
+        elif st.session_state.vis_mode == "🔴 Pistepilvi (Scatter)":
+            st.session_state.plot_type = "scatter"
+            st.session_state.sql_query = f"SELECT x, y FROM main.gold_reitit WHERE CAST(aika AS DATE) = '{date_str}'"
+            st.session_state.title = f"Raakapisteet - {date_str}"
 
         elif st.session_state.vis_mode == "📍 Pysähdyspaikat (Dwell)":
             st.session_state.plot_type = "dwell"
-            st.session_state.sql_query = f"SELECT grid_x as x, grid_y as y, kokonaisviipyma_s as dwell_time FROM main.gold_koordinaatit WHERE kokonaisviipyma_s > 10"
-            st.session_state.title = f"Pysähdykset ja viipymä"
+            st.session_state.sql_query = f"SELECT CAST(FLOOR(x / 100) * 100 AS INTEGER) AS x, CAST(FLOOR(y / 100) * 100 AS INTEGER) AS y, SUM(sekuntia_edellisesta) AS dwell_time FROM main.gold_reitit WHERE CAST(aika AS DATE) = '{date_str}' AND speed_mps <= 0.1 AND sekuntia_edellisesta BETWEEN 0 AND 120 GROUP BY 1, 2 HAVING SUM(sekuntia_edellisesta) > 10"
+            st.session_state.title = f"Pysähdykset ja viipymä - {date_str}"
 
         elif st.session_state.vis_mode == "➿ Asiakasreitti (Route)":
             st.session_state.plot_type = "route"
             conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
-            nodes = conn.execute(f"SELECT DISTINCT node_id FROM main.silver_positions WHERE CAST(aika AS DATE) = '{date_str}'").df()
+            nodes = conn.execute(f"SELECT DISTINCT node_id FROM main.gold_reitit WHERE CAST(aika AS DATE) = '{date_str}'").df()
             if not nodes.empty:
                 st.session_state.selected_node = st.selectbox("Valitse ostoskärry (node_id)", nodes["node_id"].tolist(), key="node_select")
-                sessions = conn.execute(f"SELECT DISTINCT full_session_id FROM main.silver_positions WHERE node_id = '{st.session_state.selected_node}' AND CAST(aika AS DATE) = '{date_str}'").df()
+                sessions = conn.execute(f"SELECT DISTINCT full_session_id FROM main.gold_reitit WHERE node_id = '{st.session_state.selected_node}' AND CAST(aika AS DATE) = '{date_str}'").df()
                 if not sessions.empty:
                     st.session_state.selected_session = st.selectbox("Valitse sessio", sessions["full_session_id"].tolist(), key="session_select")
-                    st.session_state.sql_query = f"SELECT x, y FROM main.silver_positions WHERE node_id = '{st.session_state.selected_node}' AND full_session_id = '{st.session_state.selected_session}' ORDER BY aika"
+                    st.session_state.sql_query = f"SELECT x, y, aika, dist_m, speed_mps, sekuntia_edellisesta FROM main.gold_reitit WHERE node_id = '{st.session_state.selected_node}' AND full_session_id = '{st.session_state.selected_session}' ORDER BY aika"
                     st.session_state.title = f"Reitti: Kärry {st.session_state.selected_node} (Sessio {st.session_state.selected_session[:8]}...)"
                 else:
                     st.sidebar.warning("Ei sessioita valittuna päivänä.")

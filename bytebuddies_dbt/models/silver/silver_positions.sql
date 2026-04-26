@@ -37,15 +37,8 @@ WITH perus_puhdistus AS (
         AND EXTRACT('hour' FROM timestamp) >= {{ var('shop_open') }}
         AND EXTRACT('hour' FROM timestamp) <= {{ var('shop_close') }}
 
-        -- 1. y > 30 and x between 0 and 15
-        AND NOT (y > 3000 AND x >= 0 AND x <= 1500)
-        
-        -- 2. y between 0 and 6 and x > 84
-        AND NOT (y >= 0 AND y <= 600 AND x > 8400)
-        
-        -- 3. y > 47 and x > 99
-        AND NOT (y > 4700 AND x > 9900)
-
+        -- Poissuljetut alueet haetaan JSON:ina .env -tiedoston EXCLUDED_ZONES_JSON kautta
+        {{ get_exclusion_zones() }}
 ),
 liikkeet AS (
     -- 2. Haetaan edellinen sijainti, aika ja kassatieto per kärry
@@ -166,47 +159,7 @@ session_point_metadata AS (
         ROW_NUMBER() OVER (PARTITION BY full_session_id ORDER BY aika) AS rnk_start,
         ROW_NUMBER() OVER (PARTITION BY full_session_id ORDER BY aika DESC) AS rnk_back
     FROM sessiot_leikattu
-),
-session_validation_base AS (
-    -- 10. KERÄTÄÄN TUNNUSLUVUT LOPULLISTA VALIDIOINTIA VARTEN
-    SELECT
-        full_session_id,
-        MIN(aika) AS session_start,
-        MAX(aika) AS session_end,
-        SUM(dist_m) AS total_dist_m,
-        COUNT(*) AS point_count,
-        MIN(x) AS min_x,
-        MAX(x) AS max_x,
-        MIN(y) AS min_y,
-        MAX(y) AS max_y,
-        -- Aloituspisteen koordinaatit (haetaan rnk_start = 1 kohdalta)
-        MAX(CASE WHEN rnk_start = 1 THEN x ELSE NULL END) AS first_x,
-        MAX(CASE WHEN rnk_start = 1 THEN y ELSE NULL END) AS first_y,
-        -- Päättyminen kassoille (tail 5)
-        MAX(CASE WHEN rnk_back <= 5 AND in_checkout = 1 THEN 1 ELSE 0 END) AS ends_in_checkout
-    FROM session_point_metadata
-    GROUP BY full_session_id
-),
-valid_sessions AS (
-    -- 11. LOPULLINEN SUODATUS (Vastaten notebookin clean_data)
-    SELECT full_session_id
-    FROM session_validation_base
-    WHERE 
-        -- Aloitus sisäänkäynniltä (metrit -> senttimetrit)
-        first_x BETWEEN {{ var('start_zone_x_min') | float * 100 }} AND {{ var('start_zone_x_max') | float * 100 }}
-        AND first_y BETWEEN {{ var('start_zone_y_min') | float * 100 }} AND {{ var('start_zone_y_max') | float * 100 }}
-        -- Päättyminen kassoille
-        AND ends_in_checkout = 1
-        -- Fysiologiset ja liiketoiminnalliset rajat
-        AND point_count >= {{ var('min_session_points') }}
-        AND total_dist_m BETWEEN {{ var('min_session_dist_m') }} AND {{ var('max_session_dist_m') }}
-        AND DATEDIFF('second', session_start, session_end) BETWEEN {{ var('min_session_time_s') }} AND {{ var('max_session_time_s') }}
-        AND (total_dist_m / NULLIF(DATEDIFF('second', session_start, session_end), 0)) BETWEEN {{ var('min_avg_speed_mps') }} AND {{ var('max_avg_speed_mps') }}
-        AND SQRT(POWER(max_x - min_x, 2) + POWER(max_y - min_y, 2)) >= {{ var('min_spatial_spread_m') | float * 100 }}
 )
-
--- LOPPUTULOS: Vain validit sessiot, leikattuna ja kassa-alue poistettuna (visualisoinnin siistimiseksi)
-SELECT * EXCLUDE(spread_x, spread_y, window_end_time, window_points, is_stationary_start, rnk_start, rnk_back)
+-- LOPPUTULOS: Kaikki sessiot ilman yksittäisen reitin validointia. Reittikohtainen validointi tehdään Gold-tasolla.
+SELECT * EXCLUDE(spread_x, spread_y, window_end_time, window_points, is_stationary_start)
 FROM session_point_metadata
-WHERE full_session_id IN (SELECT full_session_id FROM valid_sessions)
-  AND in_checkout = 0

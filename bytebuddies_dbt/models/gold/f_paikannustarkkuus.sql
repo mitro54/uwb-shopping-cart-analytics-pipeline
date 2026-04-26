@@ -23,11 +23,6 @@ WITH yopingit AS (
         AS DATE) AS yo_paiva
     FROM {{ ref('silver_device_diagnostics') }}
     WHERE x IS NOT NULL AND y IS NOT NULL
-      AND x >= 500
-      -- Latausasema 1 poissuljettu (x=100, y=2500, r=400)
-      AND (POWER(x - 100,  2) + POWER(y - 2500, 2) > 160000)
-      -- Latausasema 2 poissuljettu (x=900, y=3600, r=600)
-      AND (POWER(x - 900,  2) + POWER(y - 3600, 2) > 360000)
       AND (
           EXTRACT('hour' FROM aika) >= 22
           OR EXTRACT('hour' FROM aika) < 7
@@ -39,7 +34,7 @@ paikallaan AS (
     SELECT node_id, yo_paiva
     FROM yopingit
     GROUP BY node_id, yo_paiva
-    HAVING COUNT(*) > 1000
+    HAVING COUNT(*) > 10000
 ),
 
 pingit AS (
@@ -107,6 +102,16 @@ SELECT
 
 FROM etaisyydet e
 JOIN aggregaatti a USING (node_id, yo_paiva)
+WHERE 
+    -- Suodatetaan haamuvaunut, joiden keskipiste on rajojen ulkopuolella
+    a.cx >= 0 AND a.cx <= {{ var('max_x_cm') }}
+    AND a.cy >= 0 AND a.cy <= {{ var('max_y_cm') }}
+    -- Suodatetaan myös laajennetut poissuljetut alueet (margin 200 cm), jotta jitter-vuodot poistuvat
+    AND NOT (a.cx <= 700 AND a.cy >= 1950 AND a.cy <= 3200)
+    AND NOT (a.cx >= 650 AND a.cx <= 1150 AND a.cy >= 3350 AND a.cy <= 3850)
+    AND NOT (a.cx <= 1700 AND a.cy >= 2800)
+    AND NOT (a.cx >= 8200 AND a.cy <= 800)
+    AND NOT (a.cx >= 9700 AND a.cy >= 4500)
 GROUP BY
     a.yo_paiva, a.node_id, a.n_pings,
     a.cx, a.cy, a.std_x, a.std_y,
