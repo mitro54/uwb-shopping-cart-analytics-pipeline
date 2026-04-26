@@ -2,18 +2,7 @@
 -- =========================================================================
 -- ⚙️ LAITTEISTODIAGNOSTIIKKA -ASETUKSET (Jinja Config)
 -- =========================================================================
-
--- Laaturajat (liputetaan, muttei poisteta)
-{% set q_threshold = 35 %}
-{% set max_x = 10406 %}
-{% set max_y = 5220 %}
-
--- Aukioloajat (tunnit)
-{% set shop_open = 7 %}
-{% set shop_close = 22 %}
-
--- Maksiminopeus m/s (Jitter-liputus)
-{% set max_jump_speed = 3.5 %}
+-- Asetukset luetaan dbt_project.yml:n vars-osiosta (jotka lataavat .env:stä)
 
 
 -- =========================================================================
@@ -67,15 +56,15 @@ SELECT
     
     -- Laitteistodiagnostiikan olennaiset TAGIT analytiikkaan
     -- 1. Heikko signaali (kyllä/ei)
-    CASE WHEN q < {{ q_threshold }} THEN 1 ELSE 0 END AS is_low_quality,
+    CASE WHEN q < {{ var('q_threshold', 35) }} THEN 1 ELSE 0 END AS is_low_quality,
     
     -- 2. Seinien ulkopuolella eksyminen (kyllä/ei)
-    CASE WHEN x < 0 OR x > {{ max_x }} OR y < 0 OR y > {{ max_y }} THEN 1 ELSE 0 END AS is_out_of_bounds,
+    CASE WHEN x < 0 OR x > {{ var('max_x_cm') }} OR y < 0 OR y > {{ var('max_y_cm') }} THEN 1 ELSE 0 END AS is_out_of_bounds,
     
     -- 3. Jitter eli epäfysikaalinen hyppy (kyllä/ei)
-    CASE WHEN speed_mps > {{ max_jump_speed }} THEN 1 ELSE 0 END AS is_jitter,
+    CASE WHEN speed_mps > {{ var('max_jump_speed', 3.5) }} THEN 1 ELSE 0 END AS is_jitter,
 
     -- 4. Kaupan aukioloaikojen ulkopuolella (Yöaika)
-    CASE WHEN EXTRACT('hour' FROM aika) < {{ shop_open }} OR EXTRACT('hour' FROM aika) > {{ shop_close }} THEN 1 ELSE 0 END AS is_night_time
+    CASE WHEN EXTRACT('hour' FROM aika) < {{ var('shop_open') }} OR EXTRACT('hour' FROM aika) > {{ var('shop_close') }} THEN 1 ELSE 0 END AS is_night_time
 
 FROM nopeus_laskettu
