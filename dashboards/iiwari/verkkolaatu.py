@@ -82,15 +82,18 @@ def _load_image(path: Path) -> Image.Image:
     return Image.open(path)
 
 
-def _heatmap(df: pl.DataFrame, z_col: str, title: str, colorscale: str, zmin=None, zmax=None):
+def _heatmap(df: pl.DataFrame, z_col: str, title: str, colorscale: str, zmin=None, zmax=None, log_scale=False):
     all_x = sorted(df["grid_x"].unique().to_list())
     all_y = sorted(df["grid_y"].unique().to_list())
     x_idx = {x: i for i, x in enumerate(all_x)}
     y_idx = {y: i for i, y in enumerate(all_y)}
 
-    z = np.full((len(all_y), len(all_x)), np.nan)
+    z_raw = np.full((len(all_y), len(all_x)), np.nan)
     for row in df.iter_rows(named=True):
-        z[y_idx[row["grid_y"]], x_idx[row["grid_x"]]] = row[z_col]
+        z_raw[y_idx[row["grid_y"]], x_idx[row["grid_x"]]] = row[z_col]
+
+    z = np.log1p(z_raw) if log_scale else z_raw
+    hover_z = z_raw
 
     fig = go.Figure()
 
@@ -105,12 +108,13 @@ def _heatmap(df: pl.DataFrame, z_col: str, title: str, colorscale: str, zmin=Non
 
     fig.add_trace(go.Heatmap(
         x=all_x, y=all_y, z=z,
+        customdata=hover_z,
         colorscale=colorscale,
         zmin=zmin, zmax=zmax,
         opacity=0.75,
         xgap=1, ygap=1,
-        colorbar=dict(title=title, thickness=14, len=0.6),
-        hovertemplate=f"x=%{{x}} cm<br>y=%{{y}} cm<br>{title}=%{{z:.1f}}<extra></extra>",
+        colorbar=dict(title=title, thickness=14, len=0.6, tickvals=[], ticktext=[]),
+        hovertemplate=f"x=%{{x}} cm<br>y=%{{y}} cm<br>{title}=%{{customdata:.0f}}<extra></extra>",
     ))
 
     fig.update_xaxes(range=[0, MAP_MAX_X], showgrid=False, showticklabels=False)
@@ -160,15 +164,17 @@ def render():
     st.markdown('<div class="vl-section">🗺️ Spatiaalinen heatmap</div>', unsafe_allow_html=True)
 
     metric_opts = {
-        "Mediaanilaatu (q)": ("median_quality", "RdYlGn", None, None),
-        "Heikkolaatuisia (%)": ("low_quality_pct", "Reds", 0, None),
-        "Jitter-pingauksia": ("jitter_pings", "OrRd", 0, None),
-        "Pingauksia yhteensä": ("total_pings", "Blues", 0, None),
+        "Mediaanilaatu (q)": ("median_quality", "RdYlGn", None, None, False),
+        "Heikkolaatuisia (%)": ("low_quality_pct", "Reds", 0, None, False),
+        "Jitter-pingauksia": ("jitter_pings", "OrRd", 0, None, True),
+        "Pingauksia yhteensä": ("total_pings", "Blues", 0, None, True),
     }
     selected = st.selectbox("Näytettävä mittari", list(metric_opts.keys()))
-    z_col, colorscale, zmin, zmax = metric_opts[selected]
+    z_col, colorscale, zmin, zmax, log_scale = metric_opts[selected]
 
-    fig_map = _heatmap(df, z_col, selected, colorscale, zmin, zmax)
+    ping_p95 = float(df["total_pings"].quantile(0.95))
+    df_map = df.filter(pl.col("total_pings") <= ping_p95)
+    fig_map = _heatmap(df_map, z_col, selected, colorscale, zmin, zmax, log_scale)
     st.plotly_chart(fig_map, use_container_width=True)
 
     # --- Quality distribution histogram ---

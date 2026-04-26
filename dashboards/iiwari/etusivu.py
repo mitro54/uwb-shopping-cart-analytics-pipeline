@@ -124,7 +124,7 @@ def render():
     med_cep50 = df["cep50"].median()
     med_cep95 = df["cep95"].median()
     med_jitter = df["jitter_ka_cm"].median()
-    med_lq = df["low_quality_pct"].median()
+    med_rmse = df["rmse_2d"].median()
     n_nights = df["yo_paiva"].n_unique()
     n_devices = df["node_id"].n_unique()
 
@@ -132,7 +132,7 @@ def render():
     _kpi(c1, f"{med_cep50:.1f} cm", "Mediaani CEP50", "50 % pisteistä")
     _kpi(c2, f"{med_cep95:.1f} cm", "Mediaani CEP95", "95 % pisteistä")
     _kpi(c3, f"{med_jitter:.1f} cm", "Mediaani jitter")
-    _kpi(c4, f"{med_lq:.1f} %", "Mediaani heikkolaatuisia")
+    _kpi(c4, f"{med_rmse:.1f} cm", "Mediaani RMSE 2D")
     _kpi(c5, str(n_devices), "Laitteita")
     _kpi(c6, str(n_nights), "Yötä analysoitu")
 
@@ -251,29 +251,6 @@ def render():
             showlegend=False,
         )
         st.plotly_chart(fig_dr, use_container_width=True)
-
-    # --- Low quality % over time ---
-    st.markdown('<div class="iiwari-section">⚠️ Heikkolaatuisten pingausten osuus (%)</div>', unsafe_allow_html=True)
-
-    lq_daily = (
-        df.group_by("yo_paiva")
-        .agg(pl.col("low_quality_pct").median().alias("lq_med"))
-        .sort("yo_paiva")
-    )
-    fig_lq = go.Figure(go.Scatter(
-        x=lq_daily["yo_paiva"].to_list(), y=lq_daily["lq_med"].to_list(),
-        mode="lines+markers", fill="tozeroy",
-        line=dict(color="#ef4444", width=2),
-        fillcolor="rgba(239,68,68,0.10)",
-        hovertemplate="<b>%{x}</b><br>Heikkolaatuisia: %{y:.1f}%<extra></extra>",
-    ))
-    fig_lq.update_layout(
-        height=260, margin=dict(l=50, r=20, t=10, b=50),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
-        xaxis=dict(title="Yöpäivä"), yaxis=dict(title="Heikkolaatuisia (%)"),
-        showlegend=False,
-    )
-    st.plotly_chart(fig_lq, use_container_width=True)
 
     # --- Raw data table ---
     with st.expander("📋 Raakadata"):
