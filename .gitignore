@@ -52,3 +52,6 @@ schema_cache.json
 checkpoints.sqlite
 feedback.sqlite
 checkpoints.*
+
+# Luonnokset ja väliaikaiset työtiedostot
+scratch/

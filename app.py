@@ -149,7 +149,7 @@ st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigointi",
-    ["🏠 Etusivu", "💬 Agenttichat", "📊 Tietokantakyselyt", "🖼️ Generoidut kuvaajat", "📈 Liiketoiminta Dashboard", "🗺️ Myymäläanalytiikka"],
+    ["📈 Liiketoiminta Dashboard", "💬 Agenttichat", "📊 Tietokantakyselyt", "🗺️ Myymäläanalytiikka", "🖼️ Generoidut kuvaajat", "ℹ️ Tietoa sovelluksesta"],
     label_visibility="collapsed",
 )
 
@@ -249,9 +249,9 @@ else:
 
 
 # ═══════════════════════════════════════════════════════════════
-# 1. ETUSIVU
+# 1. PROJEKTIN INFO
 # ═══════════════════════════════════════════════════════════════
-if page == "🏠 Etusivu":
+if page == "ℹ️ Tietoa sovelluksesta":
 
     # Hero-osio
     st.markdown(f"""

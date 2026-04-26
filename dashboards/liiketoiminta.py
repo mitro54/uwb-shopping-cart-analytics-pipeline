@@ -43,6 +43,10 @@ _CSS = """
 .biz-metric .val { font-size: 2.2rem; font-weight: 700; color: #60a5fa; }
 .biz-metric .lbl { font-size: 0.78rem; color: #94a3b8; margin-top: 0.3rem; font-weight: 500; }
 .biz-metric .sub { font-size: 0.7rem; color: #64748b; margin-top: 0.15rem; }
+.biz-metric .delta { font-size: 0.8rem; font-weight: 600; margin-top: 0.4rem; padding: 0.1rem 0.4rem; border-radius: 4px; display: inline-block; }
+.delta-up { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+.delta-down { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.delta-neutral { background: rgba(148, 163, 184, 0.1); color: #94a3b8; }
 .biz-section {
     font-size: 1.1rem; font-weight: 600; color: var(--text-color, #e2e8f0);
     margin: 1.5rem 0 0.6rem 0; border-left: 4px solid #3b82f6; padding-left: 0.6rem;
@@ -62,49 +66,141 @@ def _get_conn():
     st.stop()
 
 
-@st.cache_data(show_spinner=False, ttl=300)
-def _date_range() -> tuple:
+@st.cache_data(show_spinner=False, ttl=600)
+def _get_time_options():
     conn = _get_conn()
-    row = conn.execute("SELECT MIN(kaynti_paiva), MAX(kaynti_paiva) FROM f_kaynti").fetchone()
-    return row[0], row[1]
+    # Haetaan uniikit yhdistelmät, jotta voimme tehdä ristiinsuodatusta
+    df = conn.execute("""
+        SELECT 
+            DISTINCT YEAR(kaynti_paiva) as year,
+            MONTH(kaynti_paiva) as month,
+            WEEK(kaynti_paiva) as week,
+            kaynti_viikonpaiva as weekday,
+            kaynti_tunti as hour
+        FROM f_kaynti
+    """).pl()
+    return df
 
 
 @st.cache_data(show_spinner="📅 Haetaan käyntidata…", ttl=300)
-def _kaynti(d0: str, d1: str, h0: int, h1: int) -> pl.DataFrame:
+def _kaynti(years, months, weeks, weekdays, hours) -> pl.DataFrame:
     conn = _get_conn()
+    where_clauses = []
+    if years:
+        where_clauses.append(f"YEAR(kaynti_paiva) IN ({','.join(map(str, years))})")
+    if months:
+        where_clauses.append(f"MONTH(kaynti_paiva) IN ({','.join(map(str, months))})")
+    if weeks:
+        where_clauses.append(f"WEEK(kaynti_paiva) IN ({','.join(map(str, weeks))})")
+    if weekdays:
+        where_clauses.append(f"kaynti_viikonpaiva IN ({','.join(map(str, weekdays))})")
+    if hours:
+        where_clauses.append(f"kaynti_tunti IN ({','.join(map(str, hours))})")
+    
+    where_str = " AND ".join(where_clauses) if where_clauses else "1=1"
     return conn.execute(f"""
         SELECT kaynti_id, node_id, kaynti_paiva, kaynti_tunti,
                kaynti_viikonpaiva, kesto_sekunteina, matka, keskinopeus
         FROM f_kaynti
-        WHERE kaynti_paiva >= '{d0}' AND kaynti_paiva <= '{d1}'
-          AND kaynti_tunti >= {h0} AND kaynti_tunti <= {h1}
+        WHERE {where_str}
     """).pl()
 
 
 @st.cache_data(show_spinner="🏬 Haetaan osastodata…", ttl=300)
-def _osasto(d0: str, d1: str, h0: int, h1: int) -> pl.DataFrame:
+def _osasto(years, months, weeks, weekdays, hours, min_dwell: int = 0) -> pl.DataFrame:
     conn = _get_conn()
+    
+    # Suhteellinen suodatus: lasketaan osaston koko (diagonaali) ja suhteutetaan viipymä siihen
+    where_clauses = [
+        f"ok.vietetty_aika_sekunteina >= {min_dwell} * "
+        "(SQRT(POWER(d.loppu_x-d.alku_x, 2) + POWER(d.loppu_y-d.alku_y, 2)) / "
+        "(SELECT MAX(SQRT(POWER(loppu_x-alku_x, 2) + POWER(loppu_y-alku_y, 2))) FROM dim_osastot))"
+    ]
+    
+    if years:
+        where_clauses.append(f"YEAR(k.kaynti_paiva) IN ({','.join(map(str, years))})")
+    if months:
+        where_clauses.append(f"MONTH(k.kaynti_paiva) IN ({','.join(map(str, months))})")
+    if weeks:
+        where_clauses.append(f"WEEK(k.kaynti_paiva) IN ({','.join(map(str, weeks))})")
+    if weekdays:
+        where_clauses.append(f"k.kaynti_viikonpaiva IN ({','.join(map(str, weekdays))})")
+    if hours:
+        where_clauses.append(f"k.kaynti_tunti IN ({','.join(map(str, hours))})")
+    
+    where_str = " AND ".join(where_clauses)
     return conn.execute(f"""
         SELECT ok.kaynti_id, ok.osasto_id, ok.osaston_nimi,
                ok.vietetty_aika_sekunteina, ok.matka_osastolla_m,
                ok.havainnot_osastolla
         FROM f_osastokaynti ok
         INNER JOIN f_kaynti k ON ok.kaynti_id = k.kaynti_id
-        WHERE k.kaynti_paiva >= '{d0}' AND k.kaynti_paiva <= '{d1}'
-          AND k.kaynti_tunti >= {h0} AND k.kaynti_tunti <= {h1}
+        INNER JOIN dim_osastot d ON ok.osasto_id = d.osasto_id
+        WHERE {where_str}
     """).pl()
+
+
+
+@st.cache_data(show_spinner=False, ttl=600)
+def _get_baseline_stats(min_dwell: int = 0):
+    conn = _get_conn()
+    # Lasketaan globaalit keskiarvot vertailupohjaksi
+    res = conn.execute("""
+        SELECT 
+            CAST(COUNT(*) AS FLOAT) / COUNT(DISTINCT kaynti_paiva),
+            AVG(kesto_sekunteina),
+            AVG(matka),
+            MEDIAN(kesto_sekunteina),
+            MEDIAN(matka)
+        FROM f_kaynti
+    """).fetchone()
+    
+    # Osastokäyntien keskiarvo suhteellisella suodatuksella
+    res_o = conn.execute(f"""
+        SELECT AVG(n) FROM (
+            SELECT ok.kaynti_id, COUNT(DISTINCT ok.osasto_id) as n
+            FROM f_osastokaynti ok
+            INNER JOIN f_kaynti k ON ok.kaynti_id = k.kaynti_id
+            INNER JOIN dim_osastot d ON ok.osasto_id = d.osasto_id
+            WHERE ok.vietetty_aika_sekunteina >= {min_dwell} * 
+                (SQRT(POWER(d.loppu_x-d.alku_x, 2) + POWER(d.loppu_y-d.alku_y, 2)) / 
+                (SELECT MAX(SQRT(POWER(loppu_x-alku_x, 2) + POWER(loppu_y-alku_y, 2))) FROM dim_osastot))
+            GROUP BY ok.kaynti_id
+        )
+    """).fetchone()
+    
+    return {
+        "visits": res[0] or 0,
+        "duration": (res[1] or 0) / 60.0,
+        "distance": res[2] or 0,
+        "med_duration": (res[3] or 0) / 60.0,
+        "med_distance": res[4] or 0,
+        "depts": res_o[0] or 0
+    }
 
 
 # ---------------------------------------------------------------------------
 # Render helper
 # ---------------------------------------------------------------------------
-def _kpi(col, val, label, sub=""):
+def _kpi(col, val, label, sub="", delta=None, invert=False):
     sub_html = f'<div class="sub">{sub}</div>' if sub else ""
+    delta_html = ""
+    if delta is not None:
+        cls = "delta-neutral"
+        prefix = ""
+        if delta > 0.5:
+            cls = "delta-down" if invert else "delta-up"
+            prefix = "↑ "
+        elif delta < -0.5:
+            cls = "delta-up" if invert else "delta-down"
+            prefix = "↓ "
+        delta_html = f'<div class="delta {cls}">{prefix}{abs(delta):.1f}%</div>'
+
     col.markdown(
         f'<div class="biz-metric">'
         f'<div class="val">{val}</div>'
         f'<div class="lbl">{label}</div>'
-        f'{sub_html}</div>',
+        f'{sub_html}{delta_html}</div>',
         unsafe_allow_html=True,
     )
 
@@ -124,40 +220,140 @@ def render():
     """, unsafe_allow_html=True)
 
     # --- Filters ----------------------------------------------------------
-    st.markdown("### ⚙️ Aikarajaus")
-    dt_min, dt_max = _date_range()
+    st.markdown("### ⚙️ Suodattimet")
+    df_time = _get_time_options()
     
-    col_filter1, col_filter2 = st.columns([1, 1])
-    with col_filter1:
-        date_range = st.date_input(
-            "Valitse päivämäärät", value=(dt_min, dt_max),
-            min_value=dt_min, max_value=dt_max,
-        )
-    with col_filter2:
-        hour_range = st.slider(
-            "Valitse kellonajat", min_value=0, max_value=23,
-            value=(0, 23), step=1, format="%d:00"
+    col_f1, col_f2, col_f3 = st.columns(3)
+    
+    with col_f1:
+        years_opt = sorted(df_time["year"].unique().to_list())
+        sel_years = st.multiselect("Vuodet", options=years_opt, placeholder="Kaikki vuodet")
+    
+    with col_f2:
+        df_m = df_time
+        if sel_years:
+            df_m = df_m.filter(pl.col("year").is_in(sel_years))
+        months_opt = sorted(df_m["month"].unique().to_list())
+        month_labels = {
+            1: "Tammi", 2: "Helmi", 3: "Maalis", 4: "Huhti", 5: "Touko", 6: "Kesä",
+            7: "Heinä", 8: "Elo", 9: "Syys", 10: "Loka", 11: "Marras", 12: "Joulu"
+        }
+        sel_months = st.multiselect(
+            "Kuukaudet", 
+            options=months_opt, 
+            format_func=lambda x: month_labels.get(x, str(x)),
+            placeholder="Kaikki kuukaudet"
         )
     
-    if len(date_range) != 2:
-        st.info("Valitse alku- ja loppupäivä kalenterista.")
-        st.stop()
-    d0, d1 = str(date_range[0]), str(date_range[1])
-    h0, h1 = hour_range
+    with col_f3:
+        df_w = df_time
+        if sel_years:
+            df_w = df_w.filter(pl.col("year").is_in(sel_years))
+        if sel_months:
+            df_w = df_w.filter(pl.col("month").is_in(sel_months))
+        weeks_opt = sorted(df_w["week"].unique().to_list())
+        sel_weeks = st.multiselect("Viikot", options=weeks_opt, placeholder="Kaikki viikot")
 
-    # --- Load data ---------------------------------------------------------
-    df = _kaynti(d0, d1, h0, h1)
-    df_o = _osasto(d0, d1, h0, h1)
+    col_f4, col_f5 = st.columns(2)
+    with col_f4:
+        df_wd = df_time
+        if sel_years:
+            df_wd = df_wd.filter(pl.col("year").is_in(sel_years))
+        if sel_months:
+            df_wd = df_wd.filter(pl.col("month").is_in(sel_months))
+        if sel_weeks:
+            df_wd = df_wd.filter(pl.col("week").is_in(sel_weeks))
+        
+        wd_opt = sorted(df_wd["weekday"].unique().to_list())
+        sel_weekdays = st.multiselect(
+            "Viikonpäivät", 
+            options=wd_opt,
+            format_func=lambda x: WEEKDAY_LABELS[x-1],
+            placeholder="Kaikki päivät"
+        )
+    
+    with col_f5:
+        df_h = df_time
+        if sel_years:
+            df_h = df_h.filter(pl.col("year").is_in(sel_years))
+        if sel_months:
+            df_h = df_h.filter(pl.col("month").is_in(sel_months))
+        if sel_weeks:
+            df_h = df_h.filter(pl.col("week").is_in(sel_weeks))
+        if sel_weekdays:
+            df_h = df_h.filter(pl.col("weekday").is_in(sel_weekdays))
+            
+        hours_opt = sorted(df_h["hour"].unique().to_list())
+        sel_hours = st.multiselect(
+            "Kellonajat", 
+            options=hours_opt, 
+            format_func=lambda x: f"{x}:00",
+            placeholder="Kaikki tunnit"
+        )
+
+    # --- Visit Segmentation ------------------------------------------------
+    # Luodaan segmentit datan perusteella ennen varsinaista suodatusta
+    # (käytämme tätä suodattimen rakentamiseen)
+    raw_df = _kaynti(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours)
+    
+    def classify_visit(sec):
+        if sec < 300: return "Pikakäynti (< 5 min)"
+        if sec < 900: return "Peruskäynti (5-15 min)"
+        return "Viipymäkäynti (> 15 min)"
+
+    if not raw_df.is_empty():
+        raw_df = raw_df.with_columns(
+            pl.col("kesto_sekunteina").map_elements(classify_visit, return_dtype=pl.String).alias("segment")
+        )
+        segment_counts = raw_df["segment"].value_counts().sort("count", descending=True)
+        seg_options = segment_counts["segment"].to_list()
+    else:
+        seg_options = []
+
+    st.markdown("---")
+    col_seg1, col_seg2 = st.columns([1, 2])
+    with col_seg1:
+        sel_segments = st.multiselect("Kävijäsegmentit", options=seg_options, placeholder="Kaikki segmentit")
+    with col_seg2:
+        min_dwell = st.slider("Viipymäsuodatin (sekunteina, suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut osastotasolla.")
+
+    # --- Apply Segment Filter ----------------------------------------------
+    df = raw_df
+    if sel_segments:
+        df = df.filter(pl.col("segment").is_in(sel_segments))
+        # Suodataan myös osastodata vastaamaan valittuja segmenttejä
+        valid_ids = df["kaynti_id"].to_list()
+        df_o = _osasto(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours, min_dwell).filter(pl.col("kaynti_id").is_in(valid_ids))
+    else:
+        df_o = _osasto(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours, min_dwell)
+
+    # --- Load baseline (updated with min_dwell) ----------------------------
+    baseline = _get_baseline_stats(min_dwell)
+
     if df.is_empty():
         st.warning("Ei käyntejä valitulla aikavälillä.")
         st.stop()
 
     # --- KPI calculations --------------------------------------------------
-    total = len(df)
+    baseline = _get_baseline_stats()
+    
+    days_count = df["kaynti_paiva"].n_unique()
+    total_visits = len(df)
+    v_per_day = total_visits / days_count if days_count > 0 else 0
+    
     avg_dur = df["kesto_sekunteina"].mean() / 60.0
     med_dur = df["kesto_sekunteina"].median() / 60.0
     avg_dist = df["matka"].mean()
+    med_dist = df["matka"].median()
     avg_spd = df["keskinopeus"].mean()
+
+    # Deltas
+    def get_d(curr, base):
+        return (curr - base) / base * 100.0 if base > 0 else 0
+
+    d_visits = get_d(v_per_day, baseline["visits"])
+    d_dur = get_d(med_dur, baseline["med_duration"])
+    d_dist = get_d(med_dist, baseline["med_distance"])
 
     hour_top = df.group_by("kaynti_tunti").agg(pl.len().alias("n")).sort("n", descending=True)
     busiest_h = int(hour_top["kaynti_tunti"][0])
@@ -170,21 +366,42 @@ def render():
         depts_per = df_o.group_by("kaynti_id").agg(
             pl.col("osasto_id").n_unique().alias("n")
         )["n"].mean()
+    d_depts = get_d(depts_per, baseline["depts"])
 
     # --- KPI cards ---------------------------------------------------------
-    st.markdown('<div class="biz-section">📊 Yhteenveto</div>', unsafe_allow_html=True)
+    st.markdown('<div class="biz-section">📊 Yhteenveto ja vertailu keskiarvoon</div>', unsafe_allow_html=True)
 
     c1, c2, c3, c4 = st.columns(4)
-    _kpi(c1, f"{total:,}", "Käyntejä yhteensä")
-    _kpi(c2, f"{avg_dur:.1f}", "Keskim. kesto (min)", f"Mediaani {med_dur:.1f} min")
-    _kpi(c3, f"{avg_dist:.0f}", "Keskim. kävelymatka (m)", f"Nopeus {avg_spd:.2f} m/s")
-    _kpi(c4, f"{depts_per:.1f}", "Osastoja per käynti")
+    _kpi(c1, f"{total_visits:,}", "Käyntejä yhteensä", f"{v_per_day:.1f} / päivä", delta=d_visits)
+    _kpi(c2, f"{med_dur:.1f}", "Tyypillinen kesto (min)", f"Keskiarvo {avg_dur:.1f} min", delta=d_dur)
+    _kpi(c3, f"{med_dist:.0f}", "Tyypillinen matka (m)", f"Keskiarvo {avg_dist:.0f} m", delta=d_dist)
+    _kpi(c4, f"{depts_per:.1f}", "Osastoja per käynti", delta=d_depts)
 
-    c5, c6, c7, c8 = st.columns(4)
-    _kpi(c5, f"{busiest_h}:00", "Vilkkain tunti")
-    _kpi(c6, busiest_wd, "Vilkkain viikonpäivä")
-    _kpi(c7, f"{df['matka'].max():.0f}", "Pisin reitti (m)")
-    _kpi(c8, f"{df['kesto_sekunteina'].max() / 60:.0f}", "Pisin käynti (min)")
+    # Segmenttijakauma-rivi
+    if not df.is_empty():
+        st.markdown('<div class="biz-section">👥 Kävijäsegmenttien jakauma</div>', unsafe_allow_html=True)
+        counts = df["segment"].value_counts().sort("count", descending=True)
+        labels = counts["segment"].to_list()
+        values = counts["count"].to_list()
+        
+        # Näytetään segmentit pieninä metric-kortteina
+        cols = st.columns(len(labels))
+        for i, (lbl, val) in enumerate(zip(labels, values)):
+            percent = (val / total_visits) * 100
+            cols[i].metric(lbl, f"{val:,} kpl", f"{percent:.1f} %")
+
+    # Näytetään huiput vain jos tunti-suodatin ei ole aktiivinen
+    if not sel_hours:
+        c5, c6, c7, c8 = st.columns(4)
+        _kpi(c5, f"{busiest_h}:00", "Vilkkain tunti")
+        _kpi(c6, busiest_wd, "Vilkkain viikonpäivä")
+        _kpi(c7, f"{df['matka'].max():.0f}", "Pisin reitti (m)")
+        _kpi(c8, f"{df['kesto_sekunteina'].max() / 60:.0f}", "Pisin käynti (min)")
+    else:
+        # Jos tunti on valittu, näytetään vain loput kaksi mittaria
+        c7, c8, _gap1, _gap2 = st.columns(4)
+        _kpi(c7, f"{df['matka'].max():.0f}", "Pisin reitti (m)")
+        _kpi(c8, f"{df['kesto_sekunteina'].max() / 60:.0f}", "Pisin käynti (min)")
 
     # --- 1. Daily trend ----------------------------------------------------
     st.markdown('<div class="biz-section">📅 Käynnit päivittäin</div>', unsafe_allow_html=True)
@@ -260,7 +477,7 @@ def render():
 
         ds = (df_o.group_by("osaston_nimi").agg([
             pl.col("kaynti_id").n_unique().alias("visits"),
-            pl.col("vietetty_aika_sekunteina").mean().alias("avg_s"),
+            pl.col("vietetty_aika_sekunteina").median().alias("med_s"),
         ]).sort("visits", descending=True)
             .filter(pl.col("osaston_nimi") != "kassat"))
 
@@ -282,14 +499,15 @@ def render():
             st.plotly_chart(fig_p, width="stretch")
 
         with col_d:
-            st.markdown("**Keskim. viipymäaika osastoittain**")
-            dw = ds.sort("avg_s", descending=True)
+            st.markdown("**Tyypillinen viipymäaika osastoittain (mediaani)**")
+            dw = ds.sort("med_s", descending=True)
             dn = dw["osaston_nimi"].to_list()
-            dt_vals = [s / 60.0 for s in dw["avg_s"].to_list()]
+            dt_vals = [s / 60.0 for s in dw["med_s"].to_list()]
             fig_d = go.Figure(go.Bar(
                 y=dn[::-1], x=dt_vals[::-1], orientation="h",
                 marker=dict(color=dt_vals[::-1], colorscale="Oranges"),
                 text=[f"{d:.1f} min" for d in dt_vals[::-1]], textposition="outside",
+                hovertemplate="<b>%{y}</b><br>Mediaaniviipymä: %{x:.1f} min<extra></extra>",
             ))
             fig_d.update_layout(
                 height=420, margin=dict(l=160, r=70, t=10, b=30),
