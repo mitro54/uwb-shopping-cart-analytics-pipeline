@@ -539,9 +539,52 @@ jotta voin arvioida eri tuoteosastojen houkuttelevuutta ja tehokkuutta.
 
 #### Jatkokehitysidea: Ulkoisten datalähteiden yhdistäminen [TODO]
 
+***
+
+## Sprint 5 – BI & Agentti-integraatiot
+
+### Ajanjakso: 20.4. – 24.4.2026
+
+**Tavoitteet:**
+- Agenttien kytkeminen suoraan DuckDB-kantaan (luku & kirjoitus).
+- Agenttien muistin (Feedback Loop) toteutus.
+- Liiketoiminta-dashboardin visualisointien parantaminen (segmentointi, mediaanit).
+
+**Toteutuma:**
+- [x] Agentit osaavat nyt hakea skeeman ja generoida SQL-kyselyitä.
+- [x] Käyttäjäpalaute tallentuu tietokantaan ja ohjaa agenttien tulevia vastauksia.
+- [x] Liiketoiminta-dashboard päivitetty käyttämään mediaaneja ja cascading-filttereitä.
+
+***
+
+## Sprint 6 & 7 – Dashboardin viimeistely ja Advanced Features
+
+### Ajanjakso: 25.4. – 26.4.2026 (Intensiiviviikonloppu)
+
+**Tavoitteet:**
+- Kaikkien analytiikkaominaisuuksien yhdistäminen yhteen UI:hin.
+- Ylläpitotyökalujen (Advanced Features) toteutus.
+- Dokumentaation ja arkkitehtuurikuvauksien (ADR) viimeistely.
+
+**Toteutuma:**
+- [x] **Advanced Features:** Toteutettu LLM-konfiguraatio, erikoistapahtumien hallinta ja interaktiivinen karttaeditori.
+- [x] **Navigointi:** Yhtenäistetty Streamlit-käyttöliittymä seitsemällä eri sivulla.
+- [x] **Technical Explorer:** Erillinen työkalu paikannusyrityksen teknisiin tarpeisiin.
+- [x] **Valmiustila:** Kaikki haarat yhdistetty `main`-haaraan ja DoD (Definition of Done) saavutettu.
+
 ## Projektin yhteenveto
 
+Projekti onnistui rakentamaan modernin ja automatisoidun IoT-analytiikkaputken. Medallion-arkkitehtuuri DuckDB:n ja dbt:n päällä osoittautui erittäin tehokkaaksi paikalliseen analytiikkaan. Tekoälyagentit tuovat järjestelmään uniikin "Ask your data" -ominaisuuden, joka madaltaa kynnystä monimutkaisten spatiaalisten analyysien tekemiseen.
+
+**Keskeiset tuotokset:**
+1. **Datan Hallinta:** Täysin skriptattu dbt-putki raakadatasta Gold-tasolle.
+2. **Business UI:** Streamlit-dashboard liiketoiminnan seurantaan.
+3. **Technical UI:** Kattava työkalu paikannustarkkuuden diagnosointiin.
+4. **AI-Agentit:** Orkestraattori-, Analytiikka- ja Visualisointiagentit.
+
 ## Koko ryhmän työaikayhteenveto
+- **Yhteensä:** n. 450 - 500 tuntia (sisältäen suunnittelun, toteutuksen ja dokumentoinnin).
+- **Tiimi:** Toni, Joni, Mitro, Tuija, Panu.
 
 
 
