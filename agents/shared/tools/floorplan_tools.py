@@ -231,17 +231,58 @@ def plot_on_floorplan(
 
         elif plot_type == "route":
             # Reitti: yhdistetään peräkkäiset pisteet viivalla
-            # Oletetaan että data on aikajärjestyksessä (SQL-kyselyssä ORDER BY)
             ax.plot(
                 df["x_m"], df["y_m"],
-                color="blue", linewidth=1.5, alpha=alpha, 
-                marker="o", markersize=3, markeredgecolor="darkblue",
-                zorder=2
+                color="gray", linewidth=1.5, alpha=0.5, zorder=2
             )
-            # Merkitään alku ja loppu
+            
+            time_colors = range(len(df))
+            cbar_label = "Ajan kulku (Mittauspisteen järjestysnumero)"
+            num_stops = 0
+            
+            if "aika" in df.columns:
+                df["aika"] = pd.to_datetime(df["aika"])
+                total_time = (df["aika"].max() - df["aika"].min()).total_seconds() / 60.0
+                elapsed_min = (df["aika"] - df["aika"].min()).dt.total_seconds() / 60.0
+                time_colors = elapsed_min
+                cbar_label = "Ajan kulku (minuuttia)"
+                
+                # Pysähdyspaikkojen tunnistus: tasoitetaan nopeutta 10 sekunnin ikkunalla
+                if "speed_mps" in df.columns:
+                    smoothed_speed = df["speed_mps"].rolling(window=10, min_periods=1).mean()
+                    is_stopped = smoothed_speed < 0.15
+                    # Poimitaan vain ne hetket kun pysähdys alkaa
+                    stop_starts = is_stopped & (~is_stopped.shift(1, fill_value=False))
+                    num_stops = stop_starts.sum()
+                
+                # Päivitetään otsikko
+                if "dist_m" in df.columns:
+                    total_dist = df["dist_m"].sum()
+                    title += f"\n(Kesto: {total_time:.1f} min, Matka: {total_dist:.0f} m, Pysähdyksiä: {num_stops})"
+                    ax.set_title(title, fontsize=14, fontweight="bold", pad=12)
+            
+            # Pysähdyspaikat piirretään reitin päälle
+            if "speed_mps" in df.columns and num_stops > 0:
+                dwells = df[stop_starts]
+                if not dwells.empty:
+                    ax.scatter(dwells["x_m"], dwells["y_m"], color="hotpink", edgecolor="white", marker="o", s=100, alpha=0.9, zorder=3.5, label=f"Pysähdykset ({num_stops} kpl)")
+            
+            # Piirretään pisteet aikavärillä
+            sc = ax.scatter(
+                df["x_m"], df["y_m"],
+                c=time_colors, cmap='winter', s=30, alpha=0.9, zorder=3
+            )
+            
+            # Merkitään alku ja loppu yksiselitteisesti
             if not df.empty:
-                ax.scatter(df["x_m"].iloc[0], df["y_m"].iloc[0], c="green", s=50, label="Alku", zorder=3)
-                ax.scatter(df["x_m"].iloc[-1], df["y_m"].iloc[-1], c="red", s=50, label="Loppu", zorder=3)
+                # Ensimmäinen piste on reitin alku
+                ax.scatter(df["x_m"].iloc[0], df["y_m"].iloc[0], color="lime", marker="*", s=400, edgecolor="black", label="Kauppareitin Alku", zorder=4)
+                # Viimeinen piste on reitin loppu
+                ax.scatter(df["x_m"].iloc[-1], df["y_m"].iloc[-1], color="red", marker="X", s=200, edgecolor="black", label="Kauppareitin Loppu", zorder=4)
+                ax.legend(loc="upper right")
+                
+                # Väripalkki ajan kululle
+                plt.colorbar(sc, ax=ax, label=cbar_label, pad=0.02)
 
         elif plot_type == "dwell":
             # Pysähdyspaikat: markerin koko dwell_time mukaan
