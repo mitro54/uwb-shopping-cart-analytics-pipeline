@@ -253,7 +253,25 @@ def plot_on_floorplan(
                     is_stopped = smoothed_speed < 0.15
                     # Poimitaan vain ne hetket kun pysähdys alkaa
                     stop_starts = is_stopped & (~is_stopped.shift(1, fill_value=False))
-                    num_stops = stop_starts.sum()
+                    
+                    # Spatiaalinen yhdistäminen (Clustering): karsitaan samassa paikassa tapahtuvat mikropysähdykset
+                    dwell_candidates = df[stop_starts]
+                    valid_dwells = []
+                    last_x, last_y = None, None
+                    
+                    for _, row in dwell_candidates.iterrows():
+                        if last_x is None:
+                            valid_dwells.append(row)
+                            last_x, last_y = row["x_m"], row["y_m"]
+                        else:
+                            # Lasketaan etäisyys edelliseen rekisteröityyn pysähdykseen
+                            dist = ((row["x_m"] - last_x)**2 + (row["y_m"] - last_y)**2)**0.5
+                            if dist > 1.5:  # Vaaditaan vähintään 1.5 metrin siirtymä uutta pysähdystä varten
+                                valid_dwells.append(row)
+                                last_x, last_y = row["x_m"], row["y_m"]
+                                
+                    dwells = pd.DataFrame(valid_dwells)
+                    num_stops = len(dwells)
                 
                 # Päivitetään otsikko
                 if "dist_m" in df.columns:
@@ -262,10 +280,8 @@ def plot_on_floorplan(
                     ax.set_title(title, fontsize=14, fontweight="bold", pad=12)
             
             # Pysähdyspaikat piirretään reitin päälle
-            if "speed_mps" in df.columns and num_stops > 0:
-                dwells = df[stop_starts]
-                if not dwells.empty:
-                    ax.scatter(dwells["x_m"], dwells["y_m"], color="hotpink", edgecolor="white", marker="o", s=100, alpha=0.9, zorder=3.5, label=f"Pysähdykset ({num_stops} kpl)")
+            if num_stops > 0 and not dwells.empty:
+                ax.scatter(dwells["x_m"], dwells["y_m"], color="hotpink", edgecolor="white", marker="o", s=100, alpha=0.9, zorder=3.5, label=f"Pysähdykset ({num_stops} kpl)")
             
             # Piirretään pisteet aikavärillä
             sc = ax.scatter(
