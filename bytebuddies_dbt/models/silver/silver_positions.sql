@@ -157,7 +157,55 @@ session_point_metadata AS (
         ROW_NUMBER() OVER (PARTITION BY full_session_id ORDER BY aika) AS rnk_start,
         ROW_NUMBER() OVER (PARTITION BY full_session_id ORDER BY aika DESC) AS rnk_back
     FROM sessiot_leikattu
+),
+session_validation_base AS (
+    -- 10. KERÄTÄÄN TUNNUSLUVUT LOPULLISTA VALIDIOINTIA VARTEN
+    SELECT
+        full_session_id,
+        MIN(CASE WHEN in_checkout = 0 THEN aika ELSE NULL END) AS session_start,
+        MAX(CASE WHEN in_checkout = 0 THEN aika ELSE NULL END) AS session_end,
+        SUM(CASE WHEN in_checkout = 0 THEN dist_m ELSE 0 END) AS total_dist_m,
+        SUM(CASE WHEN in_checkout = 0 THEN 1 ELSE 0 END) AS point_count,
+        MIN(CASE WHEN in_checkout = 0 THEN x ELSE NULL END) AS min_x,
+        MAX(CASE WHEN in_checkout = 0 THEN x ELSE NULL END) AS max_x,
+        MIN(CASE WHEN in_checkout = 0 THEN y ELSE NULL END) AS min_y,
+        MAX(CASE WHEN in_checkout = 0 THEN y ELSE NULL END) AS max_y,
+        MAX(CASE WHEN rnk_start = 1 THEN x ELSE NULL END) AS first_x,
+        MAX(CASE WHEN rnk_start = 1 THEN y ELSE NULL END) AS first_y,
+        MAX(CASE WHEN rnk_back <= 5 AND in_checkout = 1 THEN 1 ELSE 0 END) AS ends_in_checkout
+    FROM session_point_metadata
+    GROUP BY full_session_id
+),
+valid_sessions AS (
+    -- 11. LOPULLINEN SUODATUS
+    SELECT full_session_id
+    FROM session_validation_base
+    WHERE 
+        -- Aloitus sisäänkäynniltä (metrit -> senttimetrit)
+        first_x BETWEEN {{ var('start_zone_x_min') | float * 100 }} AND {{ var('start_zone_x_max') | float * 100 }}
+        AND first_y BETWEEN {{ var('start_zone_y_min') | float * 100 }} AND {{ var('start_zone_y_max') | float * 100 }}
+        -- Päättyminen kassoille
+        AND ends_in_checkout = 1
+        -- Fysiologiset ja liiketoiminnalliset rajat
+        AND point_count >= {{ var('min_session_points') }}
+        AND total_dist_m BETWEEN {{ var('min_session_dist_m') }} AND {{ var('max_session_dist_m') }}
+        AND DATEDIFF('second', session_start, session_end) BETWEEN {{ var('min_session_time_s') }} AND {{ var('max_session_time_s') }}
+        AND (total_dist_m / NULLIF(DATEDIFF('second', session_start, session_end), 0)) BETWEEN {{ var('min_avg_speed_mps') }} AND {{ var('max_avg_speed_mps') }}
+        AND SQRT(POWER(max_x - min_x, 2) + POWER(max_y - min_y, 2)) >= {{ var('min_spatial_spread_m') | float * 100 }}
 )
--- LOPPUTULOS: Kaikki sessiot ilman yksittäisen reitin validointia. Reittikohtainen validointi tehdään Gold-tasolla.
-SELECT * EXCLUDE(spread_x, spread_y, window_end_time, window_points, is_stationary_start)
+
+-- LOPPUTULOS: Vain validit asioinnit. Poistetaan valtava määrä välivaiheen apusarakkeita tietokannan koon minimoimiseksi.
+SELECT 
+    node_id,
+    aika,
+    x,
+    y,
+    q,
+    in_checkout,
+    dist_m,
+    sekuntia_edellisesta,
+    session_id,
+    full_session_id,
+    speed_mps
 FROM session_point_metadata
+WHERE full_session_id IN (SELECT full_session_id FROM valid_sessions)

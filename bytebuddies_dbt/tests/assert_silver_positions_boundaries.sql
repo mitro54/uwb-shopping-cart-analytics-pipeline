@@ -6,8 +6,8 @@ SELECT *
 FROM {{ ref('silver_positions') }}
 WHERE 
     q <= {{ var('q_threshold') }}
-    OR hour < {{ var('shop_open') }}
-    OR hour > {{ var('shop_close') }}
-    OR weekday < 1
-    OR weekday > 7
+    OR EXTRACT('hour' FROM aika) < {{ var('shop_open') }}
+    OR EXTRACT('hour' FROM aika) > {{ var('shop_close') }}
+    OR EXTRACT('isodow' FROM aika) < 1
+    OR EXTRACT('isodow' FROM aika) > 7
     OR speed_mps > {{ var('max_jump_speed') }} + 0.1

@@ -39,14 +39,5 @@ SELECT
     -- Koko asioinnin keskinopeus (m/s)
     CASE WHEN kesto_sekunteina > 0 THEN matka / kesto_sekunteina ELSE 0 END AS keskinopeus
 FROM aggregoidut_sessiot
-WHERE 
-    -- 2. Tuotantotason armoton filtteri hylätyille ja haamukärryille (Gold Logic)
-    kesto_sekunteina >= 180 AND kesto_sekunteina <= 14400             -- Aika: 3 min (180s) - 4 tuntia
-    AND matka >= 30.0 AND matka <= 8000.0                             -- Matka: vähintään 30 metriä, max 8km
-    AND (matka / NULLIF(kesto_sekunteina, 0)) >= 0.08                 -- MIN Keskinopeus
-    AND (matka / NULLIF(kesto_sekunteina, 0)) <= 1.5                  -- MAX Keskinopeus
-    AND pisteita >= 30                                                -- Vähintään "aidon asioinnin" vaatima pistekertymä
-    AND levittaytyvyys_m >= 15.0                                      -- Reitin pitää levittyä myymälässä selvästi
-    -- Vaaditaan että ensimmäinen havainto on sisääntulolta (START_ZONE)
-    AND aloitus_x >= 0 AND aloitus_x <= 1200
-    AND aloitus_y >= 0 AND aloitus_y <= 5220
+-- HUOM: Sessioiden filtteröinti (haamukärryt jne.) tehdään nykyään suoraan silver_positions -tasolla.
+-- Tämä malli vain aggregoida datan asiointitasolle.

@@ -50,13 +50,11 @@ pysahdykset_perus AS (
         aika AS end_time,
         sekuntia_edellisesta AS total_dwell_seconds,
         x,
-        y,
-        in_checkout
+        y
     FROM {{ ref('gold_reitit') }}
     WHERE speed_mps <= 0.1
       AND sekuntia_edellisesta >= 0
       AND sekuntia_edellisesta <= 120  -- Maksimissaan 2 minuutin yksittäinen pysähdys
-      AND in_checkout = 0
       AND EXTRACT(HOUR FROM aika) BETWEEN {{ var('shop_open') | float }} AND {{ var('shop_close') | float }}
 ),
 
