@@ -541,23 +541,92 @@ jotta voin arvioida eri tuoteosastojen houkuttelevuutta ja tehokkuutta.
 
 ***
 
-## Sprint 5 – BI, Agentit & Hallintatyökalut
+## Sprint 5 – Raportoinnin viimeistely ja analytiikan laadunvarmistus
 
-### Ajanjakso: 20.4. – 27.4.2026
+### Edellisen viikon Sprint Review ja Retro - 20.4.2026
 
-**Tavoitteet:**
-- Agenttien kytkeminen suoraan DuckDB-kantaan (luku & kirjoitus).
-- Agenttien muistin (Feedback Loop) toteutus.
-- Liiketoiminta-dashboardin visualisointien parantaminen (segmentointi, mediaanit).
-- Hallintatyökalujen (Advanced Features) alustus.
+Ennen uuden sprintin aloitusta käytiin läpi menneen sprintin onnistumiset.
 
-**Toteutuma (päivitetty 26.4.2026):**
-- [x] **Agentti-integraatio:** Agentit osaavat nyt hakea skeeman ja generoida SQL-kyselyitä.
-- [x] **Feedback Loop:** Käyttäjäpalaute tallentuu tietokantaan ja ohjaa agentteja.
-- [x] **Liiketoiminta UI:** Päivitetty käyttämään mediaaneja ja cascading-filttereitä.
-- [x] **Advanced Features:** Toteutettu LLM-konfiguraatio, erikoistapahtumien hallinta ja interaktiivinen karttaeditori (integroitu `app.py`).
-- [x] **Navigointi:** Yhtenäistetty käyttöliittymä seitsemällä eri analyysisivulla.
-- [x] **Technical Explorer:** Erillinen työkalu paikannusyrityksen teknisiin tarpeisiin (`overnight_explorer.py`).
+**Review:**
+- Arvioitiin Gold-tason datan rikastamista ja visualisointeja. Suurin osa ominaisuuksista alkaa hahmottua Streamlit-pohjaisesti ja tavoitteet saavutettiin hyvin.
+
+**Retro (Retrotool.io):**
+- **Mikä toimi hyvin (Liked):** Tavoitteet saavutettiin ja jopa ylitettiin. Kommunikointi ja yhteistyö olivat erinomaisella tasolla. Yhteiskoodaussessiot koettiin erittäin hyviksi ja keskustelua oli paljon enemmän kuin aiemmin. Kaiken kaikkiaan kenelläkään ei ollut juurikaan valitettavaa ("Itsellä ei mikään").
+- **Mitä opittiin (Learnt):** Tarkempi tehtävänmäärittely ennen tekemisen aloittamista on edelleen todella tärkeää. Opittiin lisää tiimityöstä ja dokumentoinnin tärkeydestä. Datan käsittelyyn on olemassa erittäin paljon erilaisia lähestymiskulmia. Huomattiin myös, että voisimme vieläkin seurata paremmin Scrum-menetelmää.
+- **Mitä parannetaan (Lacked / Ensi sprinttiin):** Yritetään jatkossakin keskittyä tiukemmin olennaiseen. Tehtävien pilkkominen vielä pienemmiksi paloiksi tekisi työskentelystä sujuvampaa. Kokeiluja tehtäessä pitäisi hyödyntää rohkeammin omia git-brancheja, jotta `main`-haara pysyisi jatkuvasti puhtaana. Branchien käyttöön kaivataan enemmän huomiota.
+
+### Suunnittelupalaveri – 20.4.2026
+
+**Paikalla: Kaikki**
+
+Sprintin alussa päätettiin siirtyä täysin Streamlit-pohjaiseen raportointiin ja Superset rajattiin kokonaan pois. Kehityksen pääpaino oli visualisoinneissa, dashboardien rakentamisessa ja analytiikan laadunvarmistuksessa, jotta lopputuote vastaa sekä kauppiaan että paikannusyrityksen tarpeita.
+
+#### Sprintin 5 - Tavoitteet:
+- Supersetin korvaaminen kokonaan Streamlit-dashboardeilla.
+- Liiketoiminta-dashboardin ja edistyneen analytiikan rakentaminen (suodattimet, segmentointi, mediaanit).
+- Agenttien kytkeminen suoraan DuckDB-kantaan ja kuvaajien plottaus chattiin.
+- Paikannusyrityksen analytiikan ja KPI-mittarien visualisointi (Overnight explorer, jitter & drift, CEP).
+- Asiakaskäyttäytymisen (kulkureitit, pysähdyspaikat, heatmap) tuominen osaksi käyttöliittymää.
+- Konfiguraatioiden (.env) yhtenäistäminen ja dokumentaation päivitys MVP-tasolle.
+
+**Tehtävät:**
+- Datan luku suoraan DuckDB-kannasta Streamlitiin ja tarpeettomien Parquet-tiedostojen poisto.
+- Liiketoiminnan dashboardin luonti älykkäillä aikafilttereillä ja baseline-vertailulla.
+- Asiakaskäyttäytymisen visualisointi.
+- Paikannustarkkuuden dashboardin toteutus yölliselle datalle.
+- Plotter-agentin korjaukset ja promptien viilaus.
+- Projektisuunnitelman päivitys "Definition of Done" ja MVP-tavoitteita varten.
+
+**DoD:**
+- Streamlit on ainoa käyttöliittymä ja Superset on siivottu pois.
+- Liiketoiminta-dashboard tarjoaa luotettavaa dataa (mediaanit, fiksut suodattimet, vertailuindeksi).
+- Kulkureitit ja asiakaskäyttäytyminen on visualisoitu.
+- Paikannusyrityksen tarpeisiin on oma näkymänsä tarkkuuksineen.
+- Konfiguraatiot hallitaan keskitetysti (.env).
+- Dokumentaatio on ajan tasalla.
+
+### Dailyt
+
+**20.4 Daily**
+Kävimme isot linjat tulevaa viikkoa läpi heti edellisen sprintin reviewin ja retron jälkeen.
+
+**21.4 Daily**
+**Paikalla: Mitro, Joni, Tuija**
+Ei oikein mitään lisättävää.
+
+**22.4 Daily (Yhteiskoodaus / operointi yhdessä)**
+Viikon, päivän ja kuukauden vertailu lisättiin. Etusivun KPI-mittaristoon tehtiin uudet taulut metriikoille vertailua varten.
+
+**23.4 Daily**
+Tehdään reiteille oma Gold-taulu (`gold_reitit`), jotta saadaan säädettyä isoja hyppyjä kärryissä ja parannettua analytiikan luotettavuutta.
+
+### Sprintin aikana tehdyt ratkaisut ja toteutukset
+
+**Käyttökokemus ja navigointi (UI/UX)**
+- *Liiketoiminta Dashboard* asetettiin sovelluksen viralliseksi aloitussivuksi ja käyttöliittymä yhtenäistettiin.
+- Lisättiin fiksummat *cascading-suodattimet* (vuodet, kuukaudet, viikot, viikonpäivät, kellonajat), jotka suodattavat dataa hierarkkisesti.
+- Toteutettiin *Advanced Features* -osio (hallintatyökalut), jonne siirrettiin LLM-konfiguraatio, erikoistapahtumien hallinta ja interaktiivinen karttaeditori.
+
+**Analytiikan tarkkuus ja luotettavuus**
+- Vaihdettiin päämittarit (kesto ja matka) keskiarvosta *mediaaniin*, jolloin saadaan rehellisempi kuva tyypillisestä asioinnista ilman virhedatan vaikutusta.
+- Lisättiin *suhteellinen viipymäsuodatus*: suurilla osastoilla vaaditaan pidempi aika kuin pienillä, jotta käynti lasketaan oikeaksi asioinniksi pelkän läpikävelyn sijaan.
+- Tehtiin automaattinen *kävijäsegmentointi* (pikakäynnit, peruskäynnit, viipymäkäynnit) ja baseline-vertailuindeksit KPI-korteille värikoodauksin.
+- Lisättiin tiukka reittivalidointi ja siirrettiin UI käyttämään puhdasta `gold_reitit`-taulua kohinattoman datan varmistamiseksi.
+
+**Paikannusdatan laatu ja tutkinta**
+- Kehitettiin erillinen *Overnight Explorer* (dashboard) paikannusyritykselle. Näkymä laskee tärkeimmät KPI-luvut (RMSE 2D, CEP 50 ja 95 alueet) ja visualisoi yksittäisten kärryjen jitteriä ja driftiä yökärrydatan pohjalta.
+- Heatmapit ja virhepisteet plotattiin suoraan kaupan pohjapiirustuksen päälle laatuongelmien (esim. Q-arvo, kohina) todentamiseksi.
+
+**Tekniset ratkaisut**
+- Parquet-tiedostoista luovuttiin kokonaan ja siirryttiin suoraan DuckDB-kannan hyödyntämiseen analyyseissä.
+- Keskitettiin konfiguraatiot turvallisesti `.env`-tiedostoon ja luotiin `.env-example` jakelua varten.
+- Agentin plottaus korjattiin ilmestymään suoraan chattiin varmistamalla puhtaat tauluviittaukset (pois Bronze-viittauksista).
+
+### Sprint Review - ma 27.4.2026
+
+- *Asiakaskäyttäytymisen ymmärtäminen ostoskärrydatan avulla* -epiikka todettiin pitkälti valmiiksi toteutettujen ominaisuuksien ja visualisointien myötä.
+- Kaikki keskeiset alkuperäiset User Storyt (kauppareissujen pituus, asiakkaiden kulkureitit, heatmap, pysähdyspaikat, paikannustarkkuus) saatiin toteutettua ja ne ovat nyt osa valmista käyttöliittymää.
+- Sovittiin, että projekti alkaa olla ominaisuuksien osalta valmis, ja siirrytään viimeistely- ja paketointivaiheeseen.
 
 ***
 
