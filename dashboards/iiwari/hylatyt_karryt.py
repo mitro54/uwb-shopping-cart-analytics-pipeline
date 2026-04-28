@@ -1,8 +1,8 @@
 """
-Hylätyt kärryt – kauppaan jätetyt kärryt aukioloaikoina
+Paikallaan olevat kärryt – Yö- ja päivädata
 ========================================================
-Tunnistaa kärryt jotka ovat olleet paikallaan yli 2h päiväaikaan
-kaupan sisällä (latausasemat ja sisäänkäyntialue poissuljettu).
+Tunnistaa kärryt jotka ovat olleet paikallaan yli 2h
+(myös yökärryt ja latausasemat mukana).
 
 Kutsutaan iiwari.py:stä: dashboards.iiwari.hylatyt_karryt.render()
 """
@@ -72,12 +72,12 @@ def _get_conn():
     st.stop()
 
 
-@st.cache_data(show_spinner="🛒 Haetaan hylättyjen kärryjen data…", ttl=300)
+@st.cache_data(show_spinner="🛒 Haetaan paikallaan olevien data…", ttl=300)
 def _load() -> pl.DataFrame:
     query = """
     SELECT * 
     FROM f_hylatyt_karryt
-    ORDER BY paiva, tunti_alku
+    ORDER BY paiva, alkuaika
     """
     return _get_conn().execute(query).pl()
 
@@ -88,14 +88,15 @@ def _load_image(path: Path) -> Image.Image:
 
 
 @st.cache_data(show_spinner="🔎 Haetaan instanssin raakadata…", ttl=300)
-def _fetch_instance_raw(node_id: str, tunti_alku: str) -> pl.DataFrame:
+def _fetch_instance_raw(node_id: str, alkuaika: str, loppuaika: str) -> pl.DataFrame:
     return _get_conn().execute(f"""
         SELECT aika, x, y
-        FROM silver_positions
+        FROM silver_device_diagnostics
         WHERE node_id = '{node_id}'
-          AND aika >= TIMESTAMP '{tunti_alku}'
-          AND aika <  TIMESTAMP '{tunti_alku}' + INTERVAL 3 HOUR
+          AND aika >= TIMESTAMP '{alkuaika}'
+          AND aika <= TIMESTAMP '{loppuaika}'
           AND x IS NOT NULL AND y IS NOT NULL
+          AND is_jitter = 0 AND is_out_of_bounds = 0
         ORDER BY aika
     """).pl()
 
@@ -137,14 +138,14 @@ def render():
     st.markdown(_CSS, unsafe_allow_html=True)
     st.markdown("""
     <div class="hk-hero">
-        <h1>🛒 Hylätyt kärryt</h1>
-        <p>Kärryt jotka ovat olleet paikallaan yli 2h aukioloaikoina — latausasemat ja sisäänkäyntialue poissuljettu</p>
+        <h1>🛒 Paikallaan olevat kärryt</h1>
+        <p>Kärryt ja latauksessa olevat laitteet jotka ovat olleet paikallaan yli 2h (24/7 data)</p>
     </div>
     """, unsafe_allow_html=True)
 
     df = _load()
     if df.is_empty():
-        st.warning("Ei dataa.")
+        st.warning("Ei dataa. Tarkista että f_hylatyt_karryt malli on ajettu onnistuneesti.")
         st.stop()
 
     # --- Sidebar: summary filters ---
@@ -164,10 +165,22 @@ def render():
         st.info("Valitse alku- ja loppupäivä.")
         st.stop()
     d0, d1 = date_range
+    
+    aikaluokat = ["— Kaikki —"] + sorted(df["aikaluokka"].unique().to_list())
+    sel_luokka = st.sidebar.selectbox("🌙 Aikaluokka", aikaluokat)
+
+    lataus_opts = ["— Kaikki —", "Vain latauspisteet", "Ei latauspisteitä"]
+    sel_lataus = st.sidebar.selectbox("🔋 Latauspisteet", lataus_opts)
 
     df_f = df.filter((pl.col("paiva") >= d0) & (pl.col("paiva") <= d1))
     if sel_node != "— Kaikki —":
         df_f = df_f.filter(pl.col("node_id") == sel_node)
+    if sel_luokka != "— Kaikki —":
+        df_f = df_f.filter(pl.col("aikaluokka") == sel_luokka)
+    if sel_lataus == "Vain latauspisteet":
+        df_f = df_f.filter(pl.col("is_charging_station") == 1)
+    elif sel_lataus == "Ei latauspisteitä":
+        df_f = df_f.filter(pl.col("is_charging_station") == 0)
 
     if df_f.is_empty():
         st.warning("Ei tapauksia valituilla suodattimilla.")
@@ -179,7 +192,7 @@ def render():
     _kpi(c1, str(len(df_f)), "Tapauksia yhteensä", "≥2h paikallaan")
     _kpi(c2, str(df_f["node_id"].n_unique()), "Laitetta")
     _kpi(c3, str(df_f["paiva"].n_unique()), "Päivää")
-    _kpi(c4, f"{df_f['spread_cm'].mean():.0f} cm", "Keskim. spread")
+    _kpi(c4, f"{df_f['kesto_h'].mean():.1f} h", "Keskim. kesto")
 
     # --- Floor plan scatter ---
     st.markdown('<div class="hk-section">🗺️ Sijainnit pohjapiirustuksessa</div>', unsafe_allow_html=True)
@@ -256,9 +269,9 @@ def render():
     st.plotly_chart(fig_dev, use_container_width=True)
 
     # --- Hour of day ---
-    st.markdown('<div class="hk-section">🕐 Mihin kellonaikaan kärryt hylätään?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hk-section">🕐 Mihin kellonaikaan pysähdys alkaa?</div>', unsafe_allow_html=True)
     by_hour = (
-        df_f.with_columns(pl.col("tunti_alku").dt.hour().alias("tunti"))
+        df_f.with_columns(pl.col("alkuaika").dt.hour().alias("tunti"))
         .group_by("tunti").agg(pl.len().alias("n")).sort("tunti")
     )
     fig_h = go.Figure(go.Bar(
@@ -274,7 +287,7 @@ def render():
     st.plotly_chart(fig_h, use_container_width=True)
 
     with st.expander("📋 Kaikki tapaukset taulukossa"):
-        st.dataframe(df_f.sort("paiva", "tunti_alku").to_pandas(),
+        st.dataframe(df_f.sort("paiva", "alkuaika").to_pandas(),
                      use_container_width=True, hide_index=True)
 
     # =========================================================================
@@ -283,7 +296,7 @@ def render():
     st.markdown("""
     <div class="pt-hero">
         <h2>🎯 Paikannustarkkuus – instanssikohtainen analyysi</h2>
-        <p>Valitse laite ja instanssi — tarkkuusanalyysi päiväaikaisesta paikallaan olevasta kärrystä</p>
+        <p>Valitse laite ja instanssi — tarkkuusanalyysi valitulta ajanjaksolta</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -296,11 +309,10 @@ def render():
 
     node_instances = (
         df.filter(pl.col("node_id") == acc_node)
-        .sort("paiva", "tunti_alku")
+        .sort("paiva", "alkuaika")
     )
     inst_labels = [
-        f"{row['paiva']}  {str(row['tunti_alku'])[11:16]}  "
-        f"({int(row['x'])}, {int(row['y'])})"
+        f"{row['paiva']}  {str(row['alkuaika'])[11:16]} - {str(row['loppuaika'])[11:16]} ({row['kesto_h']} h)"
         for row in node_instances.iter_rows(named=True)
     ]
     if not inst_labels:
@@ -310,18 +322,19 @@ def render():
     sel_inst_label = st.sidebar.selectbox("📋 Instanssi", inst_labels, key="acc_inst")
     inst_idx = inst_labels.index(sel_inst_label)
     inst_row = node_instances.row(inst_idx, named=True)
-    tunti_alku_str = str(inst_row["tunti_alku"])
+    alkuaika_str = str(inst_row["alkuaika"])
+    loppuaika_str = str(inst_row["loppuaika"])
 
     st.markdown(
-        f'<div class="pt-section">🔍 Laite {acc_node} — {inst_row["paiva"]} {tunti_alku_str[11:16]}</div>',
+        f'<div class="pt-section">🔍 Laite {acc_node} — {inst_row["paiva"]} {alkuaika_str[11:16]}-{loppuaika_str[11:16]}</div>',
         unsafe_allow_html=True,
     )
 
-    with st.spinner("Haetaan raakadata silver_positions…"):
-        df_raw = _fetch_instance_raw(str(acc_node), tunti_alku_str)
+    with st.spinner("Haetaan raakadata silver_device_diagnostics..."):
+        df_raw = _fetch_instance_raw(str(acc_node), alkuaika_str, loppuaika_str)
 
     if df_raw.is_empty():
-        st.info("Ei raakadataa tälle instanssille silver_positions-taulusta.")
+        st.info("Ei raakadataa tälle instanssille silver_device_diagnostics-taulusta.")
         st.stop()
 
     cx, cy, dx_arr, dy_arr, dists, rmse_2d, cep50, cep68, cep95 = _compute_metrics(df_raw)
@@ -474,7 +487,7 @@ def render():
         st.markdown('<div class="pt-section">📈 Kaikki instanssit – tarkkuus vertailu</div>',
                     unsafe_allow_html=True)
         st.dataframe(
-            node_instances.select(["paiva", "tunti_alku", "x", "y", "spread_cm"])
-            .sort("paiva", "tunti_alku").to_pandas(),
+            node_instances.select(["paiva", "alkuaika", "loppuaika", "kesto_h", "aikaluokka", "is_charging_station", "x", "y", "spread_cm"])
+            .sort("paiva", "alkuaika").to_pandas(),
             use_container_width=True, hide_index=True,
         )

@@ -1,59 +1,99 @@
 -- =========================================================================
--- 🛒 HYLÄTYT KÄRRYT
+-- 🛒 PAIKALLAAN OLEVAT KÄRRYT (Yö- ja päivädata)
 -- =========================================================================
--- Grain: Yksi rivi per hylätty kärry per päivä (per aikaisin 2-tunnin aikaikkuna).
--- Tarkoitus: Tunnistaa kärryt jotka ovat olleet paikallaan yli 2h päiväaikaan
--- kaupan sisällä (latausasemat ja sisäänkäyntialue poissuljettuna data putkessa).
+-- Grain: Yksi rivi per paikallaanolojakso (>2h) per kärry.
+-- Tarkoitus: Tunnistaa kauppaan hylätyt kärryt sekä yölatauksessa olevat 
+-- laitteet hyödyntämällä liukuvaa ikkunaa 24/7 datasta (silver_device_diagnostics).
 -- =========================================================================
 
-WITH per_tunti AS (
-    -- 1. Etsitään mediaanisijainti per kärry per tunti
+WITH puhdistettu AS (
     SELECT 
-        node_id, 
-        CAST(aika AS DATE) AS paiva,
-        DATE_TRUNC('hour', aika) AS tunti,
-        MEDIAN(x) AS med_x, 
-        MEDIAN(y) AS med_y, 
-        COUNT(*) AS pings
-    FROM {{ ref('silver_positions') }}
-    GROUP BY node_id, paiva, tunti
-    HAVING COUNT(*) >= 10
+        node_id,
+        date_trunc('minute', aika) AS aika,
+        MAX(is_night_time) AS is_night_time,
+        AVG(x) AS x,
+        AVG(y) AS y
+    FROM {{ ref('silver_device_diagnostics') }}
+    WHERE is_jitter = 0 AND is_out_of_bounds = 0
+    GROUP BY 1, 2
 ),
-ikkunat AS (
-    -- 2. Liitetään tunnit toisiinsa muodostaen kolmen tunnin (eli yli 2h) seurantaikkunoita
-    -- Joissa suurimman ja pienimmän eron spread on alle 5 metriä (500cm).
-    SELECT 
-        a.node_id, 
-        a.paiva, 
-        a.tunti AS tunti_alku,
-        MAX(SQRT(POWER(b.med_x-a.med_x,2)+POWER(b.med_y-a.med_y,2))) AS spread_cm,
-        AVG(b.med_x) AS keski_x,
-        AVG(b.med_y) AS keski_y
-    FROM per_tunti a
-    JOIN per_tunti b ON a.node_id = b.node_id AND a.paiva = b.paiva
-        AND b.tunti >= a.tunti AND b.tunti <= a.tunti + INTERVAL 2 HOUR
-    GROUP BY a.node_id, a.paiva, a.tunti
-    HAVING COUNT(DISTINCT b.tunti) >= 3
-       AND MAX(SQRT(POWER(b.med_x-a.med_x,2)+POWER(b.med_y-a.med_y,2))) < 500
-),
-uniikki AS (
-    -- 3. Järjestetään kaikki tällaiset tunnistetut paikallaanolot ja merkitään
-    -- edellisen tunnistuksen alkuaika jotta saamme parsittua erilliset sessionkatkot
-    SELECT 
+windowed AS (
+    SELECT
         *,
-        LAG(tunti_alku) OVER (PARTITION BY node_id, paiva ORDER BY tunti_alku) AS prev_t
-    FROM ikkunat
+        -- 2 tunnin bounding box eteenpäin
+        MAX(x) OVER w_2h - MIN(x) OVER w_2h AS spread_x,
+        MAX(y) OVER w_2h - MIN(y) OVER w_2h AS spread_y,
+        MAX(aika) OVER w_2h AS window_end_time
+    FROM puhdistettu
+    WINDOW w_2h AS (
+        PARTITION BY node_id 
+        ORDER BY aika 
+        RANGE BETWEEN CURRENT ROW AND INTERVAL '2' HOUR FOLLOWING
+    )
+),
+stationary_starts AS (
+    SELECT
+        *,
+        -- Etsitään hetket jolloin ikkuna oikeasti kesti vähintään 2h ja kärry pysyi < 500cm säteellä
+        CASE 
+            WHEN DATE_DIFF('second', aika, window_end_time) >= 7200
+             AND SQRT(POWER(spread_x, 2) + POWER(spread_y, 2)) < 500
+            THEN 1 ELSE 0 
+        END AS is_stationary_start
+    FROM windowed
+),
+contiguous_blocks AS (
+    SELECT
+        *,
+        -- Uusi jakso alkaa jos edellisestä paikallaanolon starttipingistä on yli 30 minuuttia.
+        CASE 
+            WHEN LAG(aika) OVER (PARTITION BY node_id ORDER BY aika) IS NULL 
+              OR DATE_DIFF('minute', LAG(aika) OVER (PARTITION BY node_id ORDER BY aika), aika) > 30 
+            THEN 1 ELSE 0 
+        END AS new_block
+    FROM stationary_starts
+    WHERE is_stationary_start = 1
+),
+block_ids AS (
+    SELECT
+        *,
+        SUM(new_block) OVER (PARTITION BY node_id ORDER BY aika) AS block_id
+    FROM contiguous_blocks
+),
+aggregaatti AS (
+    SELECT
+        node_id,
+        MIN(aika) AS alkuaika,
+        -- Päättymisaika on viimeisen starttipisteen ikkunan loppu
+        MAX(window_end_time) AS loppuaika,
+        ROUND(AVG(x), 0) AS keski_x,
+        ROUND(AVG(y), 0) AS keski_y,
+        ROUND(MAX(SQRT(POWER(spread_x, 2) + POWER(spread_y, 2))), 0) AS max_spread_cm,
+        CASE 
+            WHEN MIN(is_night_time) = 1 THEN 'Yöaika'
+            WHEN MAX(is_night_time) = 0 THEN 'Päiväaika'
+            ELSE 'Yli yön (sekamuotoinen)'
+        END AS aikaluokka,
+        ROUND(DATE_DIFF('second', MIN(aika), MAX(window_end_time)) / 3600.0, 2) AS kesto_h,
+        -- Merkitään latauspisteet configuroidun säteen mukaan
+        CASE 
+            WHEN (POWER(AVG(x) - {{ var('prob1_x') }}, 2) + POWER(AVG(y) - {{ var('prob1_y') }}, 2)) < POWER({{ var('prob1_r') }}, 2) THEN 1
+            WHEN (POWER(AVG(x) - {{ var('prob2_x') }}, 2) + POWER(AVG(y) - {{ var('prob2_y') }}, 2)) < POWER({{ var('prob2_r') }}, 2) THEN 1
+            ELSE 0
+        END AS is_charging_station
+    FROM block_ids
+    GROUP BY node_id, block_id
 )
-
--- 4. Lopullinen siivous ja muotoilu analytiikkaa varten
-SELECT
+SELECT 
     node_id,
-    paiva,
-    tunti_alku,
-    ROUND(keski_x, 0) AS x,
-    ROUND(keski_y, 0) AS y,
-    ROUND(spread_cm, 0) AS spread_cm
-FROM uniikki
--- Suodatetaan päällekkäisyydet: joko ensimmäinen instanssi tai ainakin 2 tuntia taukoa edellisestä listauksesta
-WHERE prev_t IS NULL OR tunti_alku > prev_t + INTERVAL 2 HOUR
-ORDER BY paiva, tunti_alku
+    CAST(alkuaika AS DATE) AS paiva,
+    alkuaika,
+    loppuaika,
+    kesto_h,
+    keski_x AS x,
+    keski_y AS y,
+    max_spread_cm AS spread_cm,
+    aikaluokka,
+    is_charging_station
+FROM aggregaatti
+ORDER BY alkuaika, node_id

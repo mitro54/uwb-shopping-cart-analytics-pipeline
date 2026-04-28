@@ -69,6 +69,31 @@ models:
       - name: low_quality_pct
         description: "Prosenttiosuus heikoista (q<35) signaaleista kyseisessä ruudussa."
 
+  - name: f_hylatyt_karryt
+    description: >
+      Yksi rivi per paikallaanolojakso (>2h) per kärry. Tunnistaa kauppaan hylätyt kärryt sekä yölatauksessa olevat laitteet liukuvan ikkunan (sliding window) avulla 24/7 datasta.
+    columns:
+      - name: node_id
+        description: "Kärryn tunniste."
+      - name: paiva
+        description: "Paikallaanolojakson aloituspäivä."
+      - name: alkuaika
+        description: "Hetki, jolloin kärry havaittiin jäävän paikalleen (yli 2 tunniksi)."
+      - name: loppuaika
+        description: "Hetki, jolloin kärry alkoi taas liikkua (tai viimeisen liukuvan ikkunan loppu)."
+      - name: kesto_h
+        description: "Paikallaanoloaika tunteina (loppuaika - alkuaika)."
+      - name: x
+        description: "Kärryn keskimääräinen x-koordinaatti (cm) paikallaanolojakson aikana."
+      - name: y
+        description: "Kärryn keskimääräinen y-koordinaatti (cm) paikallaanolojakson aikana."
+      - name: spread_cm
+        description: "Suurin koordinaattien välinen hajonta (cm) jakson aikana. Kertoo kuinka paljon kärry heilui."
+      - name: aikaluokka
+        description: "Määrittää onko jakso tapahtunut yöllä, päivällä vai yli yön."
+      - name: is_charging_station
+        description: "Onko laite hylätty tunnetun latauspisteen läheisyyteen (1 = kyllä, 0 = ei)."
+
   - name: gold_koordinaatit
     description: >
       Puhdistettu ja rikastettu koordinaattitaulu lämpökarttatuotantoon.
