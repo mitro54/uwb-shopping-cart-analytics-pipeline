@@ -710,6 +710,71 @@ elif page == "🗺️ Myymäläanalytiikka":
                                     file_name=os.path.basename(path_part),
                                     mime="image/png"
                                 )
+                                
+                            # --- UUSI OMINAISUUS: Reitin aikajana ---
+                            if st.session_state.get("plot_type") == "route" and st.session_state.get("selected_session"):
+                                st.markdown("---")
+                                st.markdown("### 📋 Reitin aikajana")
+                                st.caption("Kronologinen listaus kärryn reitistä osastojen perusteella.")
+                                try:
+                                    import duckdb
+                                    from agents.shared.config import CONFIG
+                                    conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
+                                    timeline_query = f"""
+                                        WITH pisteet AS (
+                                            SELECT 
+                                                r.aika, r.sekuntia_edellisesta,
+                                                COALESCE(o.nimi, 'Käytävä / Siirtymä') AS osasto
+                                            FROM main.gold_reitit r
+                                            LEFT JOIN main.dim_osastot o
+                                                ON r.x >= o.alku_x AND r.x <= o.loppu_x
+                                               AND r.y >= o.alku_y AND r.y <= o.loppu_y
+                                            WHERE r.full_session_id = '{st.session_state.selected_session}'
+                                        ),
+                                        muutokset AS (
+                                            SELECT 
+                                                aika, osasto, sekuntia_edellisesta,
+                                                CASE WHEN osasto != LAG(osasto) OVER (ORDER BY aika) OR LAG(osasto) OVER (ORDER BY aika) IS NULL THEN 1 ELSE 0 END AS uusi_ryhma
+                                            FROM pisteet
+                                        ),
+                                        ryhmat AS (
+                                            SELECT 
+                                                aika, osasto, sekuntia_edellisesta,
+                                                SUM(uusi_ryhma) OVER (ORDER BY aika) AS ryhma_id
+                                            FROM muutokset
+                                        ),
+                                        yhteenveto AS (
+                                            SELECT 
+                                                osasto AS "Sijainti",
+                                                MIN(aika) AS "Saapumisaika",
+                                                MAX(aika) AS "Poistumisaika",
+                                                CAST(SUM(sekuntia_edellisesta) AS INTEGER) AS kesto_sekunteina
+                                            FROM ryhmat
+                                            GROUP BY ryhma_id, osasto
+                                        )
+                                        SELECT * FROM yhteenveto 
+                                        WHERE kesto_sekunteina > 0
+                                        ORDER BY "Saapumisaika"
+                                    """
+                                    timeline_df = conn.execute(timeline_query).df()
+                                    conn.close()
+                                    
+                                    if not timeline_df.empty:
+                                        timeline_df["Kesto"] = timeline_df["kesto_sekunteina"].apply(
+                                            lambda x: f"{int(x // 60)} min {int(x % 60)} s" if x >= 60 else f"{int(x)} s"
+                                        )
+                                        timeline_df["Saapumisaika"] = pd.to_datetime(timeline_df["Saapumisaika"]).dt.strftime("%H:%M:%S")
+                                        timeline_df["Poistumisaika"] = pd.to_datetime(timeline_df["Poistumisaika"]).dt.strftime("%H:%M:%S")
+                                        
+                                        st.dataframe(
+                                            timeline_df[["Saapumisaika", "Poistumisaika", "Sijainti", "Kesto"]], 
+                                            use_container_width=True,
+                                            hide_index=True
+                                        )
+                                    else:
+                                        st.info("Ei havaintoja aikajanalle.")
+                                except Exception as e:
+                                    st.error(f"Virhe reitin aikajanan luonnissa: {e}")
                         else:
                             st.error(f"Tiedostoa ei löytynyt: {path_part}")
                     else:
