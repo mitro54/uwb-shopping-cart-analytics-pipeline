@@ -178,13 +178,23 @@ def _get_baseline_stats(min_dwell: int = 0):
         )
     """).fetchone()
     
+    # Segmenttien osuudet vertailupohjaksi (900s = 15min)
+    res_seg = conn.execute("""
+        SELECT 
+            SUM(CASE WHEN kesto_sekunteina < 900 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0),
+            SUM(CASE WHEN kesto_sekunteina >= 900 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0)
+        FROM f_kaynti
+    """).fetchone()
+
     return {
         "visits": res[0] or 0,
         "duration": (res[1] or 0) / 60.0,
         "distance": res[2] or 0,
         "med_duration": (res[3] or 0) / 60.0,
         "med_distance": res[4] or 0,
-        "depts": res_o[0] or 0
+        "depts": res_o[0] or 0,
+        "pct_Läpikävelijä": res_seg[0] or 0.0,
+        "pct_Tutkiskelija": res_seg[1] or 0.0
     }
 
 
@@ -334,9 +344,8 @@ def render():
         raw_df = raw_df.filter(mask)
     
     def classify_visit(sec):
-        if sec < 300: return "Pikakäynti (< 5 min)"
-        if sec < 900: return "Peruskäynti (5-15 min)"
-        return "Viipymäkäynti (> 15 min)"
+        if sec < 900: return "Läpikävelijä"
+        return "Tutkiskelija"
 
     if not raw_df.is_empty():
         raw_df = raw_df.with_columns(
@@ -352,7 +361,7 @@ def render():
     with col_seg1:
         sel_segments = st.multiselect("Kävijäsegmentit", options=seg_options, placeholder="Kaikki segmentit")
     with col_seg2:
-        min_dwell = st.slider("Viipymäsuodatin (sekunteina, suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut osastotasolla.")
+        min_dwell = st.slider("Osastokohtainen viipymäsuodatin (sekunteina, suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut osastotasolla.")
 
     # --- Apply Segment Filter ----------------------------------------------
     df = raw_df
@@ -425,7 +434,12 @@ def render():
         cols = st.columns(len(labels))
         for i, (lbl, val) in enumerate(zip(labels, values)):
             percent = (val / total_visits) * 100
-            cols[i].metric(lbl, f"{val:,} kpl", f"{percent:.1f} %")
+            
+            # Erotus keskiarvosta (baseline)
+            base_pct = baseline.get(f"pct_{lbl}", 0.0)
+            diff = percent - base_pct
+            
+            cols[i].metric(lbl, f"{val:,} kpl ({percent:.1f} %)", f"{diff:+.1f} %-yks")
 
     # Näytetään huiput vain jos tunti-suodatin ei ole aktiivinen
     if not sel_hours:
