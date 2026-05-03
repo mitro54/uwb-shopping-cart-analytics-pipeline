@@ -298,7 +298,21 @@ def plot_on_floorplan(
             
             # Pysähdyspaikat piirretään reitin päälle
             if num_stops > 0 and not dwells.empty:
-                ax.scatter(dwells["x_m"], dwells["y_m"], color="hotpink", edgecolor="white", marker="o", s=100, alpha=0.9, zorder=3.5, label=f"Pysähdykset ({num_stops} kpl)")
+                # Muutetaan kontrastia (alpha-arvoa) pysähdyksen pituuden mukaan
+                max_kesto = dwells["kesto_s"].max()
+                if max_kesto > 0:
+                    alphas = 0.3 + 0.7 * (dwells["kesto_s"] / max_kesto)
+                else:
+                    alphas = pd.Series([0.9] * len(dwells))
+                
+                # Hotpink RGBA
+                rgba_colors = np.zeros((len(dwells), 4))
+                rgba_colors[:, 0] = 1.0         # R
+                rgba_colors[:, 1] = 105 / 255.0 # G
+                rgba_colors[:, 2] = 180 / 255.0 # B
+                rgba_colors[:, 3] = alphas      # A
+
+                ax.scatter(dwells["x_m"], dwells["y_m"], c=rgba_colors, edgecolor="white", marker="o", s=100, zorder=3.5, label=f"Pysähdykset ({num_stops} kpl)")
                 
                 # Kirjoitetaan pysähdysaika markerin viereen
                 for _, row in dwells.iterrows():

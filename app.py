@@ -147,43 +147,122 @@ if page == "🗺️ Myymäläanalytiikka":
 
         st.session_state.show_zones = st.checkbox("Näytä osastot", value=True, key="show_zones_check")
         
-        st.session_state.selected_date = st.date_input("Valitse päivämäärä", value=pd.to_datetime("2019-12-24"), key="date_input")
-        date_str = st.session_state.selected_date.strftime("%Y-%m-%d")
+        @st.cache_data(ttl=3600)
+        def get_date_bounds():
+            try:
+                import duckdb
+                from agents.shared.config import CONFIG
+                conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
+                df = conn.execute("SELECT MIN(CAST(aika AS DATE)) as min_date, MAX(CAST(aika AS DATE)) as max_date FROM main.gold_reitit").df()
+                conn.close()
+                if df.empty or pd.isna(df["min_date"].iloc[0]):
+                    return pd.to_datetime("2019-12-24").date(), pd.to_datetime("2019-12-24").date()
+                return pd.to_datetime(df["min_date"].iloc[0]).date(), pd.to_datetime(df["max_date"].iloc[0]).date()
+            except Exception:
+                return pd.to_datetime("2019-12-24").date(), pd.to_datetime("2019-12-24").date()
+                
+        min_date, max_date = get_date_bounds()
+
+        time_window = st.selectbox(
+            "Aikavälin laajuus (alkamispäivästä)", 
+            ["Vapaa valinta", "1 päivä", "1 viikko", "1 kuukausi", "Koko data"]
+        )
+
+        if time_window == "Vapaa valinta":
+            st.session_state.selected_dates = st.date_input(
+                "Valitse aikaväli", 
+                value=(min_date, min_date),
+                key="date_range",
+                min_value=min_date,
+                max_value=max_date
+            )
+            if isinstance(st.session_state.selected_dates, tuple):
+                if len(st.session_state.selected_dates) == 2:
+                    start_date, end_date = st.session_state.selected_dates
+                elif len(st.session_state.selected_dates) == 1:
+                    start_date = end_date = st.session_state.selected_dates[0]
+                else:
+                    start_date = end_date = min_date
+            else:
+                start_date = end_date = st.session_state.selected_dates
+        elif time_window == "Koko data":
+            start_date = min_date
+            end_date = max_date
+            st.info(f"Valittu aikaväli: {start_date.strftime('%d.%m.%Y')} - {end_date.strftime('%d.%m.%Y')}")
+        else:
+            start_date = st.date_input(
+                "Valitse alkupäivä", 
+                value=min_date,
+                key="date_single",
+                min_value=min_date,
+                max_value=max_date
+            )
+            if time_window == "1 päivä":
+                end_date = start_date
+            elif time_window == "1 viikko":
+                end_date = min(max_date, start_date + pd.Timedelta(days=6))
+            elif time_window == "1 kuukausi":
+                end_date = min(max_date, start_date + pd.Timedelta(days=30))
+            st.info(f"Laskettu aikaväli: {start_date.strftime('%d.%m.%Y')} - {end_date.strftime('%d.%m.%Y')}")
+
+        start_str = start_date.strftime("%Y-%m-%d")
+        end_str = end_date.strftime("%Y-%m-%d")
+        
+        date_display = start_str if start_str == end_str else f"{start_str} - {end_str}"
 
         st.session_state.sql_query = ""
         st.session_state.plot_type = "heatmap"
-        st.session_state.title = f"Visualisointi - {date_str}"
+        st.session_state.title = f"Visualisointi - {date_display}"
 
         if st.session_state.vis_mode == "🔥 Lämpökartta (Heatmap)":
             st.session_state.plot_type = "heatmap"
-            st.session_state.sql_query = f"SELECT x, y FROM main.gold_reitit WHERE CAST(aika AS DATE) = '{date_str}'"
-            st.session_state.title = f"Asiakasvirrat - {date_str}"
+            st.session_state.sql_query = f"SELECT x, y FROM main.gold_reitit WHERE CAST(aika AS DATE) BETWEEN '{start_str}' AND '{end_str}'"
+            st.session_state.title = f"Asiakasvirrat - {date_display}"
 
         elif st.session_state.vis_mode == "🔴 Pistepilvi (Scatter)":
             st.session_state.plot_type = "scatter"
-            st.session_state.sql_query = f"SELECT x, y FROM main.gold_reitit WHERE CAST(aika AS DATE) = '{date_str}'"
-            st.session_state.title = f"Raakapisteet - {date_str}"
+            st.session_state.sql_query = f"SELECT x, y FROM main.gold_reitit WHERE CAST(aika AS DATE) BETWEEN '{start_str}' AND '{end_str}'"
+            st.session_state.title = f"Raakapisteet - {date_display}"
 
         elif st.session_state.vis_mode == "📍 Pysähdyspaikat (Dwell)":
             st.session_state.plot_type = "dwell"
-            st.session_state.sql_query = f"SELECT CAST(FLOOR(x / 100) * 100 AS INTEGER) AS x, CAST(FLOOR(y / 100) * 100 AS INTEGER) AS y, SUM(sekuntia_edellisesta) AS dwell_time FROM main.gold_reitit WHERE CAST(aika AS DATE) = '{date_str}' AND speed_mps <= 0.1 AND sekuntia_edellisesta BETWEEN 0 AND 120 GROUP BY 1, 2 HAVING SUM(sekuntia_edellisesta) > 10"
-            st.session_state.title = f"Pysähdykset ja viipymä - {date_str}"
+            st.session_state.sql_query = f"SELECT CAST(FLOOR(x / 100) * 100 AS INTEGER) AS x, CAST(FLOOR(y / 100) * 100 AS INTEGER) AS y, SUM(sekuntia_edellisesta) AS dwell_time FROM main.gold_reitit WHERE CAST(aika AS DATE) BETWEEN '{start_str}' AND '{end_str}' AND speed_mps <= 0.1 AND sekuntia_edellisesta BETWEEN 0 AND 120 GROUP BY 1, 2 HAVING SUM(sekuntia_edellisesta) > 10"
+            st.session_state.title = f"Pysähdykset ja viipymä - {date_display}"
 
         elif st.session_state.vis_mode == "➿ Asiakasreitti (Route)":
             st.session_state.plot_type = "route"
             conn = duckdb.connect(str(CONFIG.duckdb_path), read_only=True)
-            nodes = conn.execute(f"SELECT DISTINCT node_id FROM main.gold_reitit WHERE CAST(aika AS DATE) = '{date_str}'").df()
+            nodes = conn.execute(f"SELECT DISTINCT node_id FROM main.gold_reitit WHERE CAST(aika AS DATE) BETWEEN '{start_str}' AND '{end_str}'").df()
             if not nodes.empty:
                 st.session_state.selected_node = st.selectbox("Valitse ostoskärry (node_id)", nodes["node_id"].tolist(), key="node_select")
-                sessions = conn.execute(f"SELECT DISTINCT full_session_id FROM main.gold_reitit WHERE node_id = '{st.session_state.selected_node}' AND CAST(aika AS DATE) = '{date_str}'").df()
+                
+                sessions_query = f"""
+                    SELECT full_session_id, MIN(aika) as session_start, MAX(aika) as session_end
+                    FROM main.gold_reitit 
+                    WHERE node_id = '{st.session_state.selected_node}' 
+                      AND CAST(aika AS DATE) BETWEEN '{start_str}' AND '{end_str}'
+                    GROUP BY full_session_id
+                    ORDER BY session_start
+                """
+                sessions = conn.execute(sessions_query).df()
+                
                 if not sessions.empty:
-                    st.session_state.selected_session = st.selectbox("Valitse sessio", sessions["full_session_id"].tolist(), key="session_select")
+                    def format_session(row):
+                        start_time = pd.to_datetime(row['session_start'])
+                        end_time = pd.to_datetime(row['session_end'])
+                        duration_mins = int((end_time - start_time).total_seconds() / 60)
+                        return f"{start_time.strftime('%d.%m.%Y %H:%M')} ({duration_mins} min) - ID: {row['full_session_id'][:8]}"
+                        
+                    session_labels = [format_session(row) for _, row in sessions.iterrows()]
+                    selected_label = st.selectbox("Valitse sessio", session_labels, key="session_select")
+                    
+                    st.session_state.selected_session = sessions["full_session_id"].iloc[session_labels.index(selected_label)]
                     st.session_state.sql_query = f"SELECT x, y, aika, dist_m, speed_mps, sekuntia_edellisesta FROM main.gold_reitit WHERE node_id = '{st.session_state.selected_node}' AND full_session_id = '{st.session_state.selected_session}' ORDER BY aika"
-                    st.session_state.title = f"Reitti: Kärry {st.session_state.selected_node} (Sessio {st.session_state.selected_session[:8]}...)"
+                    st.session_state.title = f"Reitti: Kärry {st.session_state.selected_node} ({selected_label})"
                 else:
-                    st.sidebar.warning("Ei sessioita valittuna päivänä.")
+                    st.sidebar.warning("Ei sessioita valitulla aikavälillä.")
             else:
-                st.sidebar.warning("Ei dataa valittuna päivänä.")
+                st.sidebar.warning("Ei dataa valitulla aikavälillä.")
             conn.close()
 
         st.session_state.alpha = st.slider("Peittävyys (Alpha)", 0.1, 1.0, 0.6, key="alpha_slider")
