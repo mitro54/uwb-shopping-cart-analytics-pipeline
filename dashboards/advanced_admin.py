@@ -57,30 +57,69 @@ def render():
     # --- Tab 2: Erikoistapahtumat ---
     with tabs[1]:
         st.markdown("### 📅 Erikoistapahtumien hallinta")
-        
-        # Lataa olemassa olevat
+        st.caption("Voit lisätä uusia tapahtumia. Lisättyjä tapahtumia ei voi muokata tai poistaa.")
+
         csv_path = "bytebuddies_dbt/seeds/special_events.csv"
         if os.path.exists(csv_path):
             df_ev = pl.read_csv(csv_path)
-            st.dataframe(df_ev, use_container_width=True)
+            st.dataframe(
+                df_ev.sort(["start_date"], descending=True),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "event_name": st.column_config.TextColumn("Tapahtuma"),
+                    "start_date": st.column_config.TextColumn("Alkaa"),
+                    "end_date": st.column_config.TextColumn("Loppuu"),
+                    "category": st.column_config.TextColumn("Kategoria"),
+                }
+            )
         else:
             st.warning("Erikoistapahtumia ei vielä määritelty.")
-            df_ev = pl.DataFrame()
+            df_ev = pl.DataFrame(schema={"event_name": pl.String, "start_date": pl.String, "end_date": pl.String, "category": pl.String})
 
-        with st.expander("➕ Lisää uusi tapahtuma"):
+        st.markdown("---")
+        st.markdown("#### ➕ Lisää uusi tapahtuma")
+
+        with st.form("add_event_form", clear_on_submit=True):
             e1, e2 = st.columns(2)
             new_name = e1.text_input("Tapahtuman nimi", placeholder="Esim. Alennusmyynnit")
-            new_cat = e2.selectbox("Kategoria", ["Juhlapyhä", "Urheilu", "Sesonki", "Muu"])
-            
+            new_cat = e2.selectbox("Kategoria", ["Juhlapyhä", "Sesonki", "Urheilu", "Viihde", "Muu"])
+
             d1, d2 = st.columns(2)
-            start_d = d1.date_input("Alkupäivämäärä")
-            end_d = d2.date_input("Loppupäivämäärä")
-            
-            if st.button("Lisää listaan"):
-                new_row = {"event_name": new_name, "start_date": str(start_d), "end_date": str(end_d), "category": new_cat}
-                # Tallennettaisiin CSV-tiedostoon
-                st.write("Lisättäisiin:", new_row)
-                st.toast(f"Tapahtuma {new_name} lisätty!", icon="✅")
+            import datetime
+            start_d = d1.date_input("Alkupäivämäärä", value=datetime.date.today())
+            end_d = d2.date_input("Loppupäivämäärä", value=datetime.date.today())
+
+            submitted = st.form_submit_button("✅ Lisää tapahtuma", use_container_width=True)
+
+        if submitted:
+            if not new_name.strip():
+                st.error("Anna tapahtumalle nimi.")
+            elif end_d < start_d:
+                st.error("Loppupäivämäärä ei voi olla ennen alkupäivämäärää.")
+            else:
+                new_row = pl.DataFrame({
+                    "event_name": [new_name.strip()],
+                    "start_date": [str(start_d)],
+                    "end_date": [str(end_d)],
+                    "category": [new_cat],
+                })
+                # Duplikaattisuojaus: sama nimi + sama alkupäivä
+                if not df_ev.is_empty():
+                    exists = df_ev.filter(
+                        (pl.col("event_name") == new_name.strip()) &
+                        (pl.col("start_date") == str(start_d))
+                    )
+                    if not exists.is_empty():
+                        st.warning(f"Tapahtuma '{new_name}' päivämäärällä {start_d} on jo olemassa.")
+                        st.stop()
+
+                updated = pl.concat([df_ev, new_row])
+                updated.write_csv(csv_path)
+                st.cache_data.clear()
+                st.success(f"✅ Tapahtuma '{new_name}' ({start_d} – {end_d}) lisätty!")
+                st.rerun()
+
 
     # --- Tab 3: Osastojen määrittely (Kartta) ---
     with tabs[2]:
