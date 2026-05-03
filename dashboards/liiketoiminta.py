@@ -233,116 +233,177 @@ def render():
     st.markdown(_CSS, unsafe_allow_html=True)
     st.markdown(f"""
     <div class="biz-hero">
-        <h1>📈 {CONFIG.store_name}: Liiketoiminnan tunnusluvut</h1>
+        <h1>📈 Liiketoiminnan tunnusluvut</h1>
         <p>Asiakaskäyttäytymisen analyysi — käynnit, viipymät ja osastojen suosio</p>
     </div>
     """, unsafe_allow_html=True)
 
     # --- Filters ----------------------------------------------------------
     st.markdown("### ⚙️ Suodattimet")
-    df_time = _get_time_options()
     
-    col_f1, col_f2, col_f3 = st.columns(3)
+    conn = _get_conn()
+    import datetime
+    max_d_res = conn.execute("SELECT MAX(kaynti_paiva) FROM f_kaynti").fetchone()
+    max_d = max_d_res[0] if max_d_res and max_d_res[0] else datetime.date.today()
+    default_start = max_d - datetime.timedelta(days=6)
     
-    with col_f1:
-        years_opt = sorted(df_time["year"].unique().to_list())
-        sel_years = st.multiselect("Vuodet", options=years_opt, placeholder="Kaikki vuodet")
-    
-    with col_f2:
-        df_m = df_time
-        if sel_years:
-            df_m = df_m.filter(pl.col("year").is_in(sel_years))
-        months_opt = sorted(df_m["month"].unique().to_list())
-        month_labels = {
-            1: "Tammi", 2: "Helmi", 3: "Maalis", 4: "Huhti", 5: "Touko", 6: "Kesä",
-            7: "Heinä", 8: "Elo", 9: "Syys", 10: "Loka", 11: "Marras", 12: "Joulu"
-        }
-        sel_months = st.multiselect(
-            "Kuukaudet", 
-            options=months_opt, 
-            format_func=lambda x: month_labels.get(x, str(x)),
-            placeholder="Kaikki kuukaudet"
-        )
-    
-    with col_f3:
-        df_w = df_time
-        if sel_years:
-            df_w = df_w.filter(pl.col("year").is_in(sel_years))
-        if sel_months:
-            df_w = df_w.filter(pl.col("month").is_in(sel_months))
-        weeks_opt = sorted(df_w["week"].unique().to_list())
-        sel_weeks = st.multiselect("Viikot", options=weeks_opt, placeholder="Kaikki viikot")
+    def reset_filters():
+        st.session_state.date_filter = (default_start, max_d)
+        st.session_state.time_mode = "date"
+        for k in ["sel_weekdays", "sel_hours", "sel_segments", "min_dwell",
+                  "sel_years", "sel_months", "sel_weeks",
+                  "sel_event_names", "sel_event_years"]:
+            if k in st.session_state:
+                del st.session_state[k]
 
-    col_f4, col_f5 = st.columns(2)
-    with col_f4:
-        df_wd = df_time
-        if sel_years:
-            df_wd = df_wd.filter(pl.col("year").is_in(sel_years))
-        if sel_months:
-            df_wd = df_wd.filter(pl.col("month").is_in(sel_months))
-        if sel_weeks:
-            df_wd = df_wd.filter(pl.col("week").is_in(sel_weeks))
-        
-        wd_opt = sorted(df_wd["weekday"].unique().to_list())
-        sel_weekdays = st.multiselect(
-            "Viikonpäivät", 
-            options=wd_opt,
-            format_func=lambda x: WEEKDAY_LABELS[x-1],
-            placeholder="Kaikki päivät"
-        )
-    
-    with col_f5:
-        df_h = df_time
-        if sel_years:
-            df_h = df_h.filter(pl.col("year").is_in(sel_years))
-        if sel_months:
-            df_h = df_h.filter(pl.col("month").is_in(sel_months))
-        if sel_weeks:
-            df_h = df_h.filter(pl.col("week").is_in(sel_weeks))
-        if sel_weekdays:
-            df_h = df_h.filter(pl.col("weekday").is_in(sel_weekdays))
-            
-        hours_opt = sorted(df_h["hour"].unique().to_list())
-        sel_hours = st.multiselect(
-            "Kellonajat", 
-            options=hours_opt, 
-            format_func=lambda x: f"{x}:00",
-            placeholder="Kaikki tunnit"
+    if "date_filter" not in st.session_state:
+        st.session_state.date_filter = (default_start, max_d)
+
+    col_btn, col_mode = st.columns([1, 2])
+    with col_btn:
+        st.button("🔄 Nollaa kaikki valinnat", on_click=reset_filters, use_container_width=True)
+    with col_mode:
+        time_mode = st.radio(
+            "Aikasuodatustapa",
+            options=["date", "year", "event"],
+            format_func=lambda x: {"date": "📅 Päivämääräalue",
+                                    "year": "📆 Vuosivertailu",
+                                    "event": "🎄 Erikoistapahtumat"}[x],
+            horizontal=True,
+            label_visibility="collapsed",
+            key="time_mode"
         )
 
-    # --- Special Events Filter ---------------------------------------------
     df_ev = _get_special_events()
-    sel_events = []
     if not df_ev.is_empty():
-        # Suodatetaan tapahtumat valittujen vuosien mukaan
-        if sel_years:
-            df_ev = df_ev.with_columns(pl.col("start_date").str.to_date())
-            df_ev = df_ev.filter(pl.col("start_date").dt.year().is_in(sel_years))
-        
-        event_names = sorted(df_ev["event_name"].unique().to_list())
-        st.markdown("---")
-        st.info("💡 Voit valita alta erikoistapahtuman, jolloin dashboard suodattuu automaattisesti kyseiseen ajankohtaan.")
-        sel_events = st.multiselect("Erikoistapahtumat", options=event_names, placeholder="Valitse tapahtuma vertailuun")
+        df_ev = df_ev.with_columns(
+            pl.col("start_date").str.to_date(),
+            pl.col("end_date").str.to_date()
+        )
 
-    # --- Apply Special Events Filter ---------------------------------------
-    raw_df = _kaynti(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours)
-    
-    if sel_events and not df_ev.is_empty() and not raw_df.is_empty():
-        # Haetaan valitun tapahtuman päivämäärärajat
-        ev_filter = df_ev.filter(pl.col("event_name").is_in(sel_events))
-        date_ranges = []
-        for row in ev_filter.to_dicts():
-            date_ranges.append((row["start_date"], row["end_date"]))
-        
-        # Filtteröidään raw_df näille väleille
+    # ── TILA 1: Päivämääräalue ──────────────────────────────────────────────
+    if time_mode == "date":
+        sel_daterange = st.date_input("Päivämääräalue (oletuksena tuoreimmat 7 pv)", key="date_filter")
+        sel_years, sel_months, sel_weeks = [], [], []
+        sel_events_filter = None
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            sel_weekdays = st.multiselect(
+                "Viikonpäivät", options=list(range(1, 8)),
+                format_func=lambda x: WEEKDAY_LABELS[x-1],
+                placeholder="Kaikki päivät", key="sel_weekdays")
+        with col_f2:
+            sel_hours = st.multiselect(
+                "Kellonajat", options=list(range(0, 24)),
+                format_func=lambda x: f"{x}:00",
+                placeholder="Kaikki tunnit", key="sel_hours")
+
+    # ── TILA 2: Vuosivertailu ───────────────────────────────────────────────
+    elif time_mode == "year":
+        sel_daterange = None
+        sel_events_filter = None
+        all_years = sorted(conn.execute(
+            "SELECT DISTINCT YEAR(kaynti_paiva) FROM f_kaynti").df().iloc[:, 0].tolist())
+        sel_years = st.multiselect(
+            "Vuodet vertailuun", options=all_years,
+            placeholder="Valitse yksi tai useampi vuosi", key="sel_years")
+        month_labels = {
+            1:"Tammi",2:"Helmi",3:"Maalis",4:"Huhti",5:"Touko",6:"Kesä",
+            7:"Heinä",8:"Elo",9:"Syys",10:"Loka",11:"Marras",12:"Joulu"}
+        col_m, col_w = st.columns(2)
+        with col_m:
+            sel_months = st.multiselect(
+                "Kuukaudet", options=list(range(1, 13)),
+                format_func=lambda x: month_labels[x],
+                placeholder="Kaikki kuukaudet", key="sel_months")
+        with col_w:
+            wc = []
+            if sel_years:
+                wc.append(f"YEAR(kaynti_paiva) IN ({','.join(map(str, sel_years))})")
+            if sel_months:
+                wc.append(f"MONTH(kaynti_paiva) IN ({','.join(map(str, sel_months))})")
+            wq = "SELECT DISTINCT WEEK(kaynti_paiva) as w FROM f_kaynti"
+            if wc:
+                wq += " WHERE " + " AND ".join(wc)
+            all_weeks = sorted(conn.execute(wq).df().iloc[:, 0].tolist())
+            sel_weeks = st.multiselect(
+                "Viikot", options=all_weeks,
+                placeholder="Kaikki viikot", key="sel_weeks")
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            sel_weekdays = st.multiselect(
+                "Viikonpäivät", options=list(range(1, 8)),
+                format_func=lambda x: WEEKDAY_LABELS[x-1],
+                placeholder="Kaikki päivät", key="sel_weekdays")
+        with col_f2:
+            sel_hours = st.multiselect(
+                "Kellonajat", options=list(range(0, 24)),
+                format_func=lambda x: f"{x}:00",
+                placeholder="Kaikki tunnit", key="sel_hours")
+
+    # ── TILA 3: Erikoistapahtumat ───────────────────────────────────────────
+    else:
+        sel_daterange = None
+        sel_years, sel_months, sel_weeks, sel_weekdays = [], [], [], []
+        sel_events_filter = None
+        if not df_ev.is_empty():
+            unique_names = sorted(df_ev["event_name"].unique().to_list())
+            all_ev_years = sorted(df_ev["start_date"].dt.year().unique().to_list())
+            col_ev, col_evy = st.columns(2)
+            with col_ev:
+                sel_event_names = st.multiselect(
+                    "Tapahtuma", options=unique_names,
+                    placeholder="Valitse tapahtuma...",
+                    help="Ostopiikki ajoittuu tyypillisesti 1–3 pv ennen varsinaista tapahtumaa.",
+                    key="sel_event_names")
+            with col_evy:
+                sel_event_years = st.multiselect(
+                    "Vuodet", options=all_ev_years,
+                    placeholder="Kaikki vuodet", key="sel_event_years")
+            df_ev_f = df_ev
+            if sel_event_names:
+                df_ev_f = df_ev_f.filter(pl.col("event_name").is_in(sel_event_names))
+            if sel_event_years:
+                df_ev_f = df_ev_f.filter(pl.col("start_date").dt.year().is_in(sel_event_years))
+            sel_events_filter = df_ev_f if (sel_event_names or sel_event_years) else None
+        else:
+            st.warning("Erikoistapahtumatietoja ei löydy.")
+
+        if not sel_event_names:
+            st.info("⬆️ Valitse ensin tapahtuma (esim. 'Joulu') — dashboard suodattuu automaattisesti sen ajankohdalle. Voit vertailla useita vuosia rinnakkain.")
+
+        sel_hours = st.multiselect(
+            "Kellonajat", options=list(range(0, 24)),
+            format_func=lambda x: f"{x}:00",
+            placeholder="Kaikki tunnit (tapahtumapäivinä)", key="sel_hours",
+            help="Suodata tiettyihin kellonaikoihin tapahtumapäivinä.")
+
+    # --- Apply Time Filters ------------------------------------------------
+    if time_mode in ("date", "year"):
+        sel_events_filter = None
+        effective_weekdays = sel_weekdays
+    else:
+        effective_weekdays = []
+
+    raw_df = _kaynti(sel_years, sel_months, sel_weeks, effective_weekdays, sel_hours)
+
+    if time_mode == "event" and sel_events_filter is not None and not sel_events_filter.is_empty():
         mask = pl.lit(False)
-        for start_str, end_str in date_ranges:
-            # Varmistetaan että ovat date-tyyppiä vertailussa
-            s = pl.lit(start_str).str.to_date()
-            e = pl.lit(end_str).str.to_date()
+        for row in sel_events_filter.to_dicts():
+            s = pl.lit(str(row["start_date"])).str.to_date()
+            e = pl.lit(str(row["end_date"])).str.to_date()
             mask = mask | ((pl.col("kaynti_paiva") >= s) & (pl.col("kaynti_paiva") <= e))
         raw_df = raw_df.filter(mask)
-    
+    elif time_mode == "date" and sel_daterange:
+        if isinstance(sel_daterange, tuple) and len(sel_daterange) == 2:
+            s_date, e_date = sel_daterange
+            raw_df = raw_df.filter(
+                (pl.col("kaynti_paiva") >= s_date) & (pl.col("kaynti_paiva") <= e_date))
+        elif isinstance(sel_daterange, tuple) and len(sel_daterange) == 1:
+            raw_df = raw_df.filter(pl.col("kaynti_paiva") == sel_daterange[0])
+        elif isinstance(sel_daterange, datetime.date):
+            raw_df = raw_df.filter(pl.col("kaynti_paiva") == sel_daterange)
+
     def classify_visit(sec):
         if sec < 900: return "Läpikävelijä"
         return "Tutkiskelija"
@@ -359,19 +420,17 @@ def render():
     st.markdown("---")
     col_seg1, col_seg2 = st.columns([1, 2])
     with col_seg1:
-        sel_segments = st.multiselect("Kävijäsegmentit", options=seg_options, placeholder="Kaikki segmentit")
+        sel_segments = st.multiselect("Kävijäsegmentit", options=seg_options, placeholder="Kaikki segmentit", key="sel_segments")
     with col_seg2:
-        min_dwell = st.slider("Osastokohtainen viipymäsuodatin (sekunteina, suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut osastotasolla.")
+        min_dwell = st.slider("Osastokohtainen viipymäsuodatin (sekunteina, suhteellinen)", 0, 300, 30, help="Suodattaa pois läpikulut osastotasolla.", key="min_dwell")
 
     # --- Apply Segment Filter ----------------------------------------------
     df = raw_df
     if sel_segments:
         df = df.filter(pl.col("segment").is_in(sel_segments))
-        # Suodataan myös osastodata vastaamaan valittuja segmenttejä
-        valid_ids = df["kaynti_id"].to_list()
-        df_o = _osasto(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours, min_dwell).filter(pl.col("kaynti_id").is_in(valid_ids))
-    else:
-        df_o = _osasto(sel_years, sel_months, sel_weeks, sel_weekdays, sel_hours, min_dwell)
+    # Suodataan osastodata aina vastaamaan raw_df/df sisältöä (daterange, tapahtumat, segmentit)
+    valid_ids = df["kaynti_id"].to_list()
+    df_o = _osasto(sel_years, sel_months, sel_weeks, effective_weekdays, sel_hours, min_dwell).filter(pl.col("kaynti_id").is_in(valid_ids))
 
     # --- Load baseline (updated with min_dwell) ----------------------------
     baseline = _get_baseline_stats(min_dwell)
@@ -441,38 +500,87 @@ def render():
             
             cols[i].metric(lbl, f"{val:,} kpl ({percent:.1f} %)", f"{diff:+.1f} %-yks")
 
-    # Näytetään huiput vain jos tunti-suodatin ei ole aktiivinen
-    if not sel_hours:
+    # --- Vuosivertailu erikoistapahtumatilassa --------------------------------
+    if time_mode == "event" and sel_events_filter is not None and not df.is_empty():
+        years_in_data = sorted(df.with_columns(
+            pl.col("kaynti_paiva").dt.year().alias("vuosi")
+        )["vuosi"].unique().to_list())
+        if len(years_in_data) > 1:
+            st.markdown('<div class="biz-section">📆 Vuosikohtainen vertailu</div>', unsafe_allow_html=True)
+            st.caption("Tunnusluvut eriteltynä valitun tapahtuman eri vuosille.")
+            year_cols = st.columns(len(years_in_data))
+            df_with_year = df.with_columns(pl.col("kaynti_paiva").dt.year().alias("vuosi"))
+            for ci, yr in enumerate(years_in_data):
+                yr_df = df_with_year.filter(pl.col("vuosi") == yr)
+                yr_visits = len(yr_df)
+                yr_days = yr_df["kaynti_paiva"].n_unique()
+                yr_dur = yr_df["kesto_sekunteina"].median() / 60.0
+                yr_dist = yr_df["matka"].median()
+                yr_seg = yr_df["segment"].value_counts().sort("count", descending=True)
+                seg_str = "  |  ".join(
+                    f"{row['segment']}: {(row['count']/yr_visits*100):.0f}%"
+                    for row in yr_seg.to_dicts()
+                )
+                with year_cols[ci]:
+                    st.markdown(f"**{yr}**")
+                    st.metric("Käyntejä", f"{yr_visits:,} ({yr_days} pv)")
+                    st.metric("Kesto (med.)", f"{yr_dur:.1f} min")
+                    st.metric("Matka (med.)", f"{yr_dist:.0f} m")
+                    st.caption(seg_str)
+
+    # Vilkkain tunti ja viikonpäivä näytetään (jos suodattimia ei ole rajoitettu)
+    if not sel_hours or not sel_weekdays:
         c5, c6, c7, c8 = st.columns(4)
-        _kpi(c5, f"{busiest_h}:00", "Vilkkain tunti")
-        _kpi(c6, busiest_wd, "Vilkkain viikonpäivä")
-        _kpi(c7, f"{df['matka'].max():.0f}", "Pisin reitti (m)")
-        _kpi(c8, f"{df['kesto_sekunteina'].max() / 60:.0f}", "Pisin käynti (min)")
-    else:
-        # Jos tunti on valittu, näytetään vain loput kaksi mittaria
-        c7, c8, _gap1, _gap2 = st.columns(4)
+        if not sel_hours:
+            _kpi(c5, f"{busiest_h}:00", "Vilkkain tunti")
+        if not sel_weekdays:
+            _kpi(c6, busiest_wd, "Vilkkain viikonpäivä")
         _kpi(c7, f"{df['matka'].max():.0f}", "Pisin reitti (m)")
         _kpi(c8, f"{df['kesto_sekunteina'].max() / 60:.0f}", "Pisin käynti (min)")
 
     # --- 1. Daily trend ----------------------------------------------------
     st.markdown('<div class="biz-section">📅 Käynnit päivittäin</div>', unsafe_allow_html=True)
 
-    daily = df.group_by("kaynti_paiva").agg(pl.len().alias("n")).sort("kaynti_paiva")
     fig_trend = go.Figure()
-    fig_trend.add_trace(go.Scatter(
-        x=daily["kaynti_paiva"].to_list(), y=daily["n"].to_list(),
-        mode="lines+markers", line=dict(color="#3b82f6", width=2.5),
-        marker=dict(size=5, color="#3b82f6"),
-        fill="tozeroy", fillcolor="rgba(59,130,246,0.08)",
-        hovertemplate="<b>%{x}</b><br>Käyntejä: %{y}<extra></extra>",
-    ))
-    if len(daily) >= 7:
-        ma7 = daily.with_columns(pl.col("n").rolling_mean(window_size=7).alias("ma7"))
+    if time_mode in ("year", "event"):
+        # Eri vuodet eri väreillä — valmiit hex+rgba-parit
+        YEAR_COLORS = [
+            ("#3b82f6", "rgba(59,130,246,0.08)"),
+            ("#10b981", "rgba(16,185,129,0.08)"),
+            ("#f59e0b", "rgba(245,158,11,0.08)"),
+            ("#ef4444", "rgba(239,68,68,0.08)"),
+            ("#8b5cf6", "rgba(139,92,246,0.08)"),
+        ]
+        df_dated = df.with_columns(pl.col("kaynti_paiva").dt.year().alias("vuosi"))
+        for yi, yr in enumerate(sorted(df_dated["vuosi"].unique().to_list())):
+            yr_daily = (df_dated.filter(pl.col("vuosi") == yr)
+                        .group_by("kaynti_paiva").agg(pl.len().alias("n")).sort("kaynti_paiva"))
+            color, fill_color = YEAR_COLORS[yi % len(YEAR_COLORS)]
+            fig_trend.add_trace(go.Scatter(
+                x=yr_daily["kaynti_paiva"].to_list(), y=yr_daily["n"].to_list(),
+                mode="lines+markers", name=str(yr),
+                line=dict(color=color, width=2.5),
+                marker=dict(size=5, color=color),
+                fill="tozeroy", fillcolor=fill_color,
+                hovertemplate="<b>%{x}</b><br>Käyntejä: %{y}<extra></extra>",
+            ))
+    else:
+        daily = df.group_by("kaynti_paiva").agg(pl.len().alias("n")).sort("kaynti_paiva")
         fig_trend.add_trace(go.Scatter(
-            x=ma7["kaynti_paiva"].to_list(), y=ma7["ma7"].to_list(),
-            mode="lines", line=dict(color="#f59e0b", width=2, dash="dash"),
-            name="7 pv liukuva ka",
+            x=daily["kaynti_paiva"].to_list(), y=daily["n"].to_list(),
+            mode="lines+markers", line=dict(color="#3b82f6", width=2.5),
+            marker=dict(size=5, color="#3b82f6"),
+            fill="tozeroy", fillcolor="rgba(59,130,246,0.08)",
+            hovertemplate="<b>%{x}</b><br>Käyntejä: %{y}<extra></extra>",
         ))
+        daily_for_ma = df.group_by("kaynti_paiva").agg(pl.len().alias("n")).sort("kaynti_paiva")
+        if len(daily_for_ma) >= 7:
+            ma7 = daily_for_ma.with_columns(pl.col("n").rolling_mean(window_size=7).alias("ma7"))
+            fig_trend.add_trace(go.Scatter(
+                x=ma7["kaynti_paiva"].to_list(), y=ma7["ma7"].to_list(),
+                mode="lines", line=dict(color="#f59e0b", width=2, dash="dash"),
+                name="7 pv liukuva ka",
+            ))
     fig_trend.update_layout(
         height=320, margin=dict(l=50, r=20, t=10, b=50),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,1)",
@@ -569,7 +677,7 @@ def render():
 
     # --- 4. Duration histogram ---------------------------------------------
     st.markdown('<div class="biz-section">⏱️ Käyntiajan jakauma</div>', unsafe_allow_html=True)
-    st.caption("Kuinka pitkiä asiakkaiden kauppareissut ovat?")
+    st.caption("Kuinka pitkiä asiakkaiden kauppareissut ovat?", help="Värien merkitys kestolle:\n\n🟢 Vihreä: Alle 30 min\n\n🔵 Sininen: 30–60 min\n\n🟠 Oranssi: 60–90 min\n\n🔴 Punainen: Yli 90 min")
 
     dur = (df["kesto_sekunteina"] / 60.0).to_numpy()
     hv, be = np.histogram(dur, bins=40, range=(0, max(120, dur.max())))
@@ -592,7 +700,7 @@ def render():
 
     # --- 5. Distance histogram ---------------------------------------------
     st.markdown('<div class="biz-section">🚶 Kävelymatkan jakauma</div>', unsafe_allow_html=True)
-    st.caption("Kuinka pitkän matkan asiakkaat kävelevät kaupassa?")
+    st.caption("Kuinka pitkän matkan asiakkaat kävelevät kaupassa?", help="Värien merkitys matkalle:\n\n🟢 Vihreä: Alle 500 m\n\n🔵 Sininen: 500–1000 m\n\n🟠 Oranssi: 1000–2000 m\n\n🔴 Punainen: Yli 2000 m")
 
     dist = df["matka"].to_numpy()
     hd, bd = np.histogram(dist, bins=40, range=(0, min(3000, dist.max())))
