@@ -1,6 +1,22 @@
-# ByteBuddies – UWB Shopping Cart Analytics
+# UWB Shopping Cart Analytics Pipeline
 
-Projekti analysoi sisätiloissa tapahtuvan ostoskärryn liikkumista UWB (Ultra-Wideband) -paikannusdatan avulla. Tuloksella pyritään ymmärtämään asiakasvirtoja, paikannusdatan eheyttä ja kauppaympäristön käyttöä.
+> **About this project:** Tämä repositorio sisältää ensimmäisen vuoden insinööriopintojen (B.Eng) capstone-projektin. **Bytebuddies**-tiimin rakentama ratkaisu on medaljonki-arkkitehtuurin mukainen data-pipeline, joka prosessoi, suodattaa ja visualisoi UWB (Ultra-Wideband) -paikannusdataa ostoskärryjen liikkeistä kauppaympäristössä.
+
+## Tiimin jäsenet / Team Members
+
+* [Mitro Vaskela](https://github.com/mitro54) - Data-analytiikka/Visualisoinnit
+* [Joni Helminen](https://github.com/sahti-stack) - Diagnostiikka/Iiwari-Dashboard
+* [Toni Kiuru](https://github.com/Tonzium) - Arkkitehtuuri/Agentit
+* Panu Eklund - Diagnostiikka/Iiwari-Dashboard
+* Tuija Aumala - Dokumentaatio/Käyttöliittymä
+
+Projekti toteutettiin Scrum-viitekehyksen mukaisesti, 8 viikossa. Sprintin pituudeksi valikoitui 1 viikko ja käytimme kiertävää roolitusta. Kaikki tekivät vähän kaikkea projektin aikana, mutta jokaiselle löytyi lopulta oma luontainen vastuualueensa.
+
+* **Mitro (Data-teoriat&nalytiikka/Visualisointi):** datan suodatuslogiikkaa ja analysointia. Datan visualisointia, heatmappeja, teorioita ja asiakkaiden liikkeiden liiketoiminnallista ymmärtämistä.
+* **Toni (Arkkitehtuuri/Agentit):** sitoo kasaan koko Medallion-arkkitehtuurin (dbt, DuckDB) ja edistyneiden Python-agenttien logiikan.
+* **Joni & Panu (Diagnostiikka/Iiwari-Dashboard):** osuus vastaa erityisesti diagnostiikan toteutuksesta (RMSE, CEP50, CEP68, CEP95) sekä sen käyttöliittymän rakentamisesta Streamlitilla.
+* **Tuija (Dokumentaatio/Käyttöliittymä):** vastuu mm. MkDocs-ympäristöstä, ADR-päätöksistä ja Liiketoiminta Dashboardista.
+---
 
 ## Tavoitteet ja ongelmanasettelu
 
@@ -98,6 +114,15 @@ uv run python main.py
 cp .env.example .env
 ```
 - Avaa `.env` ja täytä tarvittavat tiedot (esim. tietokantayhteydet).
+
+### 3. Datan prosessointi (dbt)
+
+Aja dbt-mallit (Medallion-kerrokset) siirtymällä dbt-kansioon ja suorittamalla `dbt run`:
+
+```bash
+cd bytebuddies_dbt
+uv run dbt run
+```
 
 ## Projektirakenne
 
