@@ -12,7 +12,7 @@
 
 Projekti toteutettiin Scrum-viitekehyksen mukaisesti, 8 viikossa. Sprintin pituudeksi valikoitui 1 viikko ja käytimme kiertävää roolitusta. Kaikki tekivät vähän kaikkea projektin aikana, mutta jokaiselle löytyi lopulta oma luontainen vastuualueensa.
 
-* **Mitro (Data-teoriat&nalytiikka/Visualisointi):** datan suodatuslogiikkaa ja analysointia. Datan visualisointia, heatmappeja, teorioita ja asiakkaiden liikkeiden liiketoiminnallista ymmärtämistä.
+* **Mitro (Data-teoriat&analytiikka/Visualisointi):** datan suodatuslogiikkaa ja analysointia. Datan visualisointia, heatmappeja, teorioita ja asiakkaiden liikkeiden liiketoiminnallista ymmärtämistä.
 * **Toni (Arkkitehtuuri/Agentit):** sitoo kasaan koko Medallion-arkkitehtuurin (dbt, DuckDB) ja edistyneiden Python-agenttien logiikan.
 * **Joni & Panu (Diagnostiikka/Iiwari-Dashboard):** osuus vastaa erityisesti diagnostiikan toteutuksesta (RMSE, CEP50, CEP68, CEP95) sekä sen käyttöliittymän rakentamisesta Streamlitilla.
 * **Tuija (Dokumentaatio/Käyttöliittymä):** vastuu mm. MkDocs-ympäristöstä, ADR-päätöksistä ja Liiketoiminta Dashboardista.
