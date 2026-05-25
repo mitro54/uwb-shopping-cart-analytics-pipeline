@@ -7,7 +7,7 @@
 * [Mitro Vaskela](https://github.com/mitro54) - Data-analytiikka/Visualisoinnit
 * [Joni Helminen](https://github.com/sahti-stack) - Diagnostiikka/Iiwari-Dashboard
 * [Toni Kiuru](https://github.com/Tonzium) - Arkkitehtuuri/Agentit
-* [Panu Eklund](https://github.com/Kompliitti) - Diagnostiikka/Iiwari-Dashboard
+* [Panu Eklund](https://github.com/Kompliitti) - Diagnostiikka/Iiwari-Dashboard/Arkkitehtuuri
 * [Tuija Aumala](https://github.com/Tuiqqu) - Dokumentaatio/Käyttöliittymä
 
 Projekti toteutettiin Scrum-viitekehyksen mukaisesti, 8 viikossa. Sprintin pituudeksi valikoitui 1 viikko ja käytimme kiertävää roolitusta. Kaikki tekivät vähän kaikkea projektin aikana, mutta jokaiselle löytyi lopulta oma luontainen vastuualueensa.
